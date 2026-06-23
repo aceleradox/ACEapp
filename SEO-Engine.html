@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>NTC - NOTORIETY COINS ROBUSTO</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+:root{
+  --bg:#0a0a0f;
+  --card:#13141f;
+  --card2:#0f1017;
+  --gold:#FFD700;
+  --gold-dark:#b8860b;
+  --purple:#8A2BE2;
+  --purple2:#6a1bb8;
+  --text:#e9e9f5;
+  --text2:#a5a7c0;
+  --ok:#00ff88;
+  --err:#ff4d6d;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{
+  font-family:'Inter',system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  min-height:100vh;
+  background-image:
+    radial-gradient(800px 400px at 80% -10%,rgba(138,43,226,.25),transparent),
+    radial-gradient(600px 400px at 10% 110%,rgba(255,215,0,.15),transparent);
+  overscroll-behavior-y:contain;
+}
+header{
+  text-align:center;
+  padding:24px 16px 12px;
+  position:relative;
+}
+header h1{
+  font-weight:800;
+  font-size:clamp(26px,6vw,44px);
+  letter-spacing:1px;
+  background:linear-gradient(90deg,var(--gold),#fff,var(--purple));
+  -webkit-background-clip:text;
+  background-clip:text;
+  color:transparent;
+  filter:drop-shadow(0 0 18px rgba(255,215,0,.25));
+}
+header p{
+  color:var(--text2);
+  margin-top:4px;
+  font-size:14px;
+  letter-spacing:.5px;
+}
+main{
+  max-width:1300px;
+  margin:0 auto;
+  padding:16px;
+}
+.grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(330px,1fr));
+  gap:16px;
+}
+.card{
+  background:linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,.01));
+  border:1px solid rgba(138,43,226,.25);
+  border-radius:20px;
+  padding:20px;
+  box-shadow:0 0 0 1px rgba(255,215,0,.05) inset,0 10px 40px rgba(0,0,0,.5),0 0 40px rgba(138,43,226,.08);
+  backdrop-filter: blur(8px);
+  position:relative;
+  overflow:hidden;
+}
+.card::before{
+  content:"";position:absolute;inset:-1px;border-radius:20px;padding:1px;
+  background:linear-gradient(135deg,rgba(255,215,0,.4),transparent 30%,rgba(138,43,226,.5));
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
+  -webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none;
+}
+.card h2{
+  font-size:17px;margin-bottom:14px;display:flex;align-items:center;gap:8px;
+  color:var(--gold);text-transform:uppercase;letter-spacing:.8px;
+}
+label{font-size:13px;color:var(--text2);margin:8px 0 4px;display:block}
+input,textarea,select{
+  width:100%;background:var(--card2);border:1px solid rgba(255,255,255,.1);
+  color:var(--text);padding:12px 12px;border-radius:12px;font-family:inherit;
+  font-size:15px;outline:none;transition:.2s;
+}
+input:focus,textarea:focus,select:focus{border-color:var(--purple);box-shadow:0 0 0 3px rgba(138,43,226,.2)}
+textarea{min-height:88px;resize:vertical}
+.mono{font-family:'JetBrains Mono',monospace;font-size:13px}
+.btn{
+  background:linear-gradient(135deg,var(--purple),var(--purple2));color:white;
+  border:none;padding:12px 16px;min-height:44px;border-radius:12px;font-weight:700;
+  cursor:pointer;font-size:14px;transition:.2s;box-shadow:0 4px 16px rgba(138,43,226,.3);
+  display:inline-flex;align-items:center;justify-content:center;gap:6px;
+}
+.btn:hover{transform:translateY(-1px);box-shadow:0 6px 22px rgba(138,43,226,.4)}
+.btn:active{transform:translateY(0)}
+.btn-gold{background:linear-gradient(135deg,var(--gold),var(--gold-dark));color:#1a1200;box-shadow:0 4px 16px rgba(255,215,0,.25)}
+.btn-ghost{background:transparent;border:1px solid rgba(255,255,255,.15);box-shadow:none}
+.btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.btns .btn{flex:1 1 auto;min-width:100px}
+.btn:disabled{opacity:.5;pointer-events:none}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.canvas-wrap{display:flex;flex-direction:column;align-items:center;gap:12px}
+#ntcCanvas{width:240px;height:240px;max-width:80vw;filter:drop-shadow(0 10px 30px rgba(255,215,0,.2));transition:filter .2s}
+#map{height:320px;border-radius:14px;overflow:hidden;border:1px solid rgba(255,255,255,.1);margin-top:8px}
+.coords{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;font-size:12px;color:var(--text2)}
+.tag{display:inline-block;background:rgba(255,215,0,.1);border:1px solid rgba(255,215,0,.3);color:var(--gold);padding:6px 10px;border-radius:10px;font-size:12px;margin-top:6px;transition:.2s;font-weight:600}
+.preview{margin-top:8px;border-radius:12px;overflow:hidden;border:1px solid rgba(255,255,255,.1);display:none}
+.preview iframe{width:100%;height:200px;border:0;display:block}
+.status{font-size:12px;color:var(--ok);margin-top:8px;min-height:18px}
+.full{grid-column:1/-1}
+.leaflet-control-attribution{font-size:10px!important}
+.toast{
+  position:fixed;bottom:20px;left:50%;transform:translateX(-50%);
+  background:#1a1b25;border:1px solid rgba(255,215,0,.4);
+  padding:12px 18px;border-radius:12px;font-size:14px;opacity:0;pointer-events:none;
+  transition:.3s;z-index:9999;max-width:90vw;text-align:center;
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(-6px)}
+@media(max-width:768px){
+  main{padding:12px}
+  .grid{grid-template-columns:1fr;gap:14px}
+  .card{padding:16px}
+  .row{grid-template-columns:1fr}
+  #ntcCanvas{width:200px;height:200px}
+  input,textarea,select{font-size:16px}
+  .btn{font-size:15px}
+  header h1{font-size:28px}
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>NTC - NOTORIETY COINS</h1>
+  <p>Sistema Robusto • SEO + Mineração</p>
+</header>
+
+<main>
+  <div class="grid">
+    <!-- CONTADOR -->
+    <div class="card">
+      <h2>💰 Contador NTC</h2>
+      <div class="canvas-wrap">
+        <canvas id="ntcCanvas" width="300" height="300"></canvas>
+        <div class="btns">
+          <button class="btn" id="roletarBtn" onclick="roletarBet()">🎰 ROLETAR (2 NTC)</button>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center">
+          <span class="tag" id="ntcInfo">NTC: 0</span>
+          <span class="tag" id="ntcRate" style="border-color:rgba(0,255,136,.3);color:var(--ok);background:rgba(0,255,136,.08)">0.0 NTC/s</span>
+        </div>
+        <div style="font-size:12px;color:var(--text2);margin-top:6px;text-align:center" id="ledgerInfo">🔐 Ledger: 0 transações criptografadas</div>
+      </div>
+    </div>
+
+    <!-- MINERADORA -->
+    <div class="card">
+      <h2>⛏️ Mineradora NTC</h2>
+      <div style="display:grid;gap:12px">
+        <div style="background:var(--card2);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:14px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <strong>Free Farm</strong><span class="tag" id="status1">Parado</span>
+          </div>
+          <div style="font-size:12px;color:var(--text2)">1 NTC a cada 30s • 0.033 NTC/s</div>
+          <div class="btns"><button class="btn" id="toggle1" onclick="toggleMotor(1)">Ativar</button></div>
+          <div style="font-size:11px;margin-top:8px;color:var(--text2)">Farmado: <span id="farm1">0</span> NTC</div>
+        </div>
+        <div style="background:var(--card2);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:14px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <strong>Turbo</strong><span class="tag" id="status2">Bloqueado</span>
+          </div>
+          <div style="font-size:12px;color:var(--text2)">1 NTC a cada 15s • 0.067 NTC/s</div>
+          <div class="btns"><button class="btn btn-gold" id="toggle2" onclick="toggleMotor(2)">Desbloquear (50 NTC)</button></div>
+          <div style="font-size:11px;margin-top:8px;color:var(--text2)">Farmado: <span id="farm2">0</span> NTC</div>
+        </div>
+        <div style="background:var(--card2);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:14px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <strong>Hyper</strong><span class="tag" id="status3">Bloqueado</span>
+          </div>
+          <div style="font-size:12px;color:var(--text2)">1 NTC a cada 5s • 0.2 NTC/s</div>
+          <div class="btns"><button class="btn btn-gold" id="toggle3" onclick="toggleMotor(3)">Desbloquear (150 NTC)</button></div>
+          <div style="font-size:11px;margin-top:8px;color:var(--text2)">Farmado: <span id="farm3">0</span> NTC</div>
+        </div>
+      </div>
+      <span class="tag" id="prodTotal" style="margin-top:12px;display:inline-block">Produção total: 0 NTC</span>
+    </div>
+
+    <!-- RESENHA -->
+    <div class="card">
+      <h2>✍️ Descreva sua resenha</h2>
+      <label>Descrição da vibe</label>
+      <textarea id="vibe" placeholder="Ex: rolê insano no baile, luz neon, galera cantando até 4h..."></textarea>
+      <div class="row">
+        <div><label>Bebidas</label><input id="bebidas" placeholder="whisky, cerveja, caipirinha"></div>
+        <div><label>Músicas funk</label><input id="funk" placeholder="MC Hariel, MC Ryan SP"></div>
+      </div>
+      <div class="row">
+        <div>
+          <label>Público</label>
+          <select id="publico">
+            <option>Só mulheres</option><option>Só amigos</option><option selected>Misto</option><option>Casal</option><option>Família</option>
+          </select>
+        </div>
+        <div><label>Link playlist YouTube</label><input id="playlist" placeholder="https://youtube.com/..." oninput="validarYT()"></div>
+      </div>
+      <div class="preview" id="ytPreview"></div>
+      <div class="btns" style="margin-top:14px">
+        <button class="btn btn-gold" onclick="gerarJS()">GERAR JAVASCRIPT SEO</button>
+        <button class="btn btn-ghost" onclick="copiar('jsCode')">Copiar JS</button>
+      </div>
+      <label style="margin-top:12px">Código gerado</label>
+      <textarea id="jsCode" class="mono" readonly style="min-height:180px"></textarea>
+    </div>
+
+    <!-- METATAGS -->
+    <div class="card">
+      <h2>🏷️ MetaTags Automáticas</h2>
+      <p style="color:var(--text2);font-size:13px;margin-bottom:10px">Gerado com base na sua resenha, descrição+ e tags.</p>
+      <textarea id="metaTagsCode" class="mono" readonly style="min-height:280px"></textarea>
+      <div class="btns">
+        <button class="btn btn-gold" onclick="gerarMeta()">Atualizar MetaTags</button>
+        <button class="btn" onclick="copiar('metaTagsCode')">Copiar MetaTags</button>
+      </div>
+    </div>
+
+    <!-- TAGS -->
+    <div class="card">
+      <h2>🔖 Tags YouTube / Blogger</h2>
+      <label>Tags extras (separe por vírgula)</label>
+      <input id="tagsExtras" placeholder="balada, noite, sp" oninput="atualizarTags()">
+      <label style="margin-top:12px">Tags geradas automaticamente</label>
+      <textarea id="tagsOutput" class="mono" readonly style="min-height:120px"></textarea>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px">
+        <span id="tagsCount" class="tag">0/500</span>
+        <button class="btn btn-gold" onclick="copiar('tagsOutput')">Copiar Tags</button>
+      </div>
+    </div>
+
+    <!-- DESCRICAO -->
+    <div class="card">
+      <h2>📝 Descrição Melhorada</h2>
+      <p style="color:var(--text2);font-size:13px">Transformamos sua vibe em texto SEO com emojis e hashtags.</p>
+      <div class="btns">
+        <button class="btn btn-gold" onclick="sugerirDescricao()">✨ Gerar Sugestão</button>
+        <button class="btn" onclick="aplicarDescricao()">Aplicar na Resenha</button>
+      </div>
+      <label style="margin-top:12px">Descrição otimizada (editável)</label>
+      <textarea id="descricaoPlus" style="min-height:220px" placeholder="Clique em Gerar Sugestão..."></textarea>
+    </div>
+
+    <!-- SEO -->
+    <div class="card">
+      <h2>🚀 SEO Avançado - Schema.org</h2>
+      <div class="row">
+        <div><label>Autor</label><input id="seoAutor" placeholder="Seu nome"></div>
+        <div><label>Categoria</label><input id="seoCategoria" placeholder="Balada, Show"></div>
+      </div>
+      <div class="row">
+        <div><label>Avaliação (1-5)</label><select id="seoAvaliacao"><option>5</option><option>4</option><option>3</option><option>2</option><option>1</option></select></div>
+        <div><label>Preço R$</label><input id="seoPreco" placeholder="50.00"></div>
+      </div>
+      <div class="row">
+        <div><label>Data do evento</label><input id="seoData" type="datetime-local"></div>
+        <div><label>Site</label><input id="seoSite" placeholder="https://"></div>
+      </div>
+      <div class="row">
+        <div><label>Telefone</label><input id="seoTelefone" placeholder="(61) 9..."></div>
+        <div><label>Email</label><input id="seoEmail" placeholder="contato@..."></div>
+      </div>
+      <div class="btns">
+        <button class="btn btn-gold" onclick="gerarSeoAvancado()">Gerar Schema.org</button>
+        <button class="btn" onclick="copiar('seoAvancadoCode')">Copiar</button>
+      </div>
+      <textarea id="seoAvancadoCode" class="mono" readonly style="min-height:260px;margin-top:10px"></textarea>
+    </div>
+
+    <!-- MAPA -->
+    <div class="card">
+      <h2>📍 Localização OpenStreetMap</h2>
+      <div class="row">
+        <input id="busca" placeholder="Pesquisar endereço...">
+        <button class="btn" id="pesquisaBtn" onclick="pesquisar()">Pesquisar (-1 NTC)</button>
+      </div>
+      <div id="map"></div>
+      <div class="coords">
+        <div>Lat: <span id="lat">-15.9000</span></div>
+        <div>Lon: <span id="lon">-48.0500</span></div>
+      </div>
+      <div style="font-size:12px;margin-top:6px;color:var(--text2)" id="endereco">Recanto das Emas, DF, Brasil</div>
+      <div class="btns">
+        <button class="btn btn-ghost" id="gpsBtn" onclick="usarLocal()">Usar minha localização (-1 NTC)</button>
+      </div>
+    </div>
+
+    <!-- EXPORTAR -->
+    <div class="card">
+      <h2>📤 Gerar Saída</h2>
+      <div class="btns">
+        <button class="btn btn-gold" onclick="gerarSaida('js')">JavaScript</button>
+        <button class="btn" id="rssBtn" onclick="gerarSaida('rss')">RSS (-3 NTC)</button>
+        <button class="btn" id="luaBtn" onclick="gerarSaida('lua')">Lua (-3 NTC)</button>
+      </div>
+      <textarea id="saida" class="mono" readonly style="min-height:220px;margin-top:12px"></textarea>
+      <div class="btns">
+        <button class="btn btn-ghost" onclick="copiar('saida')">Copiar</button>
+        <button class="btn btn-ghost" onclick="download('saida','ntc-review.js')">.js</button>
+        <button class="btn btn-ghost" onclick="download('saida','ntc-review.xml')">.xml</button>
+        <button class="btn btn-ghost" onclick="download('saida','ntc-review.lua')">.lua</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>☁️ Salvar na Nuvem (Local)</h2>
+      <label>Meus arquivos salvos</label>
+      <select id="arquivos"></select>
+      <div class="btns">
+        <button class="btn btn-gold" onclick="salvarFirebase()">Salvar Atual</button>
+        <button class="btn" onclick="carregarFirebase()">Carregar</button>
+        <button class="btn btn-ghost" onclick="deletarFirebase()">Deletar</button>
+        <button class="btn btn-ghost" onclick="exportarJSON()">Exportar JSON</button>
+      </div>
+      <div class="status" id="statusFb">Salvo localmente</div>
+
+      <div style="margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,255,255,.1)">
+        <label>Transferir NTC</label>
+        <div class="row">
+          <input id="transferPara" placeholder="@usuario destino">
+          <input id="transferQtd" type="number" placeholder="quantidade" min="1">
+        </div>
+        <button class="btn" onclick="transferirNTC()" style="margin-top:8px;width:100%">Enviar NTC</button>
+        <div style="font-size:11px;color:var(--text2);margin-top:6px">* Simulação local - para funcionar no GitHub Pages precisa de backend Firebase</div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ======== ESTADO GLOBAL ========
+let ntc = parseInt(localStorage.getItem('ntcCoins') || '0');
+let lat = parseFloat(localStorage.getItem('ntcLat') || '-15.9000');
+let lon = parseFloat(localStorage.getItem('ntcLon') || '-48.0500');
+let enderecoAtual = localStorage.getItem('ntcEnd') || 'Recanto das Emas, DF, Brasil';
+let map, marker;
+let angulo = 0, spinVel = 0;
+
+// ======== MOTORES - DIFÍCIL ========
+let motores = JSON.parse(localStorage.getItem('ntcMotores')) || {
+  1: {liberado:true, ativo:false, taxa:30000, ganho:1, farmado:0, nome:'Free Farm', custo:0},
+  2: {liberado:false, ativo:false, taxa:15000, ganho:1, farmado:0, nome:'Turbo', custo:50},
+  3: {liberado:false, ativo:false, taxa:5000, ganho:1, farmado:0, nome:'Hyper', custo:150}
+};
+// força dificuldade
+motores[1].taxa = 30000; motores[1].ganho = 1;
+motores[2].taxa = 15000; motores[2].ganho = 1;
+motores[3].taxa = 5000;  motores[3].ganho = 1;
+
+let intervalos = {};
+
+function sanitize(str){ return (str||'').trim(); }
+function escapeHTML(s){return (s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
+function sanitizarURL(url){
+  if(!url) return '';
+  try{
+    const u = new URL(url);
+    ['utm_source','utm_medium','utm_campaign','utm_term','utm_content','fbclid','gclid','igshid','mc_cid','mc_eid','ref'].forEach(p=>u.searchParams.delete(p));
+    return u.toString();
+  }catch(e){ return url.trim(); }
+}
+
+// ======== CANVAS MOEDA ========
+const canvas = document.getElementById('ntcCanvas');
+const ctx = canvas.getContext('2d');
+function desenharMoeda(){
+  ctx.clearRect(0,0,300,300); ctx.save(); ctx.translate(150,150);
+  ctx.rotate(angulo*0.1); ctx.beginPath(); ctx.arc(0,14,110,0,Math.PI*2); ctx.fillStyle='rgba(0,0,0,.4)'; ctx.fill();
+  const grad = ctx.createRadialGradient(-30,-30,20,0,0,120);
+  grad.addColorStop(0,'#fff7c2'); grad.addColorStop(0.3,'#FFD700'); grad.addColorStop(0.7,'#b8860b'); grad.addColorStop(1,'#7a5a00');
+  ctx.beginPath(); ctx.arc(0,0,115,0,Math.PI*2); ctx.fillStyle=grad; ctx.shadowColor='#FFD700'; ctx.shadowBlur=30; ctx.fill(); ctx.shadowBlur=0;
+  ctx.beginPath(); ctx.arc(0,0,115,0,Math.PI*2); ctx.strokeStyle='rgba(255,215,0,.8)'; ctx.lineWidth=4; ctx.stroke();
+  ctx.beginPath(); ctx.arc(0,0,100,0,Math.PI*2); ctx.strokeStyle='rgba(0,0,0,.2)'; ctx.lineWidth=2; ctx.stroke();
+  ctx.rotate(angulo);
+  ctx.beginPath(); ctx.arc(0,0,105, -0.2,0.2); ctx.strokeStyle='rgba(255,255,255,.9)'; ctx.lineWidth=12; ctx.shadowColor='#fff'; ctx.shadowBlur=20; ctx.stroke(); ctx.shadowBlur=0;
+  ctx.rotate(-angulo*1.1);
+  ctx.fillStyle='#0a0a0f'; ctx.font='bold 56px Inter'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(ntc,0,10);
+  ctx.font='700 16px Inter'; ctx.fillStyle='rgba(0,0,0,.6)'; ctx.fillText('NTC',0,-38);
+  ctx.restore(); angulo += 0.008 + spinVel; spinVel *= 0.96; requestAnimationFrame(desenharMoeda);
+}
+function alterarNTC(v,reset=false){
+  ntc = reset ? 0 : Math.max(0, ntc + v);
+  localStorage.setItem('ntcCoins', ntc);
+  atualizarNTCUI(); gerarJS(false);
+}
+function criptografarNTC(quantidade, origem){
+  const obj = {q: quantidade, o: origem, t: Date.now(), s: ntc, h: ''};
+  obj.h = btoa(quantidade + '|' + origem + '|' + Date.now() + '|' + Math.random()).slice(0,16);
+  return btoa(JSON.stringify(obj));
+}
+function atualizarLedgerUI(){
+  const ledger = JSON.parse(localStorage.getItem('ntcLedger')||'[]');
+  const el = document.getElementById('ledgerInfo');
+  if(el) el.textContent = `🔐 Ledger: ${ledger.length} transações criptografadas`;
+}
+function ganharNTC(quantidade, motivo){
+  const entry = criptografarNTC(quantidade, motivo);
+  const ledger = JSON.parse(localStorage.getItem('ntcLedger') || '[]');
+  ledger.push(entry); localStorage.setItem('ntcLedger', JSON.stringify(ledger));
+  atualizarLedgerUI(); alterarNTC(quantidade); toast(`+${quantidade} NTC por ${motivo}`);
+}
+function gastarNTC(quantidade, motivo){
+  if(ntc < quantidade){ toast('NTC insuficiente! Farme mais'); return false; }
+  alterarNTC(-quantidade); toast(`-${quantidade} NTC - ${motivo}`); return true;
+}
+function atualizarNTCUI(){
+  const el = document.getElementById('ntcInfo');
+  el.textContent = `NTC: ${ntc}`;
+  if(ntc > 10){ el.style.color='var(--ok)'; el.style.borderColor='rgba(0,255,136,.5)'; el.style.background='rgba(0,255,136,.1)'; }
+  else if(ntc >=3){ el.style.color='var(--gold)'; el.style.borderColor='rgba(255,215,0,.4)'; el.style.background='rgba(255,215,0,.1)'; }
+  else{ el.style.color='var(--err)'; el.style.borderColor='rgba(255,77,109,.5)'; el.style.background='rgba(255,77,109,.1)'; }
+  atualizarBotoes(); atualizarUI_Motores();
+}
+function atualizarBotoes(){
+  const rss=document.getElementById('rssBtn'), lua=document.getElementById('luaBtn'), pesq=document.getElementById('pesquisaBtn'), gps=document.getElementById('gpsBtn');
+  if(rss) rss.disabled=ntc<3;
+  if(lua) lua.disabled=ntc<3;
+  if(pesq) pesq.disabled=ntc<1;
+  if(gps) gps.disabled=ntc<1;
+}
+function roletarBet(){
+  const btn = document.getElementById('roletarBtn');
+  if(!btn || btn.disabled) return;
+  if(ntc < 2){ toast('Precisa de 2 NTC para apostar'); return; }
+  btn.disabled = true;
+  const originalToast = window.toast; window.toast = ()=>{};
+  gastarNTC(2, 'Roleta'); window.toast = originalToast;
+  spinVel = 1.5; const spinInterval = setInterval(()=>{ spinVel = 1.2; }, 100);
+  setTimeout(()=>{
+    clearInterval(spinInterval);
+    const ganhou = Math.random() < 0.48;
+    const canvas = document.getElementById('ntcCanvas');
+    if(ganhou){
+      window.toast = ()=>{}; ganharNTC(5, 'Roleta'); window.toast = originalToast;
+      toast('🎉 GANHOU! +5 NTC'); canvas.style.filter = 'drop-shadow(0 10px 30px rgba(255,215,0,.2)) drop-shadow(0 0 40px rgba(0,255,136,.8))';
+    }else{
+      toast('💸 PERDEU -2 NTC'); canvas.style.filter = 'drop-shadow(0 10px 30px rgba(255,215,0,.2)) drop-shadow(0 0 40px rgba(255,77,109,.8))';
+    }
+    setTimeout(()=>{ canvas.style.filter = 'drop-shadow(0 10px 30px rgba(255,215,0,.2))'; }, 800);
+    btn.disabled = false;
+  }, 2000);
+}
+
+// ======== MAPA ========
+function initMapa(){
+  map = L.map('map').setView([lat,lon],14);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{ attribution:'© OpenStreetMap'}).addTo(map);
+  marker = L.marker([lat,lon],{draggable:true}).addTo(map);
+  marker.on('dragend', e=>{
+    const nova = e.target.getLatLng();
+    if(!gastarNTC(1,'arrastar')){ marker.setLatLng([lat,lon]); return; }
+    atualizarPos(nova);
+  });
+  map.on('click', e=>{
+    if(!gastarNTC(1,'mapa')) return;
+    marker.setLatLng(e.latlng); atualizarPos(e.latlng);
+  });
+  atualizarLabels();
+}
+async function atualizarPos(ll){
+  lat = ll.lat; lon = ll.lng;
+  localStorage.setItem('ntcLat',lat); localStorage.setItem('ntcLon',lon);
+  atualizarLabels();
+  try{
+    const r = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`);
+    const j = await r.json(); enderecoAtual = j.display_name || enderecoAtual;
+    localStorage.setItem('ntcEnd',enderecoAtual);
+    document.getElementById('endereco').textContent = enderecoAtual;
+    gerarJS(false); atualizarTags(); gerarMeta();
+  }catch(e){}
+}
+function atualizarLabels(){
+  document.getElementById('lat').textContent = lat.toFixed(6);
+  document.getElementById('lon').textContent = lon.toFixed(6);
+  document.getElementById('endereco').textContent = enderecoAtual;
+}
+async function pesquisar(){
+  const q = document.getElementById('busca').value;
+  if(!q) return;
+  if(!gastarNTC(1,'pesquisa')) return;
+  try{
+    const r = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&limit=1`);
+    const j = await r.json();
+    if(j[0]){ const ll = {lat:parseFloat(j[0].lat), lng:parseFloat(j[0].lon)}; map.setView(ll,16); marker.setLatLng(ll); atualizarPos(ll); }
+    else{toast('Endereço não encontrado')}
+  }catch(e){toast('Erro na pesquisa')}
+}
+function usarLocal(){
+  if(!navigator.geolocation) return toast('Geolocalização não suportada');
+  if(!gastarNTC(1,'GPS')) return;
+  navigator.geolocation.getCurrentPosition(p=>{
+    const ll = {lat:p.coords.latitude, lng:p.coords.longitude};
+    map.setView(ll,16); marker.setLatLng(ll); atualizarPos(ll);
+  },()=>toast('Permissão negada'));
+}
+
+// ======== YOUTUBE ========
+function validarYT(){
+  const input = document.getElementById('playlist');
+  let url = input.value.trim();
+  url = sanitizarURL(url);
+  if(url !== input.value) input.value = url;
+  const box = document.getElementById('ytPreview');
+  const re = /(?:youtube\.com|youtu\.be).*?(?:v=|embed\/|shorts\/|list=)([a-zA-Z0-9_-]+)/;
+  const m = url.match(re);
+  if(m){
+    let src = '';
+    if(url.includes('list=')){
+      try{ const id = new URL(url).searchParams.get('list'); src = `https://www.youtube.com/embed/videoseries?list=${id}`; }
+      catch(e){ src = `https://www.youtube.com/embed/${m[1]}`; }
+    }else{ src = `https://www.youtube.com/embed/${m[1]}`; }
+    box.innerHTML = `<iframe src="${src}" allowfullscreen></iframe>`; box.style.display='block';
+  }else{ box.style.display='none'; box.innerHTML=''; }
+  gerarJS(false); gerarMeta();
+}
+
+// ======== DADOS ========
+function coletarDados(){
+  return {
+    notorietyCoins: ntc,
+    bebidas: sanitize(document.getElementById('bebidas').value),
+    funk: sanitize(document.getElementById('funk').value),
+    publico: sanitize(document.getElementById('publico').value),
+    playlist: sanitizarURL(document.getElementById('playlist').value.trim()),
+    descricao: sanitize(document.getElementById('vibe').value),
+    localizacao: { lat, lon },
+    timestamp: new Date().toISOString()
+  };
+}
+function gerarJS(mostrarToast=true){
+  const d = coletarDados();
+  const codigo = `// SEO Review NTC v1
+const ntcReview = {
+  notorietyCoins: ${d.notorietyCoins},
+  bebidas: "${d.bebidas.replace(/"/g,"'")}",
+  funk: "${d.funk.replace(/"/g,"'")}",
+  publico: "${d.publico}",
+  playlist: "${d.playlist}",
+  descricao: "${d.descricao.replace(/\n/g,' ').replace(/"/g,"'")}",
+  localizacao: { lat: ${d.localizacao.lat}, lon: ${d.localizacao.lon} },
+  timestamp: "${d.timestamp}"
+};
+document.head.insertAdjacentHTML('beforeend', '<script type="application/ld+json">' + JSON.stringify(ntcReview) + '<\\/script>');`;
+  document.getElementById('jsCode').value = codigo;
+  if(mostrarToast) toast('JS SEO gerado!');
+  return codigo;
+}
+
+function gerarMeta(){
+  const d = coletarDados();
+  const desc = (document.getElementById('descricaoPlus').value || d.descricao || 'Resenha NTC Notoriety').slice(0,155);
+  const tags = document.getElementById('tagsOutput').value || '';
+  const title = `Resenha ${d.bebidas||'Baile'} - ${d.publico} | NTC Notoriety`;
+  const img = `https://dummyimage.com/1200x630/8A2BE2/FFD700&text=NTC+${encodeURIComponent(d.bebidas||'Baile')}`;
+  const code = `<title>${escapeHTML(title)}</title>
+<meta name="description" content="${escapeHTML(desc)}">
+<meta name="keywords" content="${escapeHTML(tags)}">
+<meta name="author" content="${escapeHTML(document.getElementById('seoAutor')?.value||'NTC')}">
+<link rel="canonical" href="${d.playlist}">
+<meta property="og:title" content="${escapeHTML(title)}">
+<meta property="og:description" content="${escapeHTML(desc)}">
+<meta property="og:image" content="${img}">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="pt_BR">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="${escapeHTML(title)}">
+<meta name="twitter:description" content="${escapeHTML(desc)}">
+<meta name="twitter:image" content="${img}">`;
+  document.getElementById('metaTagsCode').value = code;
+}
+
+function atualizarTags(){
+  const extras = sanitize(document.getElementById('tagsExtras')?.value || '');
+  const d = coletarDados();
+  const cidade = (enderecoAtual.split(',')[0]||'Brasil').trim();
+  let base = ['funk', d.bebidas, d.publico.toLowerCase(), 'baile','rolê', cidade.toLowerCase(), 'ntc','notoriety', d.funk];
+  if(extras) base = base.concat(extras.split(',').map(s=>s.trim()));
+  const tags = [...new Set(base.filter(Boolean).map(t=>t.toLowerCase().replace(/\s+/g,' ')))].join(', ');
+  const out = document.getElementById('tagsOutput');
+  if(out) out.value = tags;
+  const count = tags.length;
+  const cnt = document.getElementById('tagsCount');
+  if(cnt){ cnt.textContent = `${count}/500`; cnt.style.color = count>500?'var(--err)':'var(--ok)'; }
+}
+
+function sugerirDescricao(){
+  const d = coletarDados();
+  const vibe = d.descricao || 'rolê insano';
+  const emojis = ['🔥','💥','🎶','🍻','💃','🕺','🌃','🚀'];
+  const e = emojis[Math.floor(Math.random()*emojis.length)];
+  let txt = `${e} ${vibe.toUpperCase()} NO BAILE! `;
+  if(d.bebidas) txt += `A vibe tava sinistra com ${d.bebidas} `;
+  if(d.funk) txt += `e som pesado do ${d.funk}. `;
+  txt += `Galera ${d.publico.toLowerCase()} curtindo até de manhã.\n\n`;
+  txt += `👉 Curtiu? Deixa o like, comenta e segue pra mais resenhas NTC!\n\n`;
+  const cidade = (enderecoAtual.split(',')[0]||'').trim();
+  txt += `#funk #baile #${(d.bebidas||'role').split(',')[0].replace(/\s+/g,'')} #${d.publico.toLowerCase().replace(/\s+/g,'')} #ntc #notoriety ${cidade?'#'+cidade.toLowerCase().replace(/\s+/g,''):''}`;
+  document.getElementById('descricaoPlus').value = txt;
+  gerarMeta(); toast('Descrição gerada!');
+}
+function aplicarDescricao(){
+  const txt = document.getElementById('descricaoPlus').value;
+  document.getElementById('vibe').value = txt;
+  gerarJS(false); toast('Aplicado na resenha!');
+}
+
+function gerarSeoAvancado(){
+  const d = coletarDados();
+  const autor = sanitize(document.getElementById('seoAutor').value) || 'NTC';
+  const cat = sanitize(document.getElementById('seoCategoria').value) || 'Evento';
+  const aval = document.getElementById('seoAvaliacao').value;
+  const preco = sanitize(document.getElementById('seoPreco').value) || '0';
+  const data = document.getElementById('seoData').value || new Date().toISOString();
+  const site = sanitizarURL(document.getElementById('seoSite').value);
+  const tel = sanitize(document.getElementById('seoTelefone').value);
+  const email = sanitize(document.getElementById('seoEmail').value);
+  const desc = document.getElementById('descricaoPlus').value || d.descricao;
+  
+  const schema = {
+    "@context": "https://schema.org",
+    "@type": "Event",
+    "name": `Resenha ${d.bebidas} - ${d.publico}`,
+    "description": desc.slice(0,200),
+    "startDate": data,
+    "eventAttendanceMode": "https://schema.org/OfflineEventAttendanceMode",
+    "eventStatus": "https://schema.org/EventScheduled",
+    "location": {
+      "@type": "Place",
+      "name": enderecoAtual,
+      "address": enderecoAtual,
+      "geo": {"@type":"GeoCoordinates","latitude":d.localizacao.lat,"longitude":d.localizacao.lon}
+    },
+    "organizer": {"@type":"Person","name":autor,"email":email,"telephone":tel,"url":site},
+    "offers": {"@type":"Offer","price":preco,"priceCurrency":"BRL","url":site,"category":cat},
+    "aggregateRating": {"@type":"AggregateRating","ratingValue":aval,"bestRating":"5","worstRating":"1","ratingCount":"1"}
+  };
+  const code = `const ntcAdvanced = ${JSON.stringify(schema,null,2)};\ndocument.head.insertAdjacentHTML('beforeend', '<script type="application/ld+json">'+JSON.stringify(ntcAdvanced)+'<\\/script>');`;
+  document.getElementById('seoAvancadoCode').value = code;
+  toast('Schema.org gerado!');
+}
+
+function gerarSaida(tipo){
+  const d = coletarDados();
+  let out = '';
+  if(tipo==='js'){
+    let js = document.getElementById('jsCode').value;
+    if(!js.trim()){ js = gerarJS(true); }
+    out = js;
+  }else if(tipo==='rss'){
+    if(!gastarNTC(3,'RSS')) return;
+    out = `<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:ntc="https://ntc.notoriety">
+<channel>
+  <title>NTC - Notoriety Coins Review</title>
+  <link>${d.playlist}</link>
+  <description>Resenha SEO gerada pelo Sistema NTC</description>
+  <language>pt-BR</language>
+  <lastBuildDate>${new Date().toUTCString()}</lastBuildDate>
+  <item>
+    <title>Resenha ${d.publico} - ${d.bebidas||'Vibe'}</title>
+    <description><![CDATA[${d.descricao} | Funk: ${d.funk} | Bebidas: ${d.bebidas}]]></description>
+    <pubDate>${new Date().toUTCString()}</pubDate>
+    <guid isPermaLink="false">ntc-${Date.now()}</guid>
+    <ntc:coins>${d.notorietyCoins}</ntc:coins>
+    <ntc:localizacao>${d.localizacao.lat},${d.localizacao.lon}</ntc:localizacao>
+    <ntc:endereco><![CDATA[${enderecoAtual}]]></ntc:endereco>
+  </item>
+</channel>
+</rss>`;
+  }else if(tipo==='lua'){
+    if(!gastarNTC(3,'Lua')) return;
+    out = `ntc_add({coins=${d.notorietyCoins}, bebidas="${d.bebidas}", funk="${d.funk}", publico="${d.publico}", playlist="${d.playlist}", descricao="${d.descricao.replace(/"/g,"'")}", lat=${d.localizacao.lat}, lon=${d.localizacao.lon}, timestamp="${d.timestamp}"})`;
+  }
+  document.getElementById('saida').value = out;
+  toast('Gerado: '+tipo.toUpperCase());
+}
+
+function copiar(id){
+  const el = document.getElementById(id);
+  el.select(); document.execCommand('copy');
+  navigator.clipboard?.writeText(el.value);
+  toast('Copiado!');
+}
+function download(id,nome){
+  const blob = new Blob([document.getElementById(id).value],{type:'text/plain'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob); a.download = nome; a.click(); URL.revokeObjectURL(a.href);
+}
+
+// ======== MINERAÇÃO ========
+function salvarMotores(){ localStorage.setItem('ntcMotores', JSON.stringify(motores)); }
+function calcularNTCs(){
+  let total=0;
+  for(let id in motores){ const m=motores[id]; if(m.ativo && m.liberado){ total += m.ganho / (m.taxa/1000); } }
+  return total;
+}
+function atualizarUI_Motores(){
+  const rate = calcularNTCs();
+  document.getElementById('ntcRate').textContent = rate.toFixed(3)+' NTC/s';
+  let totalFarm=0;
+  for(let i=1;i<=3;i++){
+    const m=motores[i]; totalFarm+=m.farmado||0;
+    const statusEl=document.getElementById('status'+i);
+    const btn=document.getElementById('toggle'+i);
+    const farmEl=document.getElementById('farm'+i);
+    if(!m.liberado){
+      statusEl.textContent='Bloqueado'; statusEl.style.color='var(--err)'; statusEl.style.background='rgba(255,77,109,.15)'; statusEl.style.borderColor='rgba(255,77,109,.3)';
+      btn.textContent=`Desbloquear (${m.custo} NTC)`; btn.disabled=ntc<m.custo;
+    }else{
+      if(m.ativo){ statusEl.textContent='Ativo'; statusEl.style.color='var(--ok)'; statusEl.style.background='rgba(0,255,136,.15)'; statusEl.style.borderColor='rgba(0,255,136,.3)'; btn.textContent='Desativar'; }
+      else{ statusEl.textContent='Parado'; statusEl.style.color='var(--gold)'; statusEl.style.background='rgba(255,215,0,.1)'; statusEl.style.borderColor='rgba(255,215,0,.3)'; btn.textContent='Ativar'; }
+      btn.disabled=false;
+    }
+    farmEl.textContent=m.farmado||0;
+  }
+  document.getElementById('prodTotal').textContent=`Produção total: ${totalFarm} NTC`;
+}
+function toggleMotor(id){
+  const m=motores[id];
+  if(!m.liberado){ if(!gastarNTC(m.custo, `Desbloquear ${m.nome}`)) return; m.liberado=true; toast(`${m.nome} liberado!`); }
+  if(m.ativo){ pararMotor(id); } else { iniciarMotor(id); }
+  salvarMotores(); atualizarUI_Motores();
+}
+function iniciarMotor(id){
+  const m=motores[id]; m.ativo=true;
+  intervalos[id]=setInterval(()=>{ ganharNTC(m.ganho, m.nome); m.farmado=(m.farmado||0)+m.ganho; salvarMotores(); atualizarUI_Motores(); }, m.taxa);
+}
+function pararMotor(id){ motores[id].ativo=false; clearInterval(intervalos[id]); }
+
+// ======== SAVE/LOAD ========
+function carregarLista(){
+  const lista = JSON.parse(localStorage.getItem('ntc_saves')||'[]');
+  const sel = document.getElementById('arquivos');
+  sel.innerHTML = lista.map((x,i)=>`<option value="${i}">${x.nome}</option>`).join('') || '<option>Nenhum salvo</option>';
+}
+function salvarFirebase(){
+  const lista = JSON.parse(localStorage.getItem('ntc_saves')||'[]');
+  const dados = coletarDados(); dados.endereco = enderecoAtual;
+  const ledger = JSON.parse(localStorage.getItem('ntcLedger')||'[]');
+  dados.ledgerCripto = ledger; dados.descricaoPlus = document.getElementById('descricaoPlus').value;
+  const nome = `Resenha ${new Date().toLocaleString('pt-BR')}`;
+  lista.unshift({nome, dados, id:Date.now()});
+  localStorage.setItem('ntc_saves', JSON.stringify(lista.slice(0,50)));
+  carregarLista();
+  document.getElementById('statusFb').textContent = `NTC criptografado e salvo - ${ledger.length} transações - ${nome}`;
+  toast('Salvo!');
+}
+function carregarFirebase(){
+  const lista = JSON.parse(localStorage.getItem('ntc_saves')||'[]');
+  const idx = document.getElementById('arquivos').value;
+  if(!lista[idx]) return;
+  const d = lista[idx].dados;
+  ntc = d.notorietyCoins; localStorage.setItem('ntcCoins',ntc);
+  document.getElementById('bebidas').value = d.bebidas||'';
+  document.getElementById('funk').value = d.funk||'';
+  document.getElementById('publico').value = d.publico||'Misto';
+  document.getElementById('playlist').value = d.playlist||'';
+  document.getElementById('vibe').value = d.descricao||'';
+  document.getElementById('descricaoPlus').value = d.descricaoPlus||'';
+  lat = d.localizacao.lat; lon = d.localizacao.lon;
+  enderecoAtual = d.endereco||enderecoAtual;
+  if(map){ map.setView([lat,lon],15); marker.setLatLng([lat,lon]); }
+  atualizarLabels(); atualizarNTCUI(); validarYT(); gerarJS(false); atualizarTags(); gerarMeta(); toast('Carregado!');
+}
+function deletarFirebase(){
+  let lista = JSON.parse(localStorage.getItem('ntc_saves')||'[]');
+  const idx = document.getElementById('arquivos').value;
+  lista.splice(idx,1); localStorage.setItem('ntc_saves', JSON.stringify(lista));
+  carregarLista(); toast('Deletado');
+}
+function exportarJSON(){
+  const data = localStorage.getItem('ntc_saves')||'[]';
+  downloadText('ntc-backup.json', data);
+}
+function downloadText(name,txt){
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([txt],{type:'application/json'}));
+  a.download=name;a.click();
+}
+
+// ======== TRANSFERÊNCIA ========
+function transferirNTC(){
+  let username = localStorage.getItem('ntcUsername');
+  if(!username){
+    username = prompt('Digite seu @ para registrar');
+    if(!username) return;
+    username = username.trim();
+    if(!username.startsWith('@')) username = '@'+username;
+    localStorage.setItem('ntcUsername', username);
+    toast('Usuário registrado: '+username);
+  }
+  const para = document.getElementById('transferPara').value.trim();
+  const qtd = parseInt(document.getElementById('transferQtd').value);
+  if(!para || !qtd || qtd<1){ toast('Preencha destino e quantidade'); return; }
+  if(ntc < qtd){ toast('Saldo insuficiente'); return; }
+  gastarNTC(qtd, 'Transfer para '+para);
+  const transfer = {de: username, para, qtd, t: Date.now(), hash: btoa(username+para+qtd+Date.now()).slice(0,16)};
+  const lista = JSON.parse(localStorage.getItem('ntcTransfers')||'[]');
+  lista.unshift(transfer);
+  localStorage.setItem('ntcTransfers', JSON.stringify(lista.slice(0,100)));
+  toast('Transferência registrada! (simulada)');
+  document.getElementById('transferPara').value='';
+  document.getElementById('transferQtd').value='';
+}
+
+function toast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2000);
+}
+
+// ======== INIT ========
+window.addEventListener('DOMContentLoaded',()=>{
+  desenharMoeda(); initMapa(); carregarLista();
+  atualizarNTCUI(); atualizarLedgerUI();
+  for(let id in motores){ if(motores[id].ativo && motores[id].liberado){ iniciarMotor(id); } }
+  atualizarUI_Motores(); gerarJS(false); atualizarTags(); gerarMeta();
+  
+  let debounceTimer;
+  const schedule = ()=>{ clearTimeout(debounceTimer); debounceTimer = setTimeout(()=>{ gerarJS(false); atualizarTags(); gerarMeta(); },300); };
+  ['vibe','bebidas','funk','publico','playlist','tagsExtras','seoAutor','seoCategoria'].forEach(id=>{
+    const el = document.getElementById(id); if(el) el.addEventListener('input', schedule);
+  });
+
+  const ultimo = localStorage.getItem('ntcLast');
+  if(ultimo){
+    try{ const d=JSON.parse(ultimo);
+      document.getElementById('bebidas').value=d.bebidas||'';
+      document.getElementById('funk').value=d.funk||'';
+      document.getElementById('vibe').value=d.descricao||'';
+    }catch(e){}
+  }
+  setInterval(()=>{ localStorage.setItem('ntcLast', JSON.stringify(coletarDados())); },2000);
+});
+</script>
+<script>(function(){document.addEventListener("click",function(e){var a=e.target.closest("[data-product-id]");if(!a)return;e.preventDefault();var pid=a.getAttribute("data-product-id");if(pid)parent.postMessage({type:"ecto-artifact-link-click",productId:pid},"*")})})();</script>
+</body>
+</html>
