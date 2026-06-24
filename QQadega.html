@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>AdegaMap — Distribuidoras, Adegas e Bares</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+<style>
+:root{
+  --bg:#0b0f14;
+  --card:#121821;
+  --muted:#1b2331;
+  --line:#223044;
+  --text:#e6edf3;
+  --text2:#9fb0c3;
+  --accent:#7c5cff;
+  --accent2:#ff3b7f;
+  --ok:#22c55e;
+  --radius:18px;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Ubuntu,Arial,sans-serif;-webkit-font-smoothing:antialiased;overflow-x:hidden;touch-action:manipulation}
+.app{display:flex;flex-direction:column;height:100dvh}
+
+.topbar{position:sticky;top:0;z-index:1000;background:rgba(11,15,20,.7);backdrop-filter:blur(16px) saturate(1.2);-webkit-backdrop-filter:blur(16px) saturate(1.2);padding:8px 12px 10px;border-bottom:1px solid #1a2433}
+.brand{font-weight:800;font-size:18px;letter-spacing:.3px;display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.brand .dot{width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 12px rgba(124,92,255,.5)}
+.search-row{display:grid;grid-template-columns:1fr 40px 40px 40px;gap:6px;align-items:center}
+.search-row input{height:40px;background:var(--card);border:1px solid var(--line);color:var(--text);border-radius:12px;padding:0 12px;font-size:16px;outline:none}
+.search-row input:focus{border-color:#3b4b68;box-shadow:0 0 0 2px rgba(124,92,255,.18)}
+.search-row button{height:40px;width:40px;padding:0;border-radius:12px;border:1px solid #2a3750;background:var(--muted);color:var(--text);font-weight:700;font-size:18px;white-space:nowrap;touch-action:manipulation;display:grid;place-items:center}
+#btnBuscar{background:var(--accent);border-color:transparent;color:white}
+#btnGeo{background:#0f1724}
+#btnFiltro{background:#0f1724}
+button:disabled{opacity:.6}
+
+.filter-bar{margin-top:8px;display:none;overflow-x:auto;white-space:nowrap;padding-bottom:4px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.filter-bar::-webkit-scrollbar{display:none}
+
+#map{flex:1;min-height:36vh}
+
+.bottom-sheet{background:var(--bg);border-top-left-radius:20px;border-top-right-radius:20px;margin-top:-12px;z-index:900;box-shadow:0 -8px 20px rgba(0,0,0,.35);display:flex;flex-direction:column;max-height:32vh;border-top:1px solid #182233}
+.sheet-handle{width:32px;height:3px;background:#2b3647;border-radius:3px;margin:8px auto 4px}
+.sheet-header{display:flex;align-items:baseline;justify-content:space-between;gap:8px;padding:2px 14px 8px}
+.sheet-header strong{font-size:14px}
+.sheet-header .sub{color:var(--text2);font-size:12px}
+.lista{overflow:auto;padding:0 10px 10px;display:grid;gap:8px;grid-auto-rows:min-content}
+.card{background:var(--card);border:1px solid #1f2a3a;border-radius:14px;padding:10px;display:flex;gap:10px;align-items:flex-start;cursor:pointer;min-height:58px;touch-action:manipulation}
+.card:active{transform:scale(.99)}
+.card .icon{width:36px;height:36px;display:grid;place-items:center;background:#0e1521;border-radius:10px;font-size:20px;border:1px solid #223044;flex:0 0 36px;margin-top:2px}
+.card .meta{flex:1;min-width:0}
+.card .name{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:14px}
+.card .sub{color:var(--text2);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
+.card .go{color:var(--accent);font-weight:700;font-size:11px;padding:5px 7px;border-radius:8px;background:rgba(124,92,255,.1);border:1px solid rgba(124,92,255,.2);align-self:center}
+
+footer{padding:6px 12px 12px;color:#6b7a90;font-size:11px;text-align:center;border-top:1px dashed #1c2736;margin-top:4px}
+
+.ninfa-fab{position:fixed;right:16px;bottom:calc(32vh + 16px);z-index:1100;height:40px;width:40px;padding:0;border-radius:50%;background:rgba(17,24,39,.8);color:#c7d2fe;border:1px solid #2a2f45;font-weight:800;letter-spacing:.3px;box-shadow:0 6px 16px rgba(0,0,0,.35);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);touch-action:manipulation;display:grid;place-items:center;font-size:18px}
+
+.panel{position:fixed;top:0;right:0;width:min(92vw,400px);height:100dvh;background:var(--card);border-left:1px solid #223044;transform:translateX(105%);transition:.28s cubic-bezier(.2,.8,.2,1);z-index:2000;display:flex;flex-direction:column;box-shadow:-12px 0 24px rgba(0,0,0,.45)}
+.panel.open{transform:none}
+.panel header{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid #1e2734;background:#0f1520;position:sticky;top:0}
+.panel header h2{margin:0;font-size:16px}
+.panel .close{height:32px;width:32px;border-radius:9px;border:1px solid #263346;background:#131c2a;color:#a9b7cb}
+.panel .const{padding:10px 14px 4px;color:#9fb0c3;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px}
+#ninfa-json{margin:0 14px 8px;background:#0b111a;border:1px solid #1e2734;border-radius:10px;padding:8px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;max-height:150px;overflow:auto;color:#cbd5e1;white-space:pre}
+#ninfa-logs{padding:6px 10px 14px;overflow:auto;flex:1;display:grid;gap:6px;align-content:start}
+.log{display:flex;align-items:center;gap:8px;background:#0f1622;border:1px solid #1e2734;border-radius:10px;padding:8px 9px}
+.log .hex{width:26px;height:26px;border-radius:8px;border:1px solid rgba(255,255,255,.12);flex:0 0 26px}
+.log .txt{font-size:12px;line-height:1.25}
+.log .time{color:#7f8da3;font-size:11px;margin-top:1px}
+
+.toast{position:fixed;left:50%;transform:translateX(-50%) translateY(10px);bottom:calc(32vh + 56px);background:#101724;border:1px solid #243246;color:var(--text);padding:9px 14px;border-radius:12px;z-index:3000;opacity:0;transition:.2s;pointer-events:none;box-shadow:0 8px 20px rgba(0,0,0,.4);max-width:92vw;text-align:center;font-weight:600;font-size:13px}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+.leaflet-container{background:#0a1018}
+.leaflet-control-zoom a{background:#121b29!important;color:#cbd5e1!important;border-color:#233047!important}
+.leaflet-popup-content-wrapper{background:var(--card);color:var(--text);border-radius:12px;border:1px solid #223046;box-shadow:0 8px 20px rgba(0,0,0,.45)}
+.leaflet-popup-tip{background:var(--card)}
+.leaflet-popup-content{margin:10px 12px;min-width:220px}
+.popup h3{margin:0 0 3px;font-size:16px}
+.popup p{margin:2px 0;color:var(--text2);font-size:13px}
+.popup .links{display:flex;gap:10px;margin:6px 0 4px;flex-wrap:wrap}
+.popup .links a{color:#8ab4ff;text-decoration:none;font-weight:700;font-size:13px}
+.popup .btn-event{width:100%;height:42px;margin-top:8px;border-radius:10px;border:0;background:var(--accent2);color:white;font-weight:800;font-size:14px;letter-spacing:.2px}
+
+.modal-backdrop{position:fixed;inset:0;background:rgba(3,6,12,.72);backdrop-filter:blur(12px) saturate(1.1);-webkit-backdrop-filter:blur(12px) saturate(1.1);z-index:2500;opacity:0;pointer-events:none;transition:.25s}
+.modal-backdrop.open{opacity:1;pointer-events:auto}
+.modal-sheet{position:absolute;left:0;right:0;bottom:0;background:var(--bg);border-top-left-radius:24px;border-top-right-radius:24px;border-top:1px solid #1e2734;max-height:60vh;display:flex;flex-direction:column;transform:translateY(100%);transition:.32s cubic-bezier(.2,.8,.2,1);box-shadow:0 -16px 40px rgba(0,0,0,.55)}
+.modal-backdrop.open .modal-sheet{transform:none}
+.modal-header{padding:16px 16px 10px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:linear-gradient(to bottom, var(--bg), rgba(11,15,20,.85));backdrop-filter:blur(6px);z-index:2}
+.modal-header strong{font-size:17px;letter-spacing:.2px}
+.modal-header button{background:none;border:0;color:#7f8da3;font-size:22px;line-height:1;padding:4px}
+.modal-body{padding:8px 14px 14px;overflow:auto;overscroll-behavior:contain}
+.chips-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.chip{height:56px;border-radius:14px;background:#0f1622;border:1px solid #223044;color:var(--text);display:flex;align-items:center;gap:10px;padding:0 12px;font-weight:600;font-size:14px;touch-action:manipulation;transition:.15s}
+.chip:active{transform:scale(.98)}
+.chip .ic{font-size:21px;width:28px;text-align:center;flex:0 0 28px}
+.chip.selected{background:rgba(124,92,255,.16);border-color:rgba(124,92,255,.7);box-shadow:0 0 0 1px rgba(124,92,255,.35) inset,0 0 18px rgba(124,92,255,.15);color:#e9e2ff}
+.modal-footer{display:flex;gap:10px;padding:12px 14px 20px;border-top:1px solid #1a2433;background:linear-gradient(to top, rgba(0,0,0,.18), transparent)}
+.modal-footer button{flex:1;height:46px;border-radius:12px;font-weight:800;font-size:14px;border:1px solid #2a3750;background:#131c2a;color:#cbd5e1}
+.modal-footer button.primary{background:var(--accent);border-color:transparent;color:white;box-shadow:0 6px 16px rgba(124,92,255,.25)}
+
+#lockScreen{position:fixed;inset:0;z-index:9999;background:rgba(3,6,12,.92);backdrop-filter:blur(28px) saturate(1.3);-webkit-backdrop-filter:blur(28px) saturate(1.3);display:flex;align-items:center;justify-content:center;padding:20px;transition:opacity .35s ease,visibility .35s}
+#lockScreen.hidden{opacity:0;visibility:hidden;pointer-events:none}
+.lock-card{width:min(92vw,380px);background:linear-gradient(180deg,rgba(22,28,40,.92),rgba(14,20,31,.88));border:1px solid #253246;border-radius:24px;padding:28px 22px 20px;box-shadow:0 20px 60px rgba(0,0,0,.65),inset 0 1px 0 rgba(255,255,255,.04);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);text-align:center}
+.lock-icon{width:56px;height:56px;margin:0 auto 10px;display:grid;place-items:center;background:rgba(124,92,255,.12);border:1px solid rgba(124,92,255,.35);border-radius:16px;font-size:26px;box-shadow:0 0 24px rgba(124,92,255,.15) inset}
+.lock-card h1{margin:6px 0 4px;font-size:22px;font-weight:800;letter-spacing:.2px}
+.lock-sub{color:var(--text2);margin:0 0 14px;font-size:14px}
+.lock-hint{background:#0b111a;border:1px solid #1e2734;border-radius:12px;padding:10px 12px;font-size:13px;line-height:1.45;color:#cbd5e1;margin-bottom:16px}
+.lock-hint a{color:#8ab4ff;text-decoration:none;font-weight:700}
+.lock-hint a:hover{text-decoration:underline}
+.lock-form{display:grid;grid-template-columns:1fr auto;gap:8px}
+.lock-form input{height:48px;background:var(--muted);border:1px solid #2a3750;border-radius:12px;padding:0 14px;color:var(--text);font-size:16px;font-weight:700;text-align:center;letter-spacing:1.5px;text-transform:uppercase;outline:none}
+.lock-form input:focus{border-color:#3d4f6e;box-shadow:0 0 0 2px rgba(124,92,255,.18)}
+.lock-form button{height:48px;padding:0 18px;border-radius:12px;border:0;background:var(--accent);color:white;font-weight:800;font-size:14px;white-space:nowrap;box-shadow:0 8px 20px rgba(124,92,255,.28);touch-action:manipulation}
+.lock-form button:active{transform:scale(.98)}
+.lock-error{min-height:20px;margin-top:8px;color:#ff6b7a;font-size:12px;font-weight:600}
+.lock-foot{margin-top:14px;color:#6b7a90;font-size:11px;display:flex;align-items:center;justify-content:center;gap:6px}
+.lock-foot::before{content:'✦';color:var(--accent)}
+@keyframes lockShake{0%,100%{transform:translateX(0)}15%,45%,75%{transform:translateX(-6px)}30%,60%,90%{transform:translateX(6px)}}
+.shake{animation:lockShake .45s cubic-bezier(.36,.07,.19,.97)}
+
+@media (min-width:820px){
+  .bottom-sheet{max-height:28vh}
+  .ninfa-fab{bottom:calc(28vh + 16px)}
+  .toast{bottom:calc(28vh + 56px)}
+  .chips-grid{grid-template-columns:1fr 1fr 1fr}
+}
+</style>
+</head>
+<body>
+<div id="lockScreen">
+  <div class="lock-card">
+    <div class="lock-icon">🔒</div>
+    <h1>AdegaMap Bloqueado</h1>
+    <p class="lock-sub">Para desbloquear, encontre o código</p>
+    <div class="lock-hint">
+      Procure no TikTok: <a href="https://www.tiktok.com/@vulgo_acelerado_ofc" target="_blank" rel="noopener">@vulgo_acelerado_ofc</a> — o código está na bio
+    </div>
+    <div class="lock-form">
+      <input id="lockInput" type="text" inputmode="latin" autocomplete="off" autocapitalize="characters" placeholder="Digite o código" spellcheck="false">
+      <button id="lockBtn">Desbloquear</button>
+    </div>
+    <div id="lockError" class="lock-error"></div>
+    <div class="lock-foot">ninfa code ativo</div>
+  </div>
+</div>
+
+<div class="app">
+  <header class="topbar">
+    <div class="brand"><span class="dot"></span> AdegaMap</div>
+    <div class="search-row">
+      <input id="q" inputmode="search" placeholder="Buscar bairro, rua..." autocomplete="off">
+      <button id="btnBuscar" aria-label="Buscar">🔍</button>
+      <button id="btnGeo" aria-label="Perto de mim">📍</button>
+      <button id="btnFiltro" aria-label="Filtrar">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 6h16M7 12h10M10 18h4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+    <div id="filterBar" class="filter-bar"></div>
+  </header>
+
+  <div id="map" role="application" aria-label="Mapa"></div>
+
+  <div class="bottom-sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-header">
+      <strong id="count">Pronto para buscar</strong>
+      <span class="sub">Raio de 2 km</span>
+    </div>
+    <div id="lista" class="lista" aria-live="polite"></div>
+    <footer>Dados © OpenStreetMap contributors</footer>
+  </div>
+</div>
+
+<button id="btnNinfa" class="ninfa-fab" aria-label="Abrir ninfa code">✦</button>
+
+<aside id="panel" class="panel" aria-hidden="true">
+  <header>
+    <h2>ninfa code</h2>
+    <button class="close" id="closePanel" aria-label="Fechar">✕</button>
+  </header>
+  <div class="const">const ninfa = {}</div>
+  <div id="ninfa-json">{}</div>
+  <div id="ninfa-logs"></div>
+</aside>
+
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+<div id="eventModal" class="modal-backdrop" aria-hidden="true">
+  <div class="modal-sheet" role="dialog" aria-modal="true" aria-label="Selecionar evento">
+    <div class="modal-header">
+      <strong>Que tipo de rolê?</strong>
+      <button id="closeEventModal" aria-label="Fechar">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="chipsContainer" class="chips-grid"></div>
+    </div>
+    <div class="modal-footer">
+      <button id="cancelEvent">Cancelar</button>
+      <button id="confirmEvent" class="primary">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script>
+const ninfa = {};
+function ninfaLog(script){
+  const hex = '#'+Math.floor(Math.random()*16777215).toString(16).padStart(6,'0');
+  const id = Date.now()+Math.random();
+  ninfa[id] = {script, hex, time: new Date().toLocaleTimeString('pt-BR')};
+  updateNinfaUI();
+}
+window.ninfaLog = ninfaLog;
+
+function updateNinfaUI(){
+  const jsonEl = document.getElementById('ninfa-json');
+  jsonEl.textContent = JSON.stringify(ninfa, null, 2);
+  const logs = document.getElementById('ninfa-logs');
+  logs.innerHTML = '';
+  Object.entries(ninfa).sort((a,b)=>parseFloat(b[0])-parseFloat(a[0])).forEach(([id,v])=>{
+    const div = document.createElement('div');
+    div.className = 'log';
+    div.innerHTML = `<div class="hex" style="background:${v.hex}"></div><div class="txt"><div>script: ninfa.${v.script}</div><div class="time">${v.time} • ${v.hex}</div></div>`;
+    logs.appendChild(div);
+  });
+}
+ninfaLog('init_app');
+
+const EVENT_TYPES = [
+  {id:'eletrofunk', label:'Eletrofunk', icon:'🎛️'},
+  {id:'som automotivo', label:'Som automotivo', icon:'🚗'},
+  {id:'baile funk', label:'Baile funk', icon:'🔊'},
+  {id:'frevo', label:'Frevo', icon:'🎭'},
+  {id:'forro', label:'Forró', icon:'🪗'},
+  {id:'show ao vivo', label:'Show ao vivo', icon:'🎤'},
+  {id:'sertanejo', label:'Sertanejo', icon:'🤠'},
+  {id:'pagode', label:'Pagode', icon:'🥁'},
+  {id:'rock', label:'Rock', icon:'🎸'},
+  {id:'eletronica', label:'Eletrônica', icon:'💿'}
+];
+
+let map, userMarker;
+let markers = [];
+let markersById = {};
+let emojisById = {};
+let currentLat = -15.893, currentLon = -48.07;
+let geoLoading = false;
+let currentFilterTipos = [];
+let lastElements = null;
+let currentEventPlace = null;
+let selectedTipos = new Set();
+
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(()=>t.classList.remove('show'), 2800);
+}
+function getEventos(){ try{ return JSON.parse(localStorage.getItem('eventos_ninfa')||'{}') }catch{ return {} } }
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g, m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m])) }
+function formatEndereco(tags){
+  const parts=[];
+  if(tags['addr:street']) parts.push(tags['addr:street'] + (tags['addr:housenumber']?' '+tags['addr:housenumber']:''));
+  if(tags['addr:suburb']||tags['addr:neighbourhood']) parts.push(tags['addr:suburb']||tags['addr:neighbourhood']);
+  if(tags['addr:city']) parts.push(tags['addr:city']);
+  return parts.join(' • ');
+}
+function getIcon(emoji, tipos){
+  const isEvent = tipos && tipos.length>0;
+  const bg = isEvent ? '#7c3aed' : '#131c2a';
+  const border = isEvent ? '#5b21b6' : '#2a3b55';
+  let badge = '';
+  if(isEvent){
+    const first = tipos[0];
+    const et = EVENT_TYPES.find(e=>e.id===first);
+    const letter = (et?.label || first).charAt(0).toUpperCase();
+    badge = `<div style="position:absolute;top:-5px;right:-5px;width:18px;height:18px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));border:1.5px solid #0b0f14;display:grid;place-items:center;font-size:10px;font-weight:800;color:white;box-shadow:0 2px 6px rgba(0,0,0,.4)">${letter}</div>`;
+  }
+  return L.divIcon({
+    className:'',
+    html:`<div style="position:relative;width:36px;height:36px;display:grid;place-items:center;background:${bg};border:2px solid ${border};border-radius:12px;box-shadow:0 6px 16px rgba(0,0,0,.4);font-size:20px">${emoji}${badge}</div>`,
+    iconSize:[36,36],
+    iconAnchor:[18,36],
+    popupAnchor:[0,-28]
+  });
+}
+function clearMarkers(){
+  markers.forEach(m=>map.removeLayer(m));
+  markers=[]; markersById={}; emojisById={};
+}
+
+function tryLoadCache(lat,lon,showMsg){
+  try{
+    const c = JSON.parse(localStorage.getItem('adegamap_cache')||'null');
+    if(!c || !c.data) return false;
+    const dist = Math.hypot(c.lat-lat, c.lon-lon);
+    if(dist < 0.03 && (Date.now()-c.time) < 86400000){
+      lastElements = c.data.elements||[];
+      renderPlaces(lastElements);
+      if(showMsg) showToast('Mostrando cache local');
+      ninfaLog('cache_usado');
+      return true;
+    }
+  }catch{}
+  return false;
+}
+
+async function queryOverpass(lat, lon){
+  if(!navigator.onLine){
+    showToast('Você está offline');
+    ninfaLog('offline');
+    if(!tryLoadCache(lat,lon)){
+      document.getElementById('count').textContent = 'Offline';
+      document.getElementById('lista').innerHTML = `<div style="padding:18px;text-align:center;color:#7f8da3">Sem conexão. Ative a internet.</div>`;
+    }
+    return;
+  }
+  ninfaLog('overpass_query');
+  document.getElementById('count').textContent = 'Buscando...';
+  document.getElementById('lista').innerHTML = `<div style="padding:18px;text-align:center;color:#7f8da3">Carregando...</div>`;
+  clearMarkers();
+  
+  const endpoints = [
+    'https://overpass-api.de/api/interpreter',
+    'https://overpass.kumi.systems/api/interpreter',
+    'https://z.overpass-api.de/api/interpreter'
+  ];
+  
+  const q = `[out:json][timeout:15];
+(
+  node["amenity"="bar"](around:2000,${lat},${lon});
+  node["amenity"="pub"](around:2000,${lat},${lon});
+  node["shop"="alcohol"](around:2000,${lat},${lon});
+  node["shop"="beverages"](around:2000,${lat},${lon});
+  node["shop"="wine"](around:2000,${lat},${lon});
+  way["amenity"="bar"](around:2000,${lat},${lon});
+  way["amenity"="pub"](around:2000,${lat},${lon});
+  way["shop"="alcohol"](around:2000,${lat},${lon});
+  way["shop"="beverages"](around:2000,${lat},${lon});
+  way["shop"="wine"](around:2000,${lat},${lon});
+);
+out center tags;`;
+  
+  for(let i=0;i<endpoints.length;i++){
+    try{
+      ninfaLog('overpass_t'+(i+1));
+      const controller = new AbortController();
+      const to = setTimeout(()=>controller.abort(), 15500);
+      const res = await fetch(endpoints[i], {
+        method:'POST',
+        body:q,
+        headers:{'Content-Type':'text/plain;charset=UTF-8'},
+        signal:controller.signal,
+        cache:'no-store'
+      });
+      clearTimeout(to);
+      if(!res.ok) throw new Error('http '+res.status);
+      const data = await res.json();
+      try{ localStorage.setItem('adegamap_cache', JSON.stringify({lat,lon,time:Date.now(),data})); }catch{}
+      const elements = data.elements||[];
+      lastElements = elements;
+      if(!elements.length){
+        document.getElementById('count').textContent = 'Nenhum resultado';
+        document.getElementById('lista').innerHTML = `<div style="padding:18px;text-align:center;color:#7f8da3">Nenhum lugar em 2 km.</div>`;
+        showToast('Nenhum lugar encontrado por aqui.');
+        return;
+      }
+      renderPlaces(elements);
+      return;
+    }catch(e){
+      ninfaLog('overpass_retry');
+      await new Promise(r=>setTimeout(r, 500*(i+1)));
+    }
+  }
+  ninfaLog('overpass_falha');
+  showToast('Servidores OSM ocupados. Tente novamente em 10s.');
+  document.getElementById('count').textContent = 'Servidor ocupado';
+  if(!tryLoadCache(lat,lon,true)){
+    document.getElementById('lista').innerHTML = `<div style="padding:18px;text-align:center;color:#7f8da3">Falha nos servidores. Tente novamente.</div>`;
+  }
+}
+
+function renderPlaces(elements){
+  const eventos = getEventos();
+  const lista = document.getElementById('lista');
+  lista.innerHTML = '';
+  const places = [];
+  let totalEventos = 0;
+  let eventosFiltrados = 0;
+
+  elements.forEach(el=>{
+    const tags = el.tags || {};
+    const lat = el.lat ?? el.center?.lat;
+    const lon = el.lon ?? el.center?.lon;
+    if(!lat || !lon) return;
+    const id = `${el.type}/${el.id}`;
+    const name = tags.name || 'Adega/Bar';
+    let tipo = 'Bar';
+    if(tags.amenity==='pub') tipo='Pub';
+    else if(tags.shop==='alcohol') tipo='Distribuidora';
+    else if(tags.shop==='beverages') tipo='Bebidas';
+    else if(tags.shop==='wine') tipo='Adega de Vinho';
+    const endereco = formatEndereco(tags);
+    const insta = tags['contact:instagram'] || tags.instagram || '';
+    const site = tags['contact:website'] || tags.website || '';
+    const emoji = tags.shop==='wine' ? '🍷' : (tags.shop==='alcohol'||tags.shop==='beverages' ? '🥃' : '🍺');
+    const ev = eventos[id];
+    const tipos = ev?.tipos || [];
+    const hasEvento = tipos.length > 0;
+    
+    if(hasEvento) totalEventos++;
+    
+    const matchFiltro = currentFilterTipos.length===0 || (hasEvento && tipos.some(t=> currentFilterTipos.includes(t)));
+    if(hasEvento && matchFiltro) eventosFiltrados++;
+    
+    const tiposParaIcone = currentFilterTipos.length===0 ? tipos : (matchFiltro ? tipos : []);
+    const marker = L.marker([lat,lon], {icon:getIcon(emoji, tiposParaIcone)}).addTo(map);
+    
+    const instaUser = insta ? insta.replace(/^@/, '').replace(/^https?:\/\/(www\.)?instagram\.com\//i,'').replace(/\/.*$/,'') : '';
+    const badges = tipos.map(t => { const et = EVENT_TYPES.find(e=>e.id===t); return et ? `<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 7px;border-radius:999px;background:rgba(124,92,255,.15);border:1px solid rgba(124,92,255,.3);font-size:11px;margin-right:4px;margin-bottom:4px">${et.icon} ${et.label}</span>` : '' }).join('');
+    const popupHtml = `
+      <div class="popup">
+        <h3>${escapeHtml(name)}</h3>
+        <p>${tipo}</p>
+        ${endereco?`<p>${escapeHtml(endereco)}</p>`:''}
+        ${tipos.length?`<div style="display:flex;flex-wrap:wrap;margin:4px 0 6px">${badges}</div>`:''}
+        <div class="links">
+          ${instaUser?`<a href="https://instagram.com/${escapeHtml(instaUser)}" target="_blank" rel="noopener" onclick="ninfaLog('abriu_instagram')">Instagram @${escapeHtml(instaUser)}</a>`:''}
+          ${site?`<a href="${escapeHtml(site)}" target="_blank" rel="noopener">Site</a>`:''}
+        </div>
+        <button class="btn-event" data-id="${id}" data-name="${escapeHtml(name)}" data-lat="${lat}" data-lon="${lon}">${tipos.length?'Atualizar evento':'Sinalizar evento'}</button>
+      </div>`;
+    marker.bindPopup(popupHtml);
+    markers.push(marker);
+    markersById[id]=marker;
+    emojisById[id]=emoji;
+    places.push({id,name,tipo,endereco,lat,lon,emoji,tipos, hasEvento, matchFiltro});
+  });
+  
+  const countEl = document.getElementById('count');
+  if(currentFilterTipos.length===0){
+    countEl.textContent = `${places.length} adegas encontradas${totalEventos>0 ? ` • ${totalEventos} eventos ativos` : ''}`;
+  } else {
+    countEl.textContent = `${places.length} adegas • ${eventosFiltrados} eventos`;
+  }
+  
+  if(!places.length){
+    lista.innerHTML = `<div style="padding:18px;text-align:center;color:#7f8da3">Nenhum lugar em 2 km.</div>`;
+    return;
+  }
+  
+  if(currentFilterTipos.length > 0 && eventosFiltrados === 0){
+    const aviso = document.createElement('div');
+    aviso.style.cssText = 'padding:12px;margin:0 0 8px;background:rgba(124,92,255,.08);border:1px solid rgba(124,92,255,.2);border-radius:12px;color:#c7b8ff;font-size:12px;text-align:center;line-height:1.4';
+    aviso.innerHTML = 'Nenhum evento desse tipo ainda.<br><span style="color:#9fb0c3">Toque em um local para sinalizar o primeiro!</span>';
+    lista.appendChild(aviso);
+  }
+  
+  places.slice(0,30).forEach(p=>{
+    const card = document.createElement('div');
+    card.className='card';
+    const pills = p.tipos?.length ? `<div style="display:flex;gap:4px;margin-top:5px;flex-wrap:wrap">${p.tipos.map(t=>{const et=EVENT_TYPES.find(e=>e.id===t);return et?`<span style="padding:2px 6px;border-radius:999px;background:rgba(124,92,255,.12);border:1px solid rgba(124,92,255,.25);font-size:10px;color:#c7b8ff;line-height:1">${et.icon} ${et.label}</span>`:''}).join('')}</div>` : '';
+    card.innerHTML = `<div class="icon">${p.emoji}</div><div class="meta"><div class="name">${escapeHtml(p.name)}</div><div class="sub">${p.tipo}${p.endereco?' • '+escapeHtml(p.endereco):''}</div>${pills}</div><div class="go">Ver</div>`;
+    card.onclick = ()=>{ map.flyTo([p.lat,p.lon],17,{duration:.6}); markersById[p.id]?.openPopup(); };
+    lista.appendChild(card);
+  });
+}
+
+function openEventModal(place){
+  currentEventPlace = place;
+  selectedTipos = new Set(place.tipos || []);
+  ninfaLog('modal_evento_aberto');
+  document.querySelectorAll('#chipsContainer .chip').forEach(ch=>{
+    ch.classList.toggle('selected', selectedTipos.has(ch.dataset.id));
+  });
+  document.getElementById('eventModal').classList.add('open');
+  document.getElementById('eventModal').setAttribute('aria-hidden','false');
+}
+function closeEventModal(){
+  document.getElementById('eventModal').classList.remove('open');
+  document.getElementById('eventModal').setAttribute('aria-hidden','true');
+}
+
+async function buscaLocal(){
+  const q = document.getElementById('q').value.trim();
+  if(!q){ showToast('Digite um bairro ou rua'); return; }
+  if(!navigator.onLine){ showToast('Você está offline'); return; }
+  ninfaLog('busca_local');
+  const btn = document.getElementById('btnBuscar');
+  btn.disabled = true;
+  try{
+    const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&addressdetails=1&q=${encodeURIComponent(q)}&countrycodes=br`;
+    const res = await fetch(url, {headers:{'Accept-Language':'pt-BR'}});
+    if(!res.ok) throw new Error('net');
+    const data = await res.json();
+    if(!data.length){ showToast('Nenhum local encontrado.'); return; }
+    const loc = data[0];
+    currentLat = parseFloat(loc.lat);
+    currentLon = parseFloat(loc.lon);
+    map.flyTo([currentLat, currentLon], 15, {duration:.7});
+    if(userMarker) map.removeLayer(userMarker);
+    userMarker = L.marker([currentLat, currentLon], {icon:getIcon('📍', [])}).addTo(map);
+    await queryOverpass(currentLat, currentLon);
+  }catch(e){
+    showToast('Sem conexão com Nominatim.');
+  }finally{
+    btn.disabled = false;
+  }
+}
+
+function pertoDeMim(){
+  if(geoLoading) return;
+  geoLoading = true;
+  const btn = document.getElementById('btnGeo');
+  btn.disabled = true;
+  showToast('Solicitando localização...');
+  navigator.geolocation.getCurrentPosition(async pos=>{
+    ninfaLog('geoloc_permitida');
+    currentLat = pos.coords.latitude;
+    currentLon = pos.coords.longitude;
+    map.flyTo([currentLat, currentLon], 16, {duration:.7});
+    if(userMarker) map.removeLayer(userMarker);
+    userMarker = L.marker([currentLat, currentLon], {icon:getIcon('📍', [])}).addTo(map);
+    await queryOverpass(currentLat, currentLon);
+    btn.disabled = false;
+    geoLoading = false;
+  }, err=>{
+    ninfaLog('geoloc_negada');
+    geoLoading = false;
+    btn.disabled = false;
+    if(err.code === 1) showToast('Permissão de localização negada.');
+    else if(err.code === 3) showToast('Tempo esgotado ao buscar localização.');
+    else showToast('Erro ao obter localização.');
+  }, {enableHighAccuracy:true, timeout:12000, maximumAge:0});
+}
+
+document.addEventListener('DOMContentLoaded', ()=>{
+  const lockScreen = document.getElementById('lockScreen');
+  const lockInput = document.getElementById('lockInput');
+  const lockBtn = document.getElementById('lockBtn');
+  const lockError = document.getElementById('lockError');
+
+  const verifyCode = (function(){
+    // ninfa code protege contra interceptação
+    const _k = [65,67,69,49,53,83,65,69];
+    const _s = String.fromCharCode.apply(null, _k);
+    return function(v){ return (v||'').trim().toUpperCase() === _s; };
+  })();
+
+  function unlockApp(){
+    document.body.style.overflow='';
+    lockScreen.classList.add('hidden');
+    setTimeout(()=>{ if(lockScreen) lockScreen.style.display='none'; }, 400);
+  }
+
+  if(localStorage.getItem('adegamap_unlocked_v5')==='true'){
+    if(lockScreen){ lockScreen.classList.add('hidden'); lockScreen.style.display='none'; }
+    ninfaLog('desbloqueio_cache');
+  }else{
+    document.body.style.overflow='hidden';
+    ninfaLog('tela_bloqueio');
+    setTimeout(()=>{ lockInput?.focus({preventScroll:true}); }, 350);
+  }
+
+  function handleUnlockAttempt(){
+    if(!lockInput) return;
+    const val = lockInput.value;
+    ninfaLog('tentativa_desbloqueio');
+    if(verifyCode(val)){
+      localStorage.setItem('adegamap_unlocked_v5','true');
+      ninfaLog('desbloqueio_sucesso');
+      showToast('Desbloqueado!');
+      unlockApp();
+    }else{
+      ninfaLog('tentativa_falha');
+      if(lockError) lockError.textContent = 'Código incorreto';
+      lockInput.classList.remove('shake');
+      void lockInput.offsetWidth;
+      lockInput.classList.add('shake');
+      lockInput.select();
+    }
+  }
+
+  lockBtn?.addEventListener('click', handleUnlockAttempt);
+  lockInput?.addEventListener('keydown', e=>{ if(e.key==='Enter'){ handleUnlockAttempt(); }});
+
+  map = L.map('map', {zoomControl:false, attributionControl:false}).setView([currentLat, currentLon], 14);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:19, attribution:'© OpenStreetMap'}).addTo(map);
+  L.control.zoom({position:'bottomleft'}).addTo(map);
+  L.control.attribution({position:'bottomright', prefix:false}).addTo(map);
+
+  map.on('popupopen', e=>{
+    const btn = e.popup.getElement()?.querySelector('.btn-event');
+    if(!btn) return;
+    btn.onclick = ()=> {
+      const place = {
+        id: btn.dataset.id,
+        name: btn.dataset.name,
+        lat: parseFloat(btn.dataset.lat),
+        lon: parseFloat(btn.dataset.lon),
+        tipos: getEventos()[btn.dataset.id]?.tipos || []
+      };
+      openEventModal(place);
+    };
+  });
+
+  document.getElementById('btnBuscar').onclick = buscaLocal;
+  document.getElementById('q').addEventListener('keydown', e=>{ if(e.key==='Enter') buscaLocal(); });
+  document.getElementById('btnGeo').onclick = pertoDeMim;
+
+  const panel = document.getElementById('panel');
+  document.getElementById('btnNinfa').onclick = ()=>{ panel.classList.add('open'); panel.setAttribute('aria-hidden','false'); };
+  document.getElementById('closePanel').onclick = ()=>{ panel.classList.remove('open'); panel.setAttribute('aria-hidden','true'); };
+
+  // chips
+  const chipsContainer = document.getElementById('chipsContainer');
+  EVENT_TYPES.forEach(et=>{
+    const btn = document.createElement('button');
+    btn.className='chip';
+    btn.dataset.id=et.id;
+    btn.innerHTML=`<span class="ic">${et.icon}</span><span>${et.label}</span>`;
+    btn.onclick=()=>{
+      if(selectedTipos.has(et.id)) selectedTipos.delete(et.id); else selectedTipos.add(et.id);
+      btn.classList.toggle('selected');
+      ninfaLog('select_'+et.id.replace(/\s+/g,'_'));
+    };
+    chipsContainer.appendChild(btn);
+  });
+  document.getElementById('closeEventModal').onclick = closeEventModal;
+  document.getElementById('cancelEvent').onclick = closeEventModal;
+  document.getElementById('confirmEvent').onclick = ()=>{
+    if(!currentEventPlace) return;
+    const tipos = Array.from(selectedTipos);
+    const {id,name,lat,lon} = currentEventPlace;
+    const eventos = getEventos();
+    if(tipos.length===0){
+      delete eventos[id];
+      localStorage.setItem('eventos_ninfa', JSON.stringify(eventos));
+      showToast('Evento removido');
+      ninfaLog('evento_removido');
+    } else {
+      eventos[id] = {name, lat, lon, timestamp: Date.now(), tipos};
+      localStorage.setItem('eventos_ninfa', JSON.stringify(eventos));
+      const labels = tipos.map(t=>EVENT_TYPES.find(e=>e.id===t)?.label || t);
+      showToast('Evento sinalizado: ' + labels.join(' + '));
+      tipos.forEach(t=> ninfaLog('evento_'+ t.replace(/\s+/g,'_') ));
+      ninfaLog('evento_'+tipos.join('_').replace(/\s+/g,'_'));
+    }
+    closeEventModal();
+    const m = markersById[id];
+    if(m){
+      const emoji = emojisById[id] || '🍺';
+      const tiposParaIcone = currentFilterTipos.length===0 ? tipos : (tipos.some(t=> currentFilterTipos.includes(t)) ? tipos : []);
+      m.setIcon(getIcon(emoji, tiposParaIcone));
+    }
+    if(lastElements) renderPlaces(lastElements);
+  };
+  document.getElementById('eventModal').addEventListener('click', e=>{ if(e.target.id==='eventModal') closeEventModal(); });
+
+  // filter
+  const btnFiltro = document.getElementById('btnFiltro');
+  const filterBar = document.getElementById('filterBar');
+  function updateFilterUI(){
+    filterBar.querySelectorAll('button').forEach(btn=>{
+      const id = btn.dataset.id;
+      const active = id==='todos' ? currentFilterTipos.length===0 : currentFilterTipos.includes(id);
+      btn.style.background = active ? 'rgba(124,92,255,.18)' : '#0f1622';
+      btn.style.borderColor = active ? 'rgba(124,92,255,.5)' : '#223044';
+      btn.style.color = active ? '#d4c9ff' : '#9fb0c3';
+    });
+  }
+  const createFilterChip = (id,label,icon)=>{
+    const b = document.createElement('button');
+    b.style.cssText = 'display:inline-flex;align-items:center;gap:5px;height:28px;padding:0 10px;margin-right:6px;border-radius:999px;border:1px solid #223044;background:#0f1622;color:#9fb0c3;font-size:12px;font-weight:600;touch-action:manipulation';
+    b.innerHTML = `${icon?icon+' ':''}${label}`;
+    b.dataset.id=id;
+    b.onclick=()=>{
+      if(id==='todos'){
+        currentFilterTipos=[];
+      }else{
+        if(currentFilterTipos.includes(id)) currentFilterTipos = currentFilterTipos.filter(x=>x!==id);
+        else currentFilterTipos.push(id);
+      }
+      updateFilterUI();
+      ninfaLog('filtro_'+(id==='todos'?'todos':id.replace(/\s+/g,'_')));
+      if(lastElements) renderPlaces(lastElements);
+      if(currentFilterTipos.length === 0){
+        showToast('Mostrando todos os lugares');
+      } else {
+        const labels = currentFilterTipos.map(t=>EVENT_TYPES.find(e=>e.id===t)?.label || t);
+        const display = labels.length <= 2 ? labels.join(', ') : labels.slice(0,2).join(', ') + ` +${labels.length-2}`;
+        showToast(`Filtrando por: ${display}`);
+      }
+    };
+    return b;
+  };
+  filterBar.appendChild(createFilterChip('todos','Todos',''));
+  EVENT_TYPES.forEach(et=> filterBar.appendChild(createFilterChip(et.id, et.label, et.icon)));
+  updateFilterUI();
+  btnFiltro.onclick = ()=>{
+    const show = filterBar.style.display==='none' || !filterBar.style.display;
+    filterBar.style.display = show ? 'block' : 'none';
+    ninfaLog('filtro_toggle');
+  };
+
+  setTimeout(()=>{ map.invalidateSize(); queryOverpass(currentLat, currentLon); }, 300);
+});
+</script>
+<script>(function(){document.addEventListener("click",function(e){var a=e.target.closest("[data-product-id]");if(!a)return;e.preventDefault();var pid=a.getAttribute("data-product-id");if(pid)parent.postMessage({type:"ecto-artifact-link-click",productId:pid},"*")})})();</script>
+</body>
+</html>
