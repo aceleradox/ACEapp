@@ -1,0 +1,1214 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QQfrevo Card - Editor para Instagram</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- 25 Google Fonts + Fontes PRO (Graffiti/Urbano) -->
+    <link href="https://fonts.googleapis.com/css2?family=Anton&family=Cabin&family=Dancing+Script&family=Dosis&family=Fira+Sans&family=Inconsolata&family=Indie+Flower&family=Lato&family=Lora&family=Merriweather&family=Montserrat&family=Mukta&family=Nunito&family=Open+Sans&family=Oswald&family=Oxygen&family=Pacifico&family=Playfair+Display&family=PT+Sans&family=Quicksand&family=Raleway&family=Roboto&family=Source+Sans+3&family=Work+Sans&family=Permanent+Marker&family=Sedgwick+Ave+Display&family=Rock+Salt&family=Bangers&display=swap" rel="stylesheet">
+
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #111827; color: white; font-family: 'Inter', sans-serif; }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #1f2937; }
+        ::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #6b7280; }
+        
+        .tool-btn { transition: all 0.2s; }
+        .tool-btn.active { background-color: #3b82f6; color: white; }
+        .tool-btn:hover:not(.active) { background-color: #374151; }
+
+        /* Estilo da aba PRO */
+        .pro-btn { background: linear-gradient(45deg, #ec4899, #8b5cf6); border: 2px solid transparent; }
+        .pro-btn:hover { border-color: #fff; box-shadow: 0 0 10px rgba(236, 72, 153, 0.5); }
+        .pro-btn.active { box-shadow: 0 0 15px rgba(236, 72, 153, 0.8); border-color: white; }
+
+        /* Wrapper do canvas para escalar sem perder qualidade (1080x1080 interno) */
+        #canvas-wrapper {
+            width: 1080px;
+            height: 1080px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.2);
+            background-color: white; /* Fundo padrão do canvas */
+            transform-origin: center center;
+            transition: transform 0.1s ease-out;
+        }
+        
+        .canvas-container { margin: 0 auto; }
+    </style>
+</head>
+<body class="h-screen flex flex-col">
+
+    <header class="bg-gray-900 border-b border-gray-800 h-16 flex items-center justify-between px-6 shrink-0 z-20">
+        <div class="flex items-center gap-3">
+            <div class="bg-gradient-to-r from-pink-500 to-violet-500 p-2 rounded-lg text-white">
+                <i class="fa-solid fa-layer-group text-xl"></i>
+            </div>
+            <h1 class="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-pink-400 to-violet-400">
+                QQfrevo Card
+            </h1>
+        </div>
+        <div class="flex items-center gap-4">
+            <span class="text-xs text-gray-400 bg-gray-800 px-3 py-1 rounded-full"><i class="fa-brands fa-instagram mr-1"></i> 1080x1080</span>
+            <div class="relative">
+                <button onclick="toggleExportMenu()" class="bg-violet-600 hover:bg-violet-500 text-white px-4 py-2 rounded-md text-sm font-medium transition flex items-center gap-2">
+                    <i class="fa-solid fa-download"></i> Exportar
+                </button>
+                <!-- Menu de Exportação (Agora acionado por clique) -->
+                <div id="export-menu" class="absolute right-0 mt-2 w-48 bg-gray-800 rounded-md shadow-xl py-1 hidden border border-gray-700 z-50">
+                    <button onclick="exportCanvas('png')" class="w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-gray-700 hover:text-white transition">
+                        <i class="fa-solid fa-image mr-2"></i> PNG (Alta Qualidade)
+                    </button>
+                    <button onclick="exportCanvas('jpeg')" class="w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-gray-700 hover:text-white transition">
+                        <i class="fa-solid fa-file-image mr-2"></i> JPG (Mais Leve)
+                    </button>
+                    <button onclick="exportCanvas('bmp')" class="w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-gray-700 hover:text-white transition">
+                        <i class="fa-solid fa-images mr-2"></i> BMP
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="flex-1 flex overflow-hidden">
+        
+        <!-- Sidebar de Ferramentas (Esquerda) -->
+        <aside class="w-20 bg-gray-900 border-r border-gray-800 flex flex-col items-center py-4 gap-4 z-10 shrink-0">
+            <button onclick="switchTab('background')" id="tab-background" class="tool-btn active w-14 h-14 rounded-xl flex flex-col items-center justify-center text-xs text-gray-400 hover:text-white">
+                <i class="fa-solid fa-image text-xl mb-1"></i> Fundo
+            </button>
+            <button onclick="switchTab('text')" id="tab-text" class="tool-btn w-14 h-14 rounded-xl flex flex-col items-center justify-center text-xs text-gray-400 hover:text-white">
+                <i class="fa-solid fa-font text-xl mb-1"></i> Texto
+            </button>
+            <button onclick="switchTab('shapes')" id="tab-shapes" class="tool-btn w-14 h-14 rounded-xl flex flex-col items-center justify-center text-xs text-gray-400 hover:text-white">
+                <i class="fa-solid fa-shapes text-xl mb-1"></i> Formas
+            </button>
+            <button onclick="switchTab('draw')" id="tab-draw" class="tool-btn w-14 h-14 rounded-xl flex flex-col items-center justify-center text-xs text-gray-400 hover:text-white">
+                <i class="fa-solid fa-paint-brush text-xl mb-1"></i> Pintar
+            </button>
+            <button onclick="switchTab('layers')" id="tab-layers" class="tool-btn w-14 h-14 rounded-xl flex flex-col items-center justify-center text-xs text-gray-400 hover:text-white">
+                <i class="fa-solid fa-layer-group text-xl mb-1"></i> Camadas
+            </button>
+            <div class="w-10 h-px bg-gray-700 my-1"></div>
+            <button onclick="switchTab('pro')" id="tab-pro" class="tool-btn pro-btn w-14 h-14 rounded-xl flex flex-col items-center justify-center text-xs text-white transition-all">
+                <i class="fa-solid fa-crown text-xl mb-1 text-yellow-300"></i> PRO
+            </button>
+        </aside>
+
+        <!-- Painel Secundário de Ferramentas (Esquerda expandida) -->
+        <aside class="w-64 bg-gray-800 border-r border-gray-700 p-4 flex flex-col overflow-y-auto z-10 shrink-0" id="tool-panel">
+            
+            <div id="panel-background" class="panel-content">
+                <h2 class="text-sm font-semibold text-gray-300 mb-4 uppercase tracking-wider">Plano de Fundo</h2>
+                
+                <label class="block w-full bg-blue-600 hover:bg-blue-500 text-center py-2 rounded-md cursor-pointer mb-4 text-sm font-medium transition">
+                    <i class="fa-solid fa-upload mr-2"></i> Fazer Upload
+                    <input type="file" id="bg-upload" class="hidden" accept="image/*" onchange="handleBgUpload(event)">
+                </label>
+
+                <div class="mb-4">
+                    <h3 class="text-xs text-gray-400 mb-2">Cor Sólida</h3>
+                    <div class="flex items-center gap-2">
+                        <input type="color" id="bg-color-picker" value="#ffffff" onchange="setBgColor(this.value)" class="w-10 h-10 rounded cursor-pointer bg-transparent border-0 p-0">
+                        <button onclick="setBgColor('transparent')" class="flex-1 bg-gray-700 hover:bg-gray-600 text-xs py-2 rounded">Limpar / Transparente</button>
+                    </div>
+                </div>
+
+                <div>
+                    <h3 class="text-xs text-gray-400 mb-2">Fundos Padrões</h3>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div class="h-16 rounded cursor-pointer border border-gray-600 hover:border-blue-400 bg-gradient-to-r from-cyan-500 to-blue-500" onclick="setGradientBg(['#06b6d4', '#3b82f6'])"></div>
+                        <div class="h-16 rounded cursor-pointer border border-gray-600 hover:border-blue-400 bg-gradient-to-r from-purple-500 to-pink-500" onclick="setGradientBg(['#a855f7', '#ec4899'])"></div>
+                        <div class="h-16 rounded cursor-pointer border border-gray-600 hover:border-blue-400 bg-gradient-to-br from-gray-900 to-gray-600" onclick="setGradientBg(['#111827', '#4b5563'])"></div>
+                        <div class="h-16 rounded cursor-pointer border border-gray-600 hover:border-blue-400 bg-gradient-to-tr from-yellow-400 to-orange-500" onclick="setGradientBg(['#facc15', '#f97316'])"></div>
+                        <div class="h-16 rounded cursor-pointer border border-gray-600 hover:border-blue-400 bg-[#ffecd2]" onclick="setBgColor('#ffecd2')"></div>
+                        <div class="h-16 rounded cursor-pointer border border-gray-600 hover:border-blue-400 bg-[#1e293b]" onclick="setBgColor('#1e293b')"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="panel-text" class="panel-content hidden">
+                <h2 class="text-sm font-semibold text-gray-300 mb-4 uppercase tracking-wider">Adicionar Texto</h2>
+                
+                <button onclick="addText('title')" class="w-full bg-gray-700 hover:bg-gray-600 p-4 rounded-md mb-2 flex items-center justify-center transition">
+                    <span class="text-xl font-bold">Adicionar Título</span>
+                </button>
+                <button onclick="addText('desc')" class="w-full bg-gray-700 hover:bg-gray-600 p-3 rounded-md mb-4 flex items-center justify-center transition">
+                    <span class="text-sm font-normal">Adicionar Descrição</span>
+                </button>
+
+                <h3 class="text-xs text-gray-400 mb-2 mt-6">Dica:</h3>
+                <p class="text-xs text-gray-500">Selecione o texto no canvas para editar a fonte, cor e tamanho no painel da direita.</p>
+            </div>
+
+            <div id="panel-shapes" class="panel-content hidden">
+                <h2 class="text-sm font-semibold text-gray-300 mb-4 uppercase tracking-wider">Formas e Linhas</h2>
+                <div class="grid grid-cols-2 gap-3">
+                    <button onclick="addShape('rect')" class="bg-gray-700 hover:bg-gray-600 p-4 rounded-md flex justify-center transition">
+                        <div class="w-8 h-8 border-2 border-white"></div>
+                    </button>
+                    <button onclick="addShape('circle')" class="bg-gray-700 hover:bg-gray-600 p-4 rounded-md flex justify-center transition">
+                        <div class="w-8 h-8 border-2 border-white rounded-full"></div>
+                    </button>
+                    <button onclick="addShape('triangle')" class="bg-gray-700 hover:bg-gray-600 p-4 rounded-md flex justify-center transition">
+                        <i class="fa-solid fa-play -rotate-90 text-2xl text-white"></i>
+                    </button>
+                    <button onclick="addShape('line')" class="bg-gray-700 hover:bg-gray-600 p-4 rounded-md flex justify-center transition items-center">
+                        <div class="w-8 h-1 bg-white"></div>
+                    </button>
+                </div>
+            </div>
+
+            <div id="panel-draw" class="panel-content hidden">
+                <h2 class="text-sm font-semibold text-gray-300 mb-4 uppercase tracking-wider">Ilustração Fácil</h2>
+                
+                <div class="flex bg-gray-700 rounded-md p-1 mb-4">
+                    <button id="btn-draw-off" onclick="toggleDrawMode(false)" class="flex-1 py-1 text-sm rounded bg-gray-600 shadow text-white">Mover</button>
+                    <button id="btn-draw-on" onclick="toggleDrawMode(true)" class="flex-1 py-1 text-sm rounded text-gray-400 hover:text-white">Desenhar</button>
+                </div>
+
+                <div id="draw-settings" class="opacity-50 pointer-events-none transition-opacity">
+                    <label class="block text-xs text-gray-400 mb-1 mt-4">Tipo de Pincel</label>
+                    <select id="brush-type" onchange="updateBrush()" class="w-full bg-gray-700 border border-gray-600 rounded p-2 text-sm mb-4 outline-none">
+                        <option value="Pencil">Lápis (Sólido)</option>
+                        <option value="Circle">Pincel (Suave)</option>
+                        <option value="Spray">Spray</option>
+                    </select>
+
+                    <label class="block text-xs text-gray-400 mb-1">Cor do Pincel</label>
+                    <input type="color" id="brush-color" value="#3b82f6" onchange="updateBrush()" class="w-full h-10 rounded cursor-pointer bg-transparent border-0 p-0 mb-4">
+
+                    <label class="block text-xs text-gray-400 mb-1">Espessura: <span id="brush-size-val">5</span>px</label>
+                    <input type="range" id="brush-size" min="1" max="100" value="5" oninput="updateBrush()" class="w-full accent-blue-500">
+                </div>
+            </div>
+
+            <div id="panel-layers" class="panel-content hidden">
+                <h2 class="text-sm font-semibold text-gray-300 mb-4 uppercase tracking-wider">Camadas (Overlays)</h2>
+                
+                <div class="flex gap-2 mb-4">
+                    <button onclick="moveLayer('up')" class="flex-1 bg-gray-700 hover:bg-gray-600 py-2 rounded text-sm"><i class="fa-solid fa-arrow-up"></i> Subir</button>
+                    <button onclick="moveLayer('down')" class="flex-1 bg-gray-700 hover:bg-gray-600 py-2 rounded text-sm"><i class="fa-solid fa-arrow-down"></i> Descer</button>
+                </div>
+                
+                <div id="layers-list" class="flex flex-col-reverse gap-2 overflow-y-auto max-h-64">
+                    <!-- Lista de camadas injetada via JS -->
+                    <p class="text-xs text-gray-500 text-center py-4">Adicione elementos para ver as camadas.</p>
+                </div>
+            </div>
+
+            <div id="panel-pro" class="panel-content hidden flex flex-col h-full">
+                
+                <!-- Tela de Bloqueio (Requer Código) -->
+                <div id="pro-locked-view" class="flex flex-col items-center justify-center h-full text-center">
+                    <div class="bg-gradient-to-br from-pink-500 to-violet-600 w-16 h-16 rounded-full flex items-center justify-center mb-4 shadow-lg shadow-pink-500/30">
+                        <i class="fa-solid fa-lock text-2xl text-white"></i>
+                    </div>
+                    <h2 class="text-lg font-bold text-white mb-2">Recursos PRO</h2>
+                    <p class="text-xs text-gray-400 mb-6 px-2">Para acessar os itens de DJ, Carros de Som e Gradientes, você precisa do código de acesso.</p>
+                    
+                    <div class="bg-gray-900 p-4 rounded-xl border border-gray-700 w-full mb-4">
+                        <p class="text-xs text-gray-300 mb-3">1. Pegue o código na minha BIO do TikTok:</p>
+                        <a href="https://www.tiktok.com/@vulgo_acelerado_ofc" target="_blank" class="block w-full bg-black hover:bg-gray-950 text-white border border-gray-600 py-2 rounded text-sm font-medium transition mb-4">
+                            <i class="fa-brands fa-tiktok mr-1"></i> @vulgo_acelerado_ofc
+                        </a>
+                        
+                        <p class="text-xs text-gray-300 mb-2">2. Digite o código aqui:</p>
+                        <input type="text" id="pro-code-input" placeholder="Digite o código PRO..." class="w-full bg-gray-800 border border-gray-600 rounded p-2 text-sm text-center text-white mb-3 outline-none focus:border-pink-500 uppercase">
+                        
+                        <button onclick="unlockPro()" class="w-full bg-gradient-to-r from-pink-500 to-violet-600 hover:from-pink-400 hover:to-violet-500 text-white py-2 rounded text-sm font-bold shadow-lg transition">
+                            Desbloquear
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Ferramentas PRO Liberadas -->
+                <div id="pro-unlocked-view" class="hidden flex flex-col h-full">
+                    <div class="bg-gradient-to-r from-gray-900 to-gray-800 p-4 rounded-xl border border-pink-500/30 mb-6 relative overflow-hidden shadow-lg shadow-pink-500/10">
+                        <div class="absolute -right-4 -top-4 opacity-10 text-6xl text-pink-500"><i class="fa-solid fa-gem"></i></div>
+                        <div class="flex justify-between items-center mb-1">
+                            <h2 class="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                                <i class="fa-solid fa-crown text-yellow-400"></i> PRO Ativado
+                            </h2>
+                            <span id="ntc-balance" class="bg-pink-600 text-white text-xs font-bold px-2 py-1 rounded-md">100 NTC</span>
+                        </div>
+                        <p class="text-xs text-gray-400 mt-1">Custo: 10 NTC por elemento.</p>
+                        <p id="ntc-timer" class="text-xs text-yellow-400 mt-2 hidden"><i class="fa-solid fa-clock mr-1"></i> Recarrega em: <span id="time-left"></span></p>
+                    </div>
+
+                    <div class="overflow-y-auto flex-1 pr-1 pb-4">
+                        
+                        <!-- FUNDOS E LAYOUTS -->
+                        <h3 class="text-xs font-semibold text-gray-300 mb-3 uppercase tracking-wider">Fundos & Layouts PRO</h3>
+                        <div class="bg-gray-900 p-3 rounded-lg border border-gray-700 mb-4">
+                            <div class="grid grid-cols-2 gap-2 mb-3">
+                                <button onclick="setProBackground('neon-pink')" class="h-10 rounded border border-gray-600 hover:border-pink-500 bg-gradient-to-br from-gray-900 via-purple-900 to-pink-900 text-[10px] text-white">Neon Pink</button>
+                                <button onclick="setProBackground('neon-cyan')" class="h-10 rounded border border-gray-600 hover:border-cyan-500 bg-gradient-to-br from-gray-900 via-blue-900 to-cyan-400 text-[10px] text-white">Cyber Blue</button>
+                                <button onclick="addProLayout('party')" class="h-10 rounded border border-yellow-500 hover:bg-gray-700 text-[10px] text-yellow-400 flex items-center justify-center gap-1 col-span-2"><i class="fa-solid fa-bolt"></i> Layout: Festa Automotiva</button>
+                            </div>
+                            
+                            <p class="text-[10px] text-gray-500 mb-1">Criar Gradiente:</p>
+                            <div class="flex gap-2 mb-2">
+                                <div class="flex-1">
+                                    <input type="color" id="pro-grad-1" value="#ff0080" class="w-full h-8 rounded cursor-pointer bg-transparent border-0 p-0">
+                                </div>
+                                <div class="flex-1">
+                                    <input type="color" id="pro-grad-2" value="#7928ca" class="w-full h-8 rounded cursor-pointer bg-transparent border-0 p-0">
+                                </div>
+                            </div>
+                            <button onclick="applyProGradient()" class="w-full bg-gray-700 hover:bg-gray-600 text-white py-2 rounded text-xs transition">Aplicar Fundo Custom</button>
+                        </div>
+
+                        <!-- TEXTOS GRAFFITI -->
+                        <h3 class="text-xs font-semibold text-gray-300 mb-3 uppercase tracking-wider flex justify-between">
+                            Textos Grafite <span class="text-pink-400">-10 NTC</span>
+                        </h3>
+                        <div class="grid grid-cols-2 gap-2 mb-4">
+                            <button onclick="addProText('Sedgwick Ave Display', '#ec4899')" class="bg-gray-900 border border-gray-700 hover:border-pink-500 py-2 rounded-lg text-sm text-pink-400 transition" style="font-family: 'Sedgwick Ave Display'">Urbano</button>
+                            <button onclick="addProText('Permanent Marker', '#22d3ee')" class="bg-gray-900 border border-gray-700 hover:border-cyan-500 py-2 rounded-lg text-sm text-cyan-400 transition" style="font-family: 'Permanent Marker'">Marcador</button>
+                            <button onclick="addProText('Rock Salt', '#facc15')" class="bg-gray-900 border border-gray-700 hover:border-yellow-400 py-2 rounded-lg text-sm text-yellow-400 transition" style="font-family: 'Rock Salt'">Pichação</button>
+                            <button onclick="addProText('Bangers', '#a855f7')" class="bg-gray-900 border border-gray-700 hover:border-purple-500 py-2 rounded-lg text-sm text-purple-400 transition tracking-wider" style="font-family: 'Bangers'">Impacto</button>
+                        </div>
+
+                        <!-- MOLDURAS -->
+                        <h3 class="text-xs font-semibold text-gray-300 mb-3 uppercase tracking-wider flex justify-between">
+                            Molduras Neon <span class="text-pink-400">-10 NTC</span>
+                        </h3>
+                        <div class="grid grid-cols-3 gap-2 mb-4">
+                            <button onclick="addProFrame('pink')" class="bg-gray-900 border border-gray-700 hover:border-pink-500 h-12 rounded-lg flex items-center justify-center transition">
+                                <div class="w-6 h-6 border-2 border-pink-500 rounded shadow-[0_0_8px_#ec4899]"></div>
+                            </button>
+                            <button onclick="addProFrame('cyan')" class="bg-gray-900 border border-gray-700 hover:border-cyan-500 h-12 rounded-lg flex items-center justify-center transition">
+                                <div class="w-6 h-6 border-2 border-cyan-400 rounded-full shadow-[0_0_8px_#22d3ee]"></div>
+                            </button>
+                            <button onclick="addProFrame('gold')" class="bg-gray-900 border border-gray-700 hover:border-yellow-500 h-12 rounded-lg flex items-center justify-center transition">
+                                <div class="w-6 h-6 border-[3px] border-yellow-500 shadow-[0_0_5px_#facc15] rotate-45"></div>
+                            </button>
+                        </div>
+
+                        <!-- ILUSTRAÇÕES -->
+                        <h3 class="text-xs font-semibold text-gray-300 mb-3 uppercase tracking-wider flex justify-between">
+                            Peças & Som <span class="text-pink-400">-10 NTC</span>
+                        </h3>
+                        <div class="grid grid-cols-2 gap-3 mb-4">
+                            <button onclick="addProAsset('paredao')" class="bg-gray-900 border border-gray-700 hover:border-pink-500 p-3 rounded-xl flex flex-col items-center justify-center transition group">
+                                <i class="fa-solid fa-truck-pickup text-3xl text-gray-400 group-hover:text-pink-400 mb-2 transition"></i>
+                                <span class="text-[10px] text-center text-gray-400 group-hover:text-white">Carro de Som</span>
+                            </button>
+                            
+                            <button onclick="addProAsset('speaker')" class="bg-gray-900 border border-gray-700 hover:border-pink-500 p-3 rounded-xl flex flex-col items-center justify-center transition group">
+                                <i class="fa-solid fa-volume-high text-3xl text-gray-400 group-hover:text-pink-400 mb-2 transition"></i>
+                                <span class="text-[10px] text-center text-gray-400 group-hover:text-white">Caixa Cartoon</span>
+                            </button>
+
+                            <button onclick="addProAsset('dj')" class="bg-gray-900 border border-gray-700 hover:border-pink-500 p-3 rounded-xl flex flex-col items-center justify-center transition group">
+                                <i class="fa-solid fa-compact-disc text-3xl text-gray-400 group-hover:text-pink-400 mb-2 transition"></i>
+                                <span class="text-[10px] text-center text-gray-400 group-hover:text-white">Mesa de DJ</span>
+                            </button>
+
+                            <button onclick="addProAsset('headphones')" class="bg-gray-900 border border-gray-700 hover:border-pink-500 p-3 rounded-xl flex flex-col items-center justify-center transition group">
+                                <i class="fa-solid fa-headphones text-3xl text-gray-400 group-hover:text-pink-400 mb-2 transition"></i>
+                                <span class="text-[10px] text-center text-gray-400 group-hover:text-white">Fones Neon</span>
+                            </button>
+                            
+                            <button onclick="addProAsset('equalizer')" class="bg-gray-900 border border-gray-700 hover:border-pink-500 p-3 rounded-xl flex flex-col items-center justify-center transition group">
+                                <i class="fa-solid fa-chart-simple text-3xl text-gray-400 group-hover:text-pink-400 mb-2 transition"></i>
+                                <span class="text-[10px] text-center text-gray-400 group-hover:text-white">Equalizador</span>
+                            </button>
+
+                            <button onclick="addProAsset('notes')" class="bg-gray-900 border border-gray-700 hover:border-pink-500 p-3 rounded-xl flex flex-col items-center justify-center transition group">
+                                <i class="fa-solid fa-music text-3xl text-gray-400 group-hover:text-pink-400 mb-2 transition"></i>
+                                <span class="text-[10px] text-center text-gray-400 group-hover:text-white">Notas</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </aside>
+
+        <main class="flex-1 bg-gray-950 flex items-center justify-center relative overflow-hidden" id="canvas-workspace">
+            <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMCIgaGVpZ2h0PSIyMCI+PHBhdGggZD0iTTAgMGgyMHYyMEgwem0xMCAwaDEwdjEwSDEwem0wIDEwSDB2MTBoMTB6IiBmaWxsPSIjMWYyOTM3IiBmaWxsLW9wYWNpdHk9IjAuNSIvPjwvc3ZnPg==')] opacity-30 pointer-events-none"></div>
+            
+            <div id="canvas-wrapper">
+                <canvas id="c"></canvas>
+            </div>
+
+            <!-- Controles de Zoom HUD -->
+            <div class="absolute bottom-4 left-4 bg-gray-800 rounded-lg p-1 flex shadow-lg border border-gray-700">
+                <button onclick="zoomWorkspace(0.9)" class="w-8 h-8 flex items-center justify-center hover:bg-gray-700 rounded text-gray-300"><i class="fa-solid fa-minus"></i></button>
+                <div class="w-16 flex items-center justify-center text-xs font-mono" id="zoom-level">100%</div>
+                <button onclick="zoomWorkspace(1.1)" class="w-8 h-8 flex items-center justify-center hover:bg-gray-700 rounded text-gray-300"><i class="fa-solid fa-plus"></i></button>
+                <button onclick="fitCanvas()" class="w-8 h-8 flex items-center justify-center hover:bg-gray-700 rounded text-gray-300 ml-1 border-l border-gray-600" title="Ajustar à tela"><i class="fa-solid fa-expand"></i></button>
+            </div>
+        </main>
+
+        <aside class="w-64 bg-gray-800 border-l border-gray-700 p-4 flex flex-col overflow-y-auto z-10 shrink-0 hidden" id="properties-panel">
+            <h2 class="text-sm font-semibold text-gray-300 mb-4 uppercase tracking-wider border-b border-gray-700 pb-2">Propriedades</h2>
+            
+            <div id="no-selection-msg" class="text-xs text-gray-500 text-center py-10">
+                Selecione um elemento no canvas para editá-lo.
+            </div>
+
+            <div id="selection-tools" class="hidden">
+                <!-- Ações Globais do Objeto -->
+                <div class="flex gap-2 mb-6">
+                    <button onclick="deleteSelected()" class="flex-1 bg-red-600 hover:bg-red-500 text-white py-2 rounded text-sm shadow"><i class="fa-solid fa-trash"></i> Apagar</button>
+                    <button onclick="cloneSelected()" class="flex-1 bg-gray-700 hover:bg-gray-600 text-white py-2 rounded text-sm shadow"><i class="fa-solid fa-copy"></i> Duplicar</button>
+                </div>
+
+                <!-- Cores -->
+                <div class="mb-4">
+                    <label class="block text-xs text-gray-400 mb-1">Color Picker (Preenchimento)</label>
+                    <input type="color" id="prop-fill" onchange="updateObjectProp('fill', this.value)" class="w-full h-10 rounded cursor-pointer bg-transparent border-0 p-0 mb-2">
+                    
+                    <div id="prop-stroke-container">
+                        <label class="block text-xs text-gray-400 mb-1">Cor da Borda / Linha</label>
+                        <input type="color" id="prop-stroke" onchange="updateObjectProp('stroke', this.value)" class="w-full h-10 rounded cursor-pointer bg-transparent border-0 p-0">
+                    </div>
+                </div>
+
+                <!-- Específico para Texto -->
+                <div id="prop-text-container" class="hidden border-t border-gray-700 pt-4 mt-4">
+                    <label class="block text-xs text-gray-400 mb-1">Fonte (25 Disponíveis)</label>
+                    <select id="prop-fontFamily" onchange="updateObjectProp('fontFamily', this.value)" class="w-full bg-gray-700 border border-gray-600 rounded p-2 text-sm mb-4 outline-none text-white font-sans">
+                        <!-- Fontes populadas via JS -->
+                    </select>
+
+                    <div class="grid grid-cols-2 gap-2 mb-4">
+                        <div>
+                            <label class="block text-xs text-gray-400 mb-1">Estilo</label>
+                            <button id="btn-bold" onclick="toggleTextProp('fontWeight', 'bold', 'normal')" class="w-full bg-gray-700 hover:bg-gray-600 py-2 rounded font-bold">B</button>
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-400 mb-1">Itálico</label>
+                            <button id="btn-italic" onclick="toggleTextProp('fontStyle', 'italic', 'normal')" class="w-full bg-gray-700 hover:bg-gray-600 py-2 rounded italic">I</button>
+                        </div>
+                    </div>
+
+                    <label class="block text-xs text-gray-400 mb-1">Alinhamento</label>
+                    <div class="flex gap-1 mb-4 bg-gray-700 p-1 rounded">
+                        <button onclick="updateObjectProp('textAlign', 'left')" class="flex-1 py-1 rounded hover:bg-gray-600"><i class="fa-solid fa-align-left"></i></button>
+                        <button onclick="updateObjectProp('textAlign', 'center')" class="flex-1 py-1 rounded hover:bg-gray-600"><i class="fa-solid fa-align-center"></i></button>
+                        <button onclick="updateObjectProp('textAlign', 'right')" class="flex-1 py-1 rounded hover:bg-gray-600"><i class="fa-solid fa-align-right"></i></button>
+                    </div>
+                </div>
+
+                <!-- Transparência -->
+                <div class="border-t border-gray-700 pt-4 mt-4">
+                    <label class="block text-xs text-gray-400 mb-1">Opacidade: <span id="prop-opacity-val">100</span>%</label>
+                    <input type="range" id="prop-opacity" min="0" max="1" step="0.01" value="1" oninput="updateObjectProp('opacity', this.value); document.getElementById('prop-opacity-val').innerText = Math.round(this.value * 100);" class="w-full accent-blue-500">
+                </div>
+            </div>
+        </aside>
+
+    </div>
+
+    <!-- Sistema de Toasts (Notificações) -->
+    <div id="toast-container" class="fixed top-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <script>
+        // Configurações e Variáveis Globais
+        const CANVAS_SIZE = 1080;
+        let canvas;
+        let currentZoom = 1;
+        
+        const FONTS = [
+            'Roboto', 'Open Sans', 'Lato', 'Montserrat', 'Oswald', 
+            'Source Sans 3', 'Raleway', 'PT Sans', 'Merriweather', 'Nunito', 
+            'Playfair Display', 'Lora', 'Work Sans', 'Fira Sans', 'Quicksand', 
+            'Inconsolata', 'Dosis', 'Oxygen', 'Mukta', 'Anton', 
+            'Cabin', 'Pacifico', 'Dancing Script', 'Indie Flower', 'Arial',
+            'Permanent Marker', 'Sedgwick Ave Display', 'Rock Salt', 'Bangers' // Fontes PRO também listadas globalmente
+        ];
+
+        const PRO_CODE = "ACE15SAE";
+        const REFRESH_TIME = 6 * 60 * 60 * 1000; // 6 horas em ms
+        const ASSET_COST = 10;
+        let ntcTimerInterval;
+
+        let ntcData = JSON.parse(localStorage.getItem('qqfrevo_ntc')) || { 
+            unlocked: false, 
+            balance: 100, 
+            lastRefresh: Date.now() 
+        };
+
+        // Inicialização
+        window.onload = function() {
+            // Inicializa Fabric.js
+            canvas = new fabric.Canvas('c', {
+                width: CANVAS_SIZE,
+                height: CANVAS_SIZE,
+                preserveObjectStacking: true, // Mantém a ordem ao selecionar
+                backgroundColor: '#ffffff'
+            });
+
+            // Populate Font Select
+            const fontSelect = document.getElementById('prop-fontFamily');
+            FONTS.forEach(font => {
+                const option = document.createElement('option');
+                option.value = font;
+                option.text = font;
+                option.style.fontFamily = font;
+                fontSelect.appendChild(option);
+            });
+
+            // Event Listeners do Canvas
+            canvas.on('selection:created', handleSelection);
+            canvas.on('selection:updated', handleSelection);
+            canvas.on('selection:cleared', handleSelectionCleared);
+            canvas.on('object:added', updateLayersList);
+            canvas.on('object:removed', updateLayersList);
+            canvas.on('object:modified', updateLayersList);
+
+            // Ajusta o zoom inicial para caber na tela
+            setTimeout(fitCanvas, 100);
+            window.addEventListener('resize', fitCanvas);
+
+            // Inicializa Brush Customizado
+            updateBrush();
+            
+            // Verifica estado do PRO
+            checkNtcTokens();
+        };
+
+        function checkNtcTokens() {
+            if (ntcData.unlocked) {
+                let now = Date.now();
+                // Verifica se já passaram 6 horas desde o último reset
+                if (now - ntcData.lastRefresh >= REFRESH_TIME) {
+                    ntcData.balance = 100;
+                    ntcData.lastRefresh = now;
+                    saveNtcData();
+                    showToast("Suas NTC foram recarregadas para 100!", "success");
+                }
+                
+                // Atualiza UI
+                document.getElementById('pro-locked-view').classList.add('hidden');
+                document.getElementById('pro-unlocked-view').classList.remove('hidden');
+                updateNtcUI();
+            } else {
+                document.getElementById('pro-locked-view').classList.remove('hidden');
+                document.getElementById('pro-unlocked-view').classList.add('hidden');
+            }
+        }
+
+        function saveNtcData() {
+            localStorage.setItem('qqfrevo_ntc', JSON.stringify(ntcData));
+        }
+
+        function unlockPro() {
+            const input = document.getElementById('pro-code-input').value.trim().toUpperCase();
+            if (input === PRO_CODE) {
+                ntcData.unlocked = true;
+                ntcData.balance = 100;
+                ntcData.lastRefresh = Date.now();
+                saveNtcData();
+                checkNtcTokens();
+                showToast("Recursos PRO Desbloqueados com Sucesso!", "success");
+            } else {
+                showToast("Código inválido. Pegue o código correto no TikTok.", "error");
+            }
+        }
+
+        function updateNtcUI() {
+            document.getElementById('ntc-balance').innerText = ntcData.balance + " NTC";
+            
+            clearInterval(ntcTimerInterval);
+            
+            if (ntcData.balance < ASSET_COST) {
+                document.getElementById('ntc-timer').classList.remove('hidden');
+                document.getElementById('ntc-balance').classList.replace('bg-pink-600', 'bg-red-600');
+                
+                ntcTimerInterval = setInterval(() => {
+                    let now = Date.now();
+                    let timeLeft = (ntcData.lastRefresh + REFRESH_TIME) - now;
+                    
+                    if (timeLeft <= 0) {
+                        clearInterval(ntcTimerInterval);
+                        checkNtcTokens(); // Recarrega
+                    } else {
+                        let hours = Math.floor((timeLeft / (1000 * 60 * 60)) % 24);
+                        let minutes = Math.floor((timeLeft / 1000 / 60) % 60);
+                        let seconds = Math.floor((timeLeft / 1000) % 60);
+                        document.getElementById('time-left').innerText = `${hours}h ${minutes}m ${seconds}s`;
+                    }
+                }, 1000);
+            } else {
+                document.getElementById('ntc-timer').classList.add('hidden');
+                document.getElementById('ntc-balance').classList.replace('bg-red-600', 'bg-pink-600');
+            }
+        }
+
+        function useNtcToken(cost) {
+            if (ntcData.balance >= cost) {
+                ntcData.balance -= cost;
+                // Se for a primeira compra que zera ou diminui, inicia o ciclo de 6 horas a partir de agora?
+                // A regra diz que recarrega depois de 6h. Vamos contar 6h a partir do momento em que a primeira moeda foi gasta ou zera.
+                // Vou definir que o timer de 6h sempre corre desde o lastRefresh, se passou de 6h ele enche.
+                saveNtcData();
+                updateNtcUI();
+                return true;
+            } else {
+                showToast("Saldo NTC insuficiente! Aguarde o tempo de recarga.", "error");
+                return false;
+            }
+        }
+
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            
+            let bgClass = "bg-gray-800 border-gray-700 text-white";
+            let icon = "fa-info-circle text-blue-400";
+            
+            if (type === 'success') {
+                bgClass = "bg-gray-900 border-green-600 text-green-100";
+                icon = "fa-check-circle text-green-500";
+            } else if (type === 'error') {
+                bgClass = "bg-gray-900 border-red-600 text-red-100";
+                icon = "fa-exclamation-circle text-red-500";
+            }
+
+            toast.className = `flex items-center gap-3 px-4 py-3 rounded-lg border shadow-xl transform transition-all duration-300 translate-x-full opacity-0 ${bgClass}`;
+            toast.innerHTML = `<i class="fa-solid ${icon}"></i> <span class="text-sm font-medium">${message}</span>`;
+            
+            container.appendChild(toast);
+            
+            // Anima entrada
+            setTimeout(() => {
+                toast.classList.remove('translate-x-full', 'opacity-0');
+            }, 10);
+
+            // Remove após 3 seg
+            setTimeout(() => {
+                toast.classList.add('translate-x-full', 'opacity-0');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        function applyProGradient() {
+            const c1 = document.getElementById('pro-grad-1').value;
+            const c2 = document.getElementById('pro-grad-2').value;
+            
+            const grad = new fabric.Gradient({
+                type: 'radial',
+                coords: { 
+                    r1: 0, r2: CANVAS_SIZE, 
+                    x1: CANVAS_SIZE/2, y1: CANVAS_SIZE/2, 
+                    x2: CANVAS_SIZE/2, y2: CANVAS_SIZE/2 
+                },
+                colorStops: [
+                    { offset: 0, color: c1 },
+                    { offset: 1, color: c2 }
+                ]
+            });
+            canvas.setBackgroundColor(grad, canvas.renderAll.bind(canvas));
+            canvas.setBackgroundImage(null, canvas.renderAll.bind(canvas));
+            showToast("Gradiente PRO aplicado!", "success");
+        }
+
+        const SVG_ASSETS = {
+            paredao: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 150">
+                <!-- Chassi -->
+                <rect x="20" y="80" width="160" height="40" fill="#111827" rx="10"/>
+                <rect x="130" y="50" width="50" height="40" fill="#1f2937" rx="8"/>
+                <circle cx="50" cy="120" r="15" fill="#374151" stroke="#000" stroke-width="4"/>
+                <circle cx="150" cy="120" r="15" fill="#374151" stroke="#000" stroke-width="4"/>
+                <rect x="145" y="60" width="25" height="15" fill="#60a5fa" rx="2"/>
+                <!-- Paredão de Som -->
+                <rect x="25" y="20" width="100" height="60" fill="#9d174d" rx="4" stroke="#4c0519" stroke-width="3"/>
+                <!-- Alto falantes -->
+                <circle cx="45" cy="40" r="12" fill="#000"/><circle cx="45" cy="40" r="5" fill="#374151"/>
+                <circle cx="75" cy="40" r="12" fill="#000"/><circle cx="75" cy="40" r="5" fill="#374151"/>
+                <circle cx="105" cy="40" r="12" fill="#000"/><circle cx="105" cy="40" r="5" fill="#374151"/>
+                
+                <circle cx="45" cy="65" r="8" fill="#000"/>
+                <circle cx="75" cy="65" r="8" fill="#000"/>
+                <circle cx="105" cy="65" r="8" fill="#000"/>
+            </svg>`,
+            speaker: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 120">
+                <rect x="10" y="10" width="80" height="100" fill="#1e293b" rx="10" stroke="#3b82f6" stroke-width="4"/>
+                <circle cx="50" cy="35" r="15" fill="#0f172a" stroke="#475569" stroke-width="2"/>
+                <circle cx="50" cy="35" r="6" fill="#3b82f6"/>
+                <circle cx="50" cy="80" r="25" fill="#0f172a" stroke="#475569" stroke-width="3"/>
+                <circle cx="50" cy="80" r="10" fill="#3b82f6"/>
+                <path d="M 20 100 L 80 100" stroke="#334155" stroke-width="4" stroke-linecap="round"/>
+            </svg>`,
+            dj: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 100">
+                <rect x="10" y="20" width="180" height="60" fill="#1f2937" rx="5" stroke="#ec4899" stroke-width="2"/>
+                <!-- Disco 1 -->
+                <circle cx="50" cy="50" r="25" fill="#000" stroke="#374151" stroke-width="2"/>
+                <circle cx="50" cy="50" r="8" fill="#ec4899"/>
+                <!-- Mixer meio -->
+                <rect x="85" y="30" width="30" height="40" fill="#111827" rx="2"/>
+                <rect x="95" y="35" width="10" height="30" fill="#374151"/>
+                <rect x="92" y="50" width="16" height="5" fill="#fff" rx="1"/>
+                <!-- Disco 2 -->
+                <circle cx="150" cy="50" r="25" fill="#000" stroke="#374151" stroke-width="2"/>
+                <circle cx="150" cy="50" r="8" fill="#8b5cf6"/>
+            </svg>`,
+            notes: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+                <path d="M30 70 A10 10 0 1 1 20 80 L20 30 L70 20 L70 60 A10 10 0 1 1 60 70 L60 30 L30 36 Z" fill="#ec4899"/>
+            </svg>`,
+            headphones: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+                <path d="M20 50 A30 30 0 0 1 80 50" fill="none" stroke="#22d3ee" stroke-width="8" stroke-linecap="round"/>
+                <rect x="10" y="45" width="15" height="30" fill="#111827" stroke="#22d3ee" stroke-width="3" rx="5"/>
+                <rect x="75" y="45" width="15" height="30" fill="#111827" stroke="#22d3ee" stroke-width="3" rx="5"/>
+                <line x1="17" y1="50" x2="17" y2="70" stroke="#000" stroke-width="2"/>
+                <line x1="83" y1="50" x2="83" y2="70" stroke="#000" stroke-width="2"/>
+            </svg>`,
+            equalizer: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+                <rect x="10" y="60" width="12" height="30" fill="#ec4899" rx="2"/>
+                <rect x="28" y="30" width="12" height="60" fill="#8b5cf6" rx="2"/>
+                <rect x="46" y="10" width="12" height="80" fill="#22d3ee" rx="2"/>
+                <rect x="64" y="40" width="12" height="50" fill="#facc15" rx="2"/>
+                <rect x="82" y="20" width="12" height="70" fill="#ef4444" rx="2"/>
+            </svg>`
+        };
+
+        function addProAsset(type) {
+            if (!useNtcToken(ASSET_COST)) return;
+
+            const svgString = SVG_ASSETS[type];
+            fabric.loadSVGFromString(svgString, function(objects, options) {
+                const obj = fabric.util.groupSVGElements(objects, options);
+                
+                // Ajusta escala baseada no tamanho do canvas
+                const scale = (CANVAS_SIZE / 4) / Math.max(obj.width, obj.height);
+                
+                obj.set({
+                    left: CANVAS_SIZE / 2,
+                    top: CANVAS_SIZE / 2,
+                    originX: 'center',
+                    originY: 'center',
+                    scaleX: scale,
+                    scaleY: scale,
+                    cornerStyle: 'circle',
+                    cornerColor: '#ec4899',
+                    transparentCorners: false
+                });
+
+                canvas.add(obj);
+                canvas.setActiveObject(obj);
+                showToast("Item PRO adicionado na imagem!", "success");
+            });
+        }
+        
+        function setProBackground(type) {
+            if (!useNtcToken(5)) return; // Fundos custam 5 NTC
+            
+            let colorStops;
+            if (type === 'neon-pink') {
+                colorStops = [{ offset: 0, color: '#4c1d95' }, { offset: 1, color: '#000000' }];
+            } else if (type === 'neon-cyan') {
+                colorStops = [{ offset: 0, color: '#164e63' }, { offset: 1, color: '#000000' }];
+            }
+            
+            const grad = new fabric.Gradient({
+                type: 'radial',
+                coords: { r1: 0, r2: CANVAS_SIZE, x1: CANVAS_SIZE/2, y1: CANVAS_SIZE/2, x2: CANVAS_SIZE/2, y2: CANVAS_SIZE/2 },
+                colorStops: colorStops
+            });
+            
+            canvas.setBackgroundColor(grad, canvas.renderAll.bind(canvas));
+            canvas.setBackgroundImage(null, canvas.renderAll.bind(canvas));
+            showToast("Fundo Neon Aplicado!", "success");
+        }
+
+        function addProText(fontFamily, glowColor) {
+            if (!useNtcToken(10)) return;
+            
+            const text = new fabric.IText('GRAFFITI', {
+                left: CANVAS_SIZE / 2, top: CANVAS_SIZE / 2, originX: 'center', originY: 'center',
+                fontFamily: fontFamily, fontSize: 120, fill: '#ffffff', textAlign: 'center',
+                shadow: new fabric.Shadow({ color: glowColor, blur: 20, offsetX: 0, offsetY: 0 })
+            });
+            
+            canvas.add(text);
+            canvas.setActiveObject(text);
+            showToast("Texto Grafite Adicionado!", "success");
+        }
+
+        function addProFrame(type) {
+            if (!useNtcToken(10)) return;
+            
+            let options = {
+                left: CANVAS_SIZE/2, top: CANVAS_SIZE/2, originX: 'center', originY: 'center',
+                fill: 'transparent',
+                selectable: true,
+                evented: true
+            };
+
+            let frame;
+            if (type === 'pink') {
+                frame = new fabric.Rect({ ...options, width: CANVAS_SIZE - 150, height: CANVAS_SIZE - 150, stroke: '#ec4899', strokeWidth: 15, rx: 30, ry: 30, shadow: new fabric.Shadow({ color: '#ec4899', blur: 30 }) });
+            } else if (type === 'cyan') {
+                frame = new fabric.Circle({ ...options, radius: (CANVAS_SIZE/2) - 100, stroke: '#22d3ee', strokeWidth: 15, shadow: new fabric.Shadow({ color: '#22d3ee', blur: 30 }) });
+            } else if (type === 'gold') {
+                // Losango
+                frame = new fabric.Rect({ ...options, width: 600, height: 600, stroke: '#facc15', strokeWidth: 10, shadow: new fabric.Shadow({ color: '#ca8a04', blur: 20 }), angle: 45 });
+            }
+
+            if (frame) {
+                canvas.add(frame);
+                canvas.setActiveObject(frame);
+                showToast("Moldura adicionada!", "success");
+            }
+        }
+
+        function addProLayout(type) {
+            if (!useNtcToken(20)) return; // Layouts completos custam 20
+            
+            // Limpa algumas coisas para o layout (opcional, aqui só vamos sobrepor)
+            if (type === 'party') {
+                setProBackground('neon-pink');
+                
+                // Adiciona Moldura
+                const frame = new fabric.Rect({
+                    left: CANVAS_SIZE/2, top: CANVAS_SIZE/2, originX: 'center', originY: 'center',
+                    width: CANVAS_SIZE - 80, height: CANVAS_SIZE - 80,
+                    fill: 'transparent', stroke: '#22d3ee', strokeWidth: 10,
+                    shadow: new fabric.Shadow({ color: '#22d3ee', blur: 20 })
+                });
+                
+                // Adiciona Texto Título
+                const title = new fabric.IText('MEGA ENCONTRO', {
+                    left: CANVAS_SIZE / 2, top: 200, originX: 'center', originY: 'center',
+                    fontFamily: 'Bangers', fontSize: 130, fill: '#facc15',
+                    shadow: new fabric.Shadow({ color: '#000000', blur: 10, offsetX: 5, offsetY: 5 }),
+                    stroke: '#000000', strokeWidth: 3
+                });
+
+                // Adiciona Data
+                const date = new fabric.IText('HOJE ÀS 22H', {
+                    left: CANVAS_SIZE / 2, top: CANVAS_SIZE - 200, originX: 'center', originY: 'center',
+                    fontFamily: 'Montserrat', fontWeight: 'bold', fontSize: 60, fill: '#ffffff',
+                    shadow: new fabric.Shadow({ color: '#ec4899', blur: 15 })
+                });
+
+                canvas.add(frame, title, date);
+                showToast("Layout Automotivo Carregado!", "success");
+            }
+        }
+
+
+        function switchTab(tabId) {
+            // Reseta botões e painéis
+            document.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active', 'bg-blue-600', 'text-white'));
+            document.querySelectorAll('.tool-btn').forEach(btn => btn.classList.add('text-gray-400'));
+            
+            document.querySelectorAll('.panel-content').forEach(panel => panel.classList.add('hidden'));
+            
+            // Ativa o clicado
+            const activeBtn = document.getElementById(`tab-${tabId}`);
+            activeBtn.classList.add('active', 'text-white');
+            activeBtn.classList.remove('text-gray-400');
+            
+            document.getElementById(`panel-${tabId}`).classList.remove('hidden');
+
+            // Desativa modo de desenho se sair da aba
+            if (tabId !== 'draw') {
+                toggleDrawMode(false);
+            }
+        }
+
+        // Sistema de Zoom visual usando CSS Transform (mantém a qualidade 1080x1080 intocada)
+        function fitCanvas() {
+            const workspace = document.getElementById('canvas-workspace');
+            const wrapper = document.getElementById('canvas-wrapper');
+            
+            // Margem para não ficar colado nas bordas
+            const padding = 60; 
+            
+            const scaleX = (workspace.clientWidth - padding) / CANVAS_SIZE;
+            const scaleY = (workspace.clientHeight - padding) / CANVAS_SIZE;
+            
+            // Pega o menor scale para caber inteiro
+            currentZoom = Math.min(scaleX, scaleY);
+            
+            applyZoom();
+        }
+
+        function zoomWorkspace(factor) {
+            currentZoom *= factor;
+            applyZoom();
+        }
+
+        function applyZoom() {
+            const wrapper = document.getElementById('canvas-wrapper');
+            wrapper.style.transform = `scale(${currentZoom})`;
+            document.getElementById('zoom-level').innerText = `${Math.round(currentZoom * 100)}%`;
+        }
+
+        function setBgColor(color) {
+            canvas.setBackgroundColor(color, canvas.renderAll.bind(canvas));
+            canvas.setBackgroundImage(null, canvas.renderAll.bind(canvas));
+        }
+
+        function setGradientBg(colors) {
+            const grad = new fabric.Gradient({
+                type: 'linear',
+                coords: { x1: 0, y1: 0, x2: CANVAS_SIZE, y2: CANVAS_SIZE },
+                colorStops: [
+                    { offset: 0, color: colors[0] },
+                    { offset: 1, color: colors[1] }
+                ]
+            });
+            canvas.setBackgroundColor(grad, canvas.renderAll.bind(canvas));
+            canvas.setBackgroundImage(null, canvas.renderAll.bind(canvas));
+        }
+
+        function handleBgUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(f) {
+                const data = f.target.result;
+                fabric.Image.fromURL(data, function(img) {
+                    // Ajusta a imagem para cobrir o canvas
+                    const scale = Math.max(CANVAS_SIZE / img.width, CANVAS_SIZE / img.height);
+                    img.set({
+                        originX: 'center',
+                        originY: 'center',
+                        left: CANVAS_SIZE / 2,
+                        top: CANVAS_SIZE / 2,
+                        scaleX: scale,
+                        scaleY: scale
+                    });
+                    canvas.setBackgroundImage(img, canvas.renderAll.bind(canvas));
+                });
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function addText(type) {
+            const textOptions = type === 'title' ? {
+                text: 'NOVO TÍTULO',
+                fontSize: 100,
+                fontWeight: 'bold',
+                fontFamily: 'Montserrat',
+                top: 200
+            } : {
+                text: 'Adicione sua descrição ou texto secundário aqui.',
+                fontSize: 40,
+                fontFamily: 'Open Sans',
+                top: 400
+            };
+
+            const text = new fabric.IText(textOptions.text, {
+                left: CANVAS_SIZE / 2,
+                top: textOptions.top,
+                originX: 'center',
+                originY: 'center',
+                fill: '#000000',
+                fontSize: textOptions.fontSize,
+                fontWeight: textOptions.fontWeight || 'normal',
+                fontFamily: textOptions.fontFamily,
+                textAlign: 'center',
+                cornerColor: '#3b82f6',
+                cornerStyle: 'circle',
+                transparentCorners: false
+            });
+
+            canvas.add(text);
+            canvas.setActiveObject(text);
+        }
+
+        function addShape(type) {
+            let shape;
+            const center = { left: CANVAS_SIZE/2, top: CANVAS_SIZE/2, originX: 'center', originY: 'center', fill: '#3b82f6', cornerColor: '#3b82f6', cornerStyle: 'circle', transparentCorners: false };
+
+            if (type === 'rect') {
+                shape = new fabric.Rect({ ...center, width: 300, height: 300, rx: 20, ry: 20 });
+            } else if (type === 'circle') {
+                shape = new fabric.Circle({ ...center, radius: 150 });
+            } else if (type === 'triangle') {
+                shape = new fabric.Triangle({ ...center, width: 300, height: 300 });
+            } else if (type === 'line') {
+                shape = new fabric.Line([50, 100, 450, 100], {
+                    left: CANVAS_SIZE/2, top: CANVAS_SIZE/2, originX: 'center', originY: 'center',
+                    stroke: '#3b82f6', strokeWidth: 15, cornerColor: '#3b82f6', cornerStyle: 'circle'
+                });
+            }
+
+            if (shape) {
+                canvas.add(shape);
+                canvas.setActiveObject(shape);
+            }
+        }
+
+        function toggleDrawMode(enable) {
+            canvas.isDrawingMode = enable;
+            
+            const btnOn = document.getElementById('btn-draw-on');
+            const btnOff = document.getElementById('btn-draw-off');
+            const settings = document.getElementById('draw-settings');
+
+            if (enable) {
+                btnOn.classList.replace('text-gray-400', 'text-white');
+                btnOn.classList.replace('hover:text-white', 'bg-blue-600');
+                btnOn.classList.add('shadow');
+                
+                btnOff.classList.replace('bg-gray-600', 'hover:text-white');
+                btnOff.classList.replace('shadow', 'text-gray-400');
+                btnOff.classList.remove('text-white');
+                
+                settings.classList.remove('opacity-50', 'pointer-events-none');
+            } else {
+                btnOff.classList.replace('text-gray-400', 'text-white');
+                btnOff.classList.replace('hover:text-white', 'bg-gray-600');
+                btnOff.classList.add('shadow');
+                
+                btnOn.classList.replace('bg-blue-600', 'hover:text-white');
+                btnOn.classList.replace('shadow', 'text-gray-400');
+                btnOn.classList.remove('text-white');
+                
+                settings.classList.add('opacity-50', 'pointer-events-none');
+            }
+        }
+
+        function updateBrush() {
+            if(!canvas) return;
+            const brushType = document.getElementById('brush-type').value;
+            const color = document.getElementById('brush-color').value;
+            const width = parseInt(document.getElementById('brush-size').value, 10);
+            
+            document.getElementById('brush-size-val').innerText = width;
+
+            if (brushType === 'Pencil') {
+                canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
+            } else if (brushType === 'Circle') {
+                canvas.freeDrawingBrush = new fabric.CircleBrush(canvas);
+            } else if (brushType === 'Spray') {
+                canvas.freeDrawingBrush = new fabric.SprayBrush(canvas);
+            }
+
+            if (canvas.freeDrawingBrush) {
+                canvas.freeDrawingBrush.color = color;
+                canvas.freeDrawingBrush.width = width;
+            }
+        }
+
+        function handleSelection(e) {
+            const activeObj = e.selected[0];
+            if (!activeObj) return;
+
+            document.getElementById('properties-panel').classList.remove('hidden');
+            document.getElementById('no-selection-msg').classList.add('hidden');
+            document.getElementById('selection-tools').classList.remove('hidden');
+
+            // Atualiza inputs com os valores do objeto
+            if (activeObj.fill && typeof activeObj.fill === 'string') {
+                document.getElementById('prop-fill').value = activeObj.fill;
+            }
+            if (activeObj.stroke && typeof activeObj.stroke === 'string') {
+                document.getElementById('prop-stroke').value = activeObj.stroke;
+            }
+            
+            document.getElementById('prop-opacity').value = activeObj.opacity || 1;
+            document.getElementById('prop-opacity-val').innerText = Math.round((activeObj.opacity || 1) * 100);
+
+            // Esconde/Mostra propriedades específicas de texto
+            const textPanel = document.getElementById('prop-text-container');
+            if (activeObj.type === 'i-text' || activeObj.type === 'text') {
+                textPanel.classList.remove('hidden');
+                document.getElementById('prop-fontFamily').value = activeObj.fontFamily || 'Roboto';
+                
+                // Estilo botões Bold/Italic
+                const btnBold = document.getElementById('btn-bold');
+                activeObj.fontWeight === 'bold' ? btnBold.classList.add('bg-blue-600') : btnBold.classList.remove('bg-blue-600');
+                
+                const btnItalic = document.getElementById('btn-italic');
+                activeObj.fontStyle === 'italic' ? btnItalic.classList.add('bg-blue-600') : btnItalic.classList.remove('bg-blue-600');
+            } else {
+                textPanel.classList.add('hidden');
+            }
+        }
+
+        function handleSelectionCleared() {
+            document.getElementById('properties-panel').classList.add('hidden');
+            document.getElementById('no-selection-msg').classList.remove('hidden');
+            document.getElementById('selection-tools').classList.add('hidden');
+        }
+
+        function updateObjectProp(prop, value) {
+            const activeObj = canvas.getActiveObject();
+            if (activeObj) {
+                activeObj.set(prop, value);
+                canvas.requestRenderAll();
+            }
+        }
+
+        function toggleTextProp(prop, valueOn, valueOff) {
+            const activeObj = canvas.getActiveObject();
+            if (activeObj && (activeObj.type === 'i-text' || activeObj.type === 'text')) {
+                const current = activeObj.get(prop);
+                const newValue = current === valueOn ? valueOff : valueOn;
+                activeObj.set(prop, newValue);
+                canvas.requestRenderAll();
+                handleSelection({ selected: [activeObj] }); // Atualiza UI
+            }
+        }
+
+        function deleteSelected() {
+            const activeObjs = canvas.getActiveObjects();
+            if (activeObjs.length) {
+                canvas.discardActiveObject();
+                activeObjs.forEach(function(object) {
+                    canvas.remove(object);
+                });
+            }
+        }
+
+        function cloneSelected() {
+            const activeObj = canvas.getActiveObject();
+            if (!activeObj) return;
+
+            activeObj.clone(function(cloned) {
+                canvas.discardActiveObject();
+                cloned.set({
+                    left: cloned.left + 50,
+                    top: cloned.top + 50,
+                    evented: true,
+                });
+                if (cloned.type === 'activeSelection') {
+                    cloned.canvas = canvas;
+                    cloned.forEachObject(function(obj) { canvas.add(obj); });
+                    cloned.setCoords();
+                } else {
+                    canvas.add(cloned);
+                }
+                canvas.setActiveObject(cloned);
+                canvas.requestRenderAll();
+            });
+        }
+
+        function updateLayersList() {
+            const list = document.getElementById('layers-list');
+            list.innerHTML = '';
+            
+            const objects = canvas.getObjects();
+            if(objects.length === 0) {
+                list.innerHTML = '<p class="text-xs text-gray-500 text-center py-4">Canvas vazio.</p>';
+                return;
+            }
+
+            // Invertemos a iteração para que os itens de cima (maior z-index) apareçam primeiro na lista se usarmos flex-col normal, 
+            // mas estamos usando flex-col-reverse no CSS, então a ordem natural do fabric.js (0 é fundo, length-1 é topo) se encaixa bem.
+            objects.forEach((obj, index) => {
+                const item = document.createElement('div');
+                item.className = 'flex items-center justify-between bg-gray-800 p-2 rounded border border-gray-700 hover:border-blue-500 cursor-pointer';
+                
+                // Nomear com base no tipo
+                let name = 'Camada';
+                let icon = 'fa-layer-group';
+                if(obj.type === 'i-text' || obj.type === 'text') { name = obj.text.substring(0, 10) + '...'; icon = 'fa-font'; }
+                else if(obj.type === 'rect') { name = 'Retângulo'; icon = 'fa-square'; }
+                else if(obj.type === 'circle') { name = 'Círculo'; icon = 'fa-circle'; }
+                else if(obj.type === 'triangle') { name = 'Triângulo'; icon = 'fa-play'; }
+                else if(obj.type === 'path') { name = 'Desenho (Brush)'; icon = 'fa-paint-brush'; }
+                
+                item.innerHTML = `
+                    <div class="flex items-center gap-2 text-sm text-gray-300">
+                        <i class="fa-solid ${icon} text-gray-500"></i>
+                        <span>${name}</span>
+                    </div>
+                `;
+                
+                // Se o objeto estiver selecionado, destaca a camada
+                if (canvas.getActiveObject() === obj) {
+                    item.classList.add('border-blue-500', 'bg-gray-700');
+                }
+
+                item.onclick = () => {
+                    canvas.setActiveObject(obj);
+                    canvas.requestRenderAll();
+                };
+                
+                list.appendChild(item);
+            });
+        }
+
+        function moveLayer(direction) {
+            const activeObj = canvas.getActiveObject();
+            if (!activeObj) return;
+
+            if (direction === 'up') {
+                canvas.bringForward(activeObj);
+            } else if (direction === 'down') {
+                canvas.sendBackwards(activeObj);
+            }
+            
+            // Corrige caso jogue para trás do background image, no Fabric Background é separado, mas por segurança repinta
+            canvas.discardActiveObject();
+            canvas.setActiveObject(activeObj);
+            updateLayersList();
+        }
+
+        // Função para alternar visibilidade do menu de exportação
+        function toggleExportMenu() {
+            const menu = document.getElementById('export-menu');
+            menu.classList.toggle('hidden');
+        }
+        
+        // Fecha o menu se clicar fora
+        document.addEventListener('click', function(event) {
+            const exportBtn = document.querySelector('button[onclick="toggleExportMenu()"]');
+            const menu = document.getElementById('export-menu');
+            if (exportBtn && !exportBtn.contains(event.target) && !menu.contains(event.target)) {
+                menu.classList.add('hidden');
+            }
+        });
+
+        function exportCanvas(format) {
+            // Esconde o menu de exportação imediatamente após a escolha
+            document.getElementById('export-menu').classList.add('hidden');
+
+            // Verifica se há objetos no canvas
+            if (canvas.getObjects().length === 0) {
+                showToast("(conteúdo vazio, adicione algumas coisas antes de exportar.)", "error");
+                return; // Interrompe a exportação
+            }
+
+            // Remove seleção antes de exportar para não mostrar a caixa de controle
+            canvas.discardActiveObject();
+            canvas.requestRenderAll();
+
+            const dataURL = canvas.toDataURL({
+                format: format === 'jpeg' ? 'jpeg' : 'png', // BMP fallbacks to PNG internally on standard web canvas unless specifically handled
+                quality: 1, // Max quality para JPEG
+                multiplier: 1 // 1x o tamanho real (1080x1080)
+            });
+
+            const link = document.createElement('a');
+            const date = new Date().getTime();
+            
+            // Define a extensão do arquivo
+            let ext = format === 'jpeg' ? 'jpg' : (format === 'bmp' ? 'bmp' : 'png'); 
+            
+            link.download = `QQfrevo_Card_${date}.${ext}`;
+            link.href = dataURL;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            showToast(`Imagem exportada como ${ext.toUpperCase()} com sucesso!`, "success");
+        }
+
+        // Atalhos de teclado
+        window.addEventListener('keydown', function(e) {
+            if (e.key === 'Delete' || e.key === 'Backspace') {
+                // Não deleta se estiver editando texto
+                if(canvas.getActiveObject() && canvas.getActiveObject().isEditing) return;
+                deleteSelected();
+            }
+        });
+
+    </script>
+</body>
+</html>
