@@ -1,0 +1,1026 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>QQfrevo Flyer Maker</title>
+
+    <!-- Fontes do Google (25+ Fontes) -->
+    <link href="https://fonts.googleapis.com/css2?family=Anton&family=Bangers&family=Bebas+Neue&family=Caveat&family=Cinzel:wght@700&family=Comfortaa:wght@700&family=Dancing+Script:wght@700&family=Inter:wght@400;700;900&family=Lobster&family=Montserrat:wght@400;700;900&family=Oswald:wght@400;700&family=Pacifico&family=Permanent+Marker&family=Playfair+Display:wght@700&family=Poppins:wght@400;700;900&family=Press+Start+2P&family=Righteous&family=Roboto:wght@400;700;900&family=Rock+Salt&family=Sedgwick+Ave&family=Teko:wght@600&family=Ubuntu:wght@700&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Fabric.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
+
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Configuração de Cores Customizadas Tailwind -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        frevo: { dark: '#111827', panel: '#1F2937', accent: '#8B5CF6', neon: '#D946EF' }
+                    },
+                    fontFamily: { sans: ['Inter', 'sans-serif'] }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #1F2937; }
+        ::-webkit-scrollbar-thumb { background: #4B5563; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #6B7280; }
+
+        body { background-color: #030712; color: #fff; overflow: hidden; font-family: 'Inter', sans-serif; }
+        
+        .tool-btn { @apply w-full text-left px-3 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white rounded transition flex items-center gap-2; }
+        .tool-btn.active { @apply bg-frevo-accent text-white font-semibold shadow-lg; }
+        
+        /* Grid Checkerboard pattern for transparent canvas e CSS CORRIGIDO DE ESCALA */
+        .canvas-container-wrapper {
+            background-image: linear-gradient(45deg, #1f2937 25%, transparent 25%), 
+                              linear-gradient(-45deg, #1f2937 25%, transparent 25%), 
+                              linear-gradient(45deg, transparent 75%, #1f2937 75%), 
+                              linear-gradient(-45deg, transparent 75%, #1f2937 75%);
+            background-size: 20px 20px;
+            background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+            box-shadow: 0 0 40px rgba(0,0,0,0.8);
+            border: 2px solid #374151;
+            /* CRÍTICO: Garante que o container siga o tamanho exato do canvas interno antes do transform */
+            width: 1080px;
+            height: 1080px;
+            /* Usamos transform-origin no topo esquerdo e centralizamos o wrapper inteiro com flexbox */
+            transform-origin: top left;
+            position: absolute; /* Necessário para alinhar com facilidade usando JS */
+        }
+
+        /* O Canvas do Fabric.js não deve forçar 100% aqui, o wrapper cuida da escala */
+        .canvas-container { margin: 0 auto; }
+
+        input[type=range] { @apply w-full h-1 bg-gray-600 rounded-lg appearance-none cursor-pointer; }
+        input[type=range]::-webkit-slider-thumb { @apply appearance-none w-3 h-3 bg-frevo-accent rounded-full shadow; }
+        input[type=color] { @apply w-8 h-8 rounded cursor-pointer border-0 p-0 bg-transparent; }
+        
+        .toast-enter { animation: toastIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+        .toast-leave { animation: toastOut 0.3s ease-in forwards; }
+        
+        @keyframes toastIn { from { transform: translateY(-100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        @keyframes toastOut { from { transform: translateY(0); opacity: 1; } to { transform: translateY(-100%); opacity: 0; } }
+    </style>
+</head>
+<body class="h-screen flex flex-col flex-nowrap">
+
+    <!-- Navbar -->
+    <header class="h-14 bg-frevo-panel border-b border-gray-700 flex items-center justify-between px-4 shrink-0 z-20 relative">
+        <div class="flex items-center gap-3">
+            <div class="w-8 h-8 bg-gradient-to-br from-frevo-accent to-frevo-neon rounded-lg flex items-center justify-center shadow-lg shadow-purple-500/20">
+                <i class="fa-solid fa-bolt text-white text-sm"></i>
+            </div>
+            <h1 class="font-black text-lg tracking-wider bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400">QQFREVO <span class="text-frevo-accent">FLYER MAKER</span></h1>
+        </div>
+
+        <div class="flex items-center gap-2">
+            <!-- Ferramentas Globais (Histórico) -->
+            <button onclick="undo()" class="p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded transition tooltip" title="Desfazer">
+                <i class="fa-solid fa-rotate-left"></i>
+            </button>
+            <button onclick="clearCanvas()" class="p-2 text-gray-400 hover:text-red-400 hover:bg-gray-700 rounded transition tooltip" title="Limpar Tudo">
+                <i class="fa-solid fa-trash"></i>
+            </button>
+
+            <!-- Install PWA App -->
+            <button id="btn-install" class="hidden items-center gap-2 bg-green-600 hover:bg-green-500 text-white px-3 py-1.5 rounded text-sm font-bold ml-4 shadow-lg transition">
+                <i class="fa-solid fa-mobile-screen"></i> Instalar App
+            </button>
+
+            <!-- Exportar Dropdown -->
+            <div class="relative ml-4">
+                <button onclick="toggleDropdown('export-menu')" class="bg-gradient-to-r from-frevo-accent to-purple-600 hover:from-purple-500 hover:to-frevo-neon text-white px-5 py-1.5 rounded font-bold shadow-lg shadow-purple-500/20 flex items-center gap-2 transition">
+                    <i class="fa-solid fa-download"></i> Exportar
+                </button>
+                <div id="export-menu" class="hidden absolute right-0 mt-2 w-48 bg-gray-800 border border-gray-700 rounded-lg shadow-2xl overflow-hidden z-50">
+                    <button onclick="exportImage('png')" class="w-full text-left px-4 py-2 hover:bg-gray-700 flex justify-between items-center text-sm">PNG (Alta Qualidade) <i class="fa-regular fa-image text-gray-400"></i></button>
+                    <button onclick="exportImage('jpeg')" class="w-full text-left px-4 py-2 hover:bg-gray-700 flex justify-between items-center text-sm">JPEG (Redes Sociais) <i class="fa-solid fa-image text-gray-400"></i></button>
+                    <button onclick="exportImage('bmp')" class="w-full text-left px-4 py-2 hover:bg-gray-700 flex justify-between items-center text-sm">BMP (Sem perdas) <i class="fa-solid fa-file-image text-gray-400"></i></button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-1 flex overflow-hidden">
+        <!-- Left Sidebar: Tools Menu -->
+        <aside class="w-64 bg-frevo-panel border-r border-gray-700 flex flex-col shrink-0 z-10">
+            <!-- Tabs -->
+            <div class="flex overflow-x-auto p-2 gap-1 border-b border-gray-700 shrink-0 custom-scrollbar">
+                <button onclick="switchTab('bg')" id="tab-bg" class="px-3 py-1.5 text-xs font-bold rounded bg-gray-700 text-white shrink-0">Fundo</button>
+                <button onclick="switchTab('text')" id="tab-text" class="px-3 py-1.5 text-xs font-bold rounded hover:bg-gray-700 text-gray-400 shrink-0">Texto</button>
+                <button onclick="switchTab('shapes')" id="tab-shapes" class="px-3 py-1.5 text-xs font-bold rounded hover:bg-gray-700 text-gray-400 shrink-0">Formas</button>
+                <button onclick="switchTab('draw')" id="tab-draw" class="px-3 py-1.5 text-xs font-bold rounded hover:bg-gray-700 text-gray-400 shrink-0">Desenho</button>
+                <button onclick="switchTab('pro')" id="tab-pro" class="px-3 py-1.5 text-xs font-bold rounded hover:bg-gray-700 text-frevo-neon shrink-0"><i class="fa-solid fa-crown"></i> PRO</button>
+            </div>
+
+            <!-- Content of Tabs -->
+            <div class="flex-1 overflow-y-auto p-4">
+                
+                <!-- Tab: Fundo -->
+                <div id="panel-bg" class="block space-y-4">
+                    <div>
+                        <label class="text-xs font-bold text-gray-400 uppercase mb-2 block">Upload / Imagem</label>
+                        <input type="file" id="bg-upload" accept="image/*" class="hidden" onchange="uploadImage(event, true)">
+                        <button onclick="document.getElementById('bg-upload').click()" class="w-full bg-gray-700 hover:bg-gray-600 py-2 rounded text-sm flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-image"></i> Escolher Fundo
+                        </button>
+                    </div>
+                    <div>
+                        <label class="text-xs font-bold text-gray-400 uppercase mb-2 block">Cores Sólidas</label>
+                        <div class="grid grid-cols-5 gap-2">
+                            <button onclick="setBgColor('#000000')" class="h-8 rounded bg-black border border-gray-600"></button>
+                            <button onclick="setBgColor('#ffffff')" class="h-8 rounded bg-white border border-gray-600"></button>
+                            <button onclick="setBgColor('#1f2937')" class="h-8 rounded bg-gray-800 border border-gray-600"></button>
+                            <button onclick="setBgColor('#ef4444')" class="h-8 rounded bg-red-500 border border-gray-600"></button>
+                            <button onclick="setBgColor('#3b82f6')" class="h-8 rounded bg-blue-500 border border-gray-600"></button>
+                            <button onclick="setBgColor('#10b981')" class="h-8 rounded bg-green-500 border border-gray-600"></button>
+                            <button onclick="setBgColor('#8b5cf6')" class="h-8 rounded bg-purple-500 border border-gray-600"></button>
+                            <button onclick="setBgColor('#f59e0b')" class="h-8 rounded bg-yellow-500 border border-gray-600"></button>
+                            <button onclick="setBgColor('#d946ef')" class="h-8 rounded bg-pink-500 border border-gray-600"></button>
+                            <input type="color" id="custom-bg-color" onchange="setBgColor(this.value)" class="w-full h-8 cursor-pointer rounded border border-gray-600">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="text-xs font-bold text-gray-400 uppercase mb-2 block">Layouts / Grids</label>
+                        <button onclick="applyGrid2x2()" class="w-full bg-gray-800 border border-gray-600 hover:border-gray-400 py-2 rounded text-sm mb-2">Grid 4 Fotos (2x2)</button>
+                        <button onclick="applyTemplate('explosao')" class="w-full bg-gray-800 border border-gray-600 hover:border-gray-400 py-2 rounded text-sm mb-2">Template: Explosão</button>
+                    </div>
+                </div>
+
+                <!-- Tab: Texto -->
+                <div id="panel-text" class="hidden space-y-3">
+                    <button onclick="addText('TÍTULO PRINCIPAL', 100, 'Inter', true)" class="w-full bg-gray-700 hover:bg-gray-600 py-3 rounded text-lg font-black tracking-wide">Adicionar Título</button>
+                    <button onclick="addText('Subtítulo do Evento', 60, 'Montserrat', false)" class="w-full bg-gray-800 border border-gray-600 hover:bg-gray-700 py-2 rounded text-md font-bold">Adicionar Subtítulo</button>
+                    <button onclick="addText('Descrição longa, data, local e informações do frevo aqui.', 40, 'Roboto', false)" class="w-full bg-gray-800 border border-gray-600 hover:bg-gray-700 py-2 rounded text-sm text-gray-300">Corpo de Texto</button>
+                    
+                    <div class="pt-4 border-t border-gray-700">
+                        <label class="text-xs font-bold text-gray-400 uppercase mb-2 block">Stickers (SVG)</label>
+                        <div class="grid grid-cols-2 gap-2">
+                            <button onclick="addSVG('sombrinha')" class="bg-gray-800 hover:bg-gray-700 p-2 rounded text-xs text-center"><i class="fa-solid fa-umbrella text-red-400 text-lg mb-1 block"></i> Sombrinha</button>
+                            <button onclick="addSVG('mascara')" class="bg-gray-800 hover:bg-gray-700 p-2 rounded text-xs text-center"><i class="fa-solid fa-masks-theater text-purple-400 text-lg mb-1 block"></i> Máscara</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab: Formas -->
+                <div id="panel-shapes" class="hidden space-y-3">
+                    <div class="grid grid-cols-2 gap-2">
+                        <button onclick="addShape('rect')" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 py-4 rounded flex justify-center"><div class="w-8 h-8 bg-gray-400"></div></button>
+                        <button onclick="addShape('circle')" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 py-4 rounded flex justify-center"><div class="w-8 h-8 bg-gray-400 rounded-full"></div></button>
+                        <button onclick="addShape('triangle')" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 py-4 rounded flex justify-center"><div class="w-0 h-0 border-l-[16px] border-l-transparent border-b-[28px] border-b-gray-400 border-r-[16px] border-r-transparent"></div></button>
+                        <button onclick="addShape('line')" class="bg-gray-800 hover:bg-gray-700 border border-gray-700 py-4 rounded flex items-center justify-center"><div class="w-10 h-1 bg-gray-400 rotate-45"></div></button>
+                    </div>
+                    
+                    <label class="text-xs font-bold text-gray-400 uppercase mt-4 mb-2 block">Upload de Elemento</label>
+                    <input type="file" id="obj-upload" accept="image/*" class="hidden" onchange="uploadImage(event, false)">
+                    <button onclick="document.getElementById('obj-upload').click()" class="w-full bg-frevo-accent hover:bg-purple-500 py-2 rounded text-sm font-bold flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-cloud-arrow-up"></i> Inserir Imagem (PNG/JPG)
+                    </button>
+                </div>
+
+                <!-- Tab: Desenho -->
+                <div id="panel-draw" class="hidden space-y-4">
+                    <div class="flex items-center justify-between p-3 bg-gray-800 rounded-lg border border-gray-700">
+                        <span class="text-sm font-bold">Modo Desenho</span>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="draw-mode-toggle" class="sr-only peer" onchange="toggleDrawingMode()">
+                            <div class="w-11 h-6 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-frevo-accent"></div>
+                        </label>
+                    </div>
+
+                    <div id="draw-settings" class="opacity-50 pointer-events-none transition-opacity">
+                        <label class="text-xs font-bold text-gray-400 uppercase mb-2 block">Cor do Pincel</label>
+                        <div class="flex gap-2 mb-4">
+                            <input type="color" id="draw-color" value="#ffffff" class="w-10 h-10 rounded border border-gray-600" onchange="updateDrawStyle()">
+                        </div>
+
+                        <label class="text-xs font-bold text-gray-400 uppercase mb-2 flex justify-between">Tamanho <span id="draw-size-val">10</span></label>
+                        <input type="range" id="draw-size" min="1" max="150" value="10" oninput="document.getElementById('draw-size-val').innerText=this.value; updateDrawStyle()">
+                        
+                        <label class="text-xs font-bold text-gray-400 uppercase mt-4 mb-2 block">Tipo de Pincel</label>
+                        <select id="draw-type" class="w-full bg-gray-800 border border-gray-600 text-white text-sm rounded p-2" onchange="updateDrawStyle()">
+                            <option value="Pencil">Lápis (Sólido)</option>
+                            <option value="Circle">Círculo Suave</option>
+                            <option value="Spray">Spray (Graffiti)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Tab: PRO -->
+                <div id="panel-pro" class="hidden h-full flex flex-col">
+                    <!-- Tela de Bloqueio PRO -->
+                    <div id="pro-locked" class="text-center py-6">
+                        <i class="fa-solid fa-lock text-4xl text-gray-500 mb-4"></i>
+                        <h3 class="font-black text-lg text-frevo-neon mb-2">Recursos PRO</h3>
+                        <p class="text-xs text-gray-400 mb-6">Desbloqueie ferramentas exclusivas, paredes de som, fontes graffiti e fundos neon.</p>
+                        
+                        <div class="bg-gray-800 p-4 rounded-lg border border-gray-700 mb-4">
+                            <p class="text-sm font-bold mb-3">Como desbloquear?</p>
+                            <p class="text-xs text-gray-400 mb-4">Acesse meu TikTok, vá na BIO e pegue o código de acesso livre.</p>
+                            <a href="https://www.tiktok.com/@vulgo_acelerado_ofc" target="_blank" class="block w-full bg-black hover:bg-gray-900 border border-gray-700 text-white py-2 rounded text-sm font-bold flex items-center justify-center gap-2 mb-4 transition">
+                                <i class="fa-brands fa-tiktok"></i> Meu Perfil no TikTok
+                            </a>
+                            
+                            <input type="text" id="pro-code-input" placeholder="Digite o código da bio..." class="w-full bg-gray-900 border border-gray-600 text-white text-center rounded py-2 mb-2 focus:outline-none focus:border-frevo-accent">
+                            <button onclick="unlockPro()" class="w-full bg-frevo-neon hover:bg-pink-600 text-white font-bold py-2 rounded transition">Validar Código</button>
+                        </div>
+                    </div>
+
+                    <!-- Conteúdo PRO Desbloqueado -->
+                    <div id="pro-unlocked" class="hidden space-y-4">
+                        <div class="bg-green-900/30 border border-green-500/50 p-2 rounded text-center text-xs text-green-400 font-bold mb-4">
+                            <i class="fa-solid fa-check-circle"></i> Acesso PRO Liberado!
+                        </div>
+
+                        <div>
+                            <label class="text-[10px] font-bold text-gray-500 uppercase tracking-wide block mb-2">Fundos Neon Premium</label>
+                            <div class="grid grid-cols-2 gap-2">
+                                <button onclick="setGradientBg('purple')" class="h-12 rounded bg-gradient-to-br from-indigo-900 via-purple-900 to-black border border-purple-500 shadow-[0_0_10px_rgba(168,85,247,0.4)]"></button>
+                                <button onclick="setGradientBg('cyan')" class="h-12 rounded bg-gradient-to-bl from-blue-900 via-cyan-900 to-black border border-cyan-500 shadow-[0_0_10px_rgba(6,182,212,0.4)]"></button>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="text-[10px] font-bold text-gray-500 uppercase tracking-wide block mb-2">Molduras (Frames)</label>
+                            <button onclick="addNeonFrame('cyan')" class="w-full border-2 border-cyan-400 text-cyan-400 hover:bg-cyan-900/30 py-2 rounded text-sm font-bold mb-2 shadow-[0_0_8px_rgba(6,182,212,0.5)]">Borda Cyan Neon</button>
+                            <button onclick="addNeonFrame('magenta')" class="w-full border-2 border-fuchsia-500 text-fuchsia-500 hover:bg-fuchsia-900/30 py-2 rounded text-sm font-bold shadow-[0_0_8px_rgba(217,70,239,0.5)]">Borda Magenta Neon</button>
+                        </div>
+
+                        <div>
+                            <label class="text-[10px] font-bold text-gray-500 uppercase tracking-wide block mb-2">Textos Graffiti (PRO)</label>
+                            <button onclick="addText('GRAFFITI', 120, 'Sedgwick Ave', true, '#D946EF')" class="w-full bg-gray-800 hover:bg-gray-700 py-2 rounded text-xl text-fuchsia-400 mb-2" style="font-family: 'Sedgwick Ave'">Sedgwick</button>
+                            <button onclick="addText('RABISCO', 100, 'Permanent Marker', false, '#10B981')" class="w-full bg-gray-800 hover:bg-gray-700 py-2 rounded text-xl text-green-400" style="font-family: 'Permanent Marker'">Marker</button>
+                        </div>
+
+                        <div>
+                            <label class="text-[10px] font-bold text-gray-500 uppercase tracking-wide block mb-2">Ilustrações Exclusivas</label>
+                            <div class="grid grid-cols-1 gap-2">
+                                <button onclick="addSVG('paredao')" class="bg-gray-800 border border-gray-600 hover:border-yellow-500 p-2 rounded text-sm flex items-center justify-center gap-2 text-yellow-500 font-bold"><i class="fa-solid fa-speaker-deck"></i> Paredão de Som</button>
+                                <button onclick="addSVG('dj')" class="bg-gray-800 border border-gray-600 hover:border-blue-500 p-2 rounded text-sm flex items-center justify-center gap-2 text-blue-500 font-bold"><i class="fa-solid fa-headphones"></i> Kit DJ</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </aside>
+
+        <!-- Center Canvas Area -->
+        <section class="flex-1 bg-gray-900 flex flex-col relative overflow-hidden">
+            
+            <!-- Canvas Wrapper - Área centralizada -->
+            <div id="workspace" class="flex-1 w-full h-full relative overflow-hidden">
+                <!-- O wrapper real do canvas que sofrerá a escala CSS -->
+                <div class="canvas-container-wrapper" id="canvas-wrapper">
+                    <canvas id="c"></canvas>
+                </div>
+            </div>
+
+            <!-- Zoom Controls Movido para CIMA do workspace para não ser coberto -->
+            <div class="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-gray-800/90 backdrop-blur border border-gray-700 px-4 py-2 rounded-full shadow-2xl flex items-center gap-4 z-50">
+                <button onclick="zoomCanvas(0.9)" class="text-gray-400 hover:text-white"><i class="fa-solid fa-minus"></i></button>
+                <span id="zoom-level" class="text-xs font-bold text-gray-300 w-12 text-center">100%</span>
+                <button onclick="zoomCanvas(1.1)" class="text-gray-400 hover:text-white"><i class="fa-solid fa-plus"></i></button>
+                <div class="w-px h-4 bg-gray-600 mx-1"></div>
+                <button onclick="fitCanvas()" class="text-xs font-bold text-frevo-accent hover:text-purple-400">Ajustar</button>
+            </div>
+        </section>
+
+        <!-- Right Sidebar: Object Properties -->
+        <aside class="w-72 bg-frevo-panel border-l border-gray-700 flex flex-col shrink-0 overflow-y-auto custom-scrollbar">
+            <div class="p-4 border-b border-gray-700 bg-gray-800 sticky top-0 z-10">
+                <h2 class="text-sm font-bold uppercase tracking-wider text-gray-300">Propriedades</h2>
+            </div>
+            
+            <div id="no-selection" class="p-6 text-center text-gray-500 flex flex-col items-center justify-center h-full">
+                <i class="fa-solid fa-hand-pointer text-3xl mb-3 opacity-50"></i>
+                <p class="text-sm">Selecione um elemento no quadro para editar suas propriedades.</p>
+            </div>
+
+            <div id="has-selection" class="hidden p-4 space-y-6">
+                <!-- Ações Globais do Objeto (Camadas e Delete) -->
+                <div>
+                    <label class="text-xs font-bold text-gray-400 uppercase mb-2 block">Ações e Camadas</label>
+                    <div class="grid grid-cols-4 gap-1 mb-2">
+                        <button onclick="canvas.bringForward(canvas.getActiveObject())" class="bg-gray-700 hover:bg-gray-600 p-2 rounded text-xs tooltip" title="Trazer para Frente"><i class="fa-solid fa-layer-group"></i><i class="fa-solid fa-arrow-up text-[8px] ml-1"></i></button>
+                        <button onclick="canvas.sendBackwards(canvas.getActiveObject())" class="bg-gray-700 hover:bg-gray-600 p-2 rounded text-xs tooltip" title="Enviar para Trás"><i class="fa-solid fa-layer-group"></i><i class="fa-solid fa-arrow-down text-[8px] ml-1"></i></button>
+                        <button onclick="canvas.bringToFront(canvas.getActiveObject())" class="bg-gray-700 hover:bg-gray-600 p-2 rounded text-xs tooltip" title="Topo Absoluto"><i class="fa-solid fa-arrow-up-from-bracket"></i></button>
+                        <button onclick="canvas.sendToBack(canvas.getActiveObject())" class="bg-gray-700 hover:bg-gray-600 p-2 rounded text-xs tooltip" title="Fundo Absoluto"><i class="fa-solid fa-arrow-down-long"></i></button>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button onclick="duplicateObject()" class="bg-blue-600 hover:bg-blue-500 py-1.5 rounded text-xs font-bold"><i class="fa-solid fa-copy"></i> Duplicar</button>
+                        <button onclick="deleteObject()" class="bg-red-600 hover:bg-red-500 py-1.5 rounded text-xs font-bold"><i class="fa-solid fa-trash"></i> Excluir</button>
+                    </div>
+                </div>
+
+                <!-- Propriedades Comuns -->
+                <div>
+                    <label class="text-xs font-bold text-gray-400 uppercase flex justify-between mb-2">Opacidade <span id="val-opacity">100%</span></label>
+                    <input type="range" id="prop-opacity" min="0" max="1" step="0.05" value="1" oninput="updateProp('opacity', this.value); document.getElementById('val-opacity').innerText=Math.round(this.value*100)+'%'">
+                </div>
+
+                <!-- Propriedades de Texto -->
+                <div id="props-text" class="hidden space-y-4 border-t border-gray-700 pt-4">
+                    <div>
+                        <label class="text-xs font-bold text-gray-400 uppercase mb-2 block">Fonte</label>
+                        <select id="prop-fontFamily" onchange="updateProp('fontFamily', this.value)" class="w-full bg-gray-800 border border-gray-600 text-white text-sm rounded p-2">
+                            <!-- Popular via JS -->
+                        </select>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="text-[10px] font-bold text-gray-400 uppercase mb-1 block">Cor do Texto</label>
+                            <input type="color" id="prop-fill-text" onchange="updateProp('fill', this.value)" class="w-full h-8 rounded border border-gray-600">
+                        </div>
+                        <div>
+                            <label class="text-[10px] font-bold text-gray-400 uppercase mb-1 block">Alinhamento</label>
+                            <div class="flex bg-gray-800 rounded border border-gray-600 h-8">
+                                <button onclick="updateProp('textAlign', 'left')" class="flex-1 hover:bg-gray-700 border-r border-gray-600"><i class="fa-solid fa-align-left"></i></button>
+                                <button onclick="updateProp('textAlign', 'center')" class="flex-1 hover:bg-gray-700 border-r border-gray-600"><i class="fa-solid fa-align-center"></i></button>
+                                <button onclick="updateProp('textAlign', 'right')" class="flex-1 hover:bg-gray-700"><i class="fa-solid fa-align-right"></i></button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label class="text-xs font-bold text-gray-400 uppercase block mb-2">Estilo</label>
+                        <div class="flex gap-2">
+                            <button id="btn-bold" onclick="toggleTextProp('fontWeight', 'bold', 'normal')" class="flex-1 bg-gray-800 hover:bg-gray-700 border border-gray-600 py-1.5 rounded font-serif font-bold">B</button>
+                            <button id="btn-italic" onclick="toggleTextProp('fontStyle', 'italic', 'normal')" class="flex-1 bg-gray-800 hover:bg-gray-700 border border-gray-600 py-1.5 rounded font-serif italic">I</button>
+                            <button id="btn-underline" onclick="toggleTextProp('underline', true, false)" class="flex-1 bg-gray-800 hover:bg-gray-700 border border-gray-600 py-1.5 rounded font-serif underline">U</button>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="text-xs font-bold text-gray-400 uppercase flex justify-between mb-2">Sombra Neon (Glow)</label>
+                        <div class="grid grid-cols-[1fr_auto] gap-2 mb-2">
+                            <input type="range" id="prop-shadow-blur" min="0" max="50" value="0" oninput="updateShadow()">
+                            <input type="color" id="prop-shadow-color" value="#d946ef" onchange="updateShadow()">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Propriedades de Formas -->
+                <div id="props-shape" class="hidden space-y-4 border-t border-gray-700 pt-4">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="text-xs font-bold text-gray-400 uppercase mb-2 block">Preenchimento</label>
+                            <input type="color" id="prop-fill-shape" onchange="updateProp('fill', this.value)" class="w-full h-8 rounded border border-gray-600">
+                        </div>
+                        <div>
+                            <label class="text-xs font-bold text-gray-400 uppercase mb-2 block">Cor da Borda</label>
+                            <input type="color" id="prop-stroke-color" onchange="updateProp('stroke', this.value)" class="w-full h-8 rounded border border-gray-600">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="text-xs font-bold text-gray-400 uppercase flex justify-between mb-2">Espessura da Borda</label>
+                        <input type="range" id="prop-stroke-width" min="0" max="50" value="0" oninput="updateProp('strokeWidth', parseInt(this.value))">
+                    </div>
+                </div>
+
+                <!-- Propriedades de Imagem (Filtros WebGL) -->
+                <div id="props-image" class="hidden space-y-4 border-t border-gray-700 pt-4">
+                    <h3 class="text-xs font-bold text-frevo-accent uppercase tracking-widest mb-3"><i class="fa-solid fa-wand-magic-sparkles"></i> Filtros WebGL</h3>
+                    
+                    <div>
+                        <label class="text-[10px] font-bold text-gray-400 uppercase flex justify-between mb-1">Brilho</label>
+                        <input type="range" id="filter-brightness" min="-1" max="1" step="0.05" value="0" oninput="applyFilter('brightness', this.value)">
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-bold text-gray-400 uppercase flex justify-between mb-1">Contraste</label>
+                        <input type="range" id="filter-contrast" min="-1" max="1" step="0.05" value="0" oninput="applyFilter('contrast', this.value)">
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-bold text-gray-400 uppercase flex justify-between mb-1">Saturação</label>
+                        <input type="range" id="filter-saturation" min="-1" max="1" step="0.05" value="0" oninput="applyFilter('saturation', this.value)">
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-bold text-gray-400 uppercase flex justify-between mb-1">Desfoque (Blur)</label>
+                        <input type="range" id="filter-blur" min="0" max="1" step="0.01" value="0" oninput="applyFilter('blur', this.value)">
+                    </div>
+                    
+                    <div class="flex gap-2 pt-2">
+                        <button onclick="applyFilter('sepia', true)" class="flex-1 bg-gray-800 hover:bg-gray-700 border border-gray-600 py-1.5 rounded text-xs font-bold text-[#b49065]">Sépia</button>
+                        <button onclick="applyFilter('invert', true)" class="flex-1 bg-gray-800 hover:bg-gray-700 border border-gray-600 py-1.5 rounded text-xs font-bold text-gray-300 invert">Inverter</button>
+                    </div>
+                    <button onclick="clearFilters()" class="w-full bg-gray-700 hover:bg-gray-600 py-1.5 rounded text-xs mt-2">Remover Filtros</button>
+                </div>
+            </div>
+        </aside>
+    </main>
+
+    <!-- Toasts Container -->
+    <div id="toast-container" class="fixed top-20 right-4 flex flex-col gap-2 z-50 pointer-events-none"></div>
+
+    <script>
+        // --- 1. CONFIGURAÇÕES INICIAIS ---
+        const CANVAS_SIZE = 1080;
+        let canvas;
+        let history = [];
+        let isRedoing = false;
+        let currentZoom = 1;
+
+        function switchTab(tabId) {
+            const tabs = ['bg', 'text', 'shapes', 'draw', 'pro'];
+            tabs.forEach(id => {
+                // Esconder todos os painéis
+                document.getElementById(`panel-${id}`).classList.add('hidden');
+                
+                // Resetar o estilo padrão dos botões
+                const btn = document.getElementById(`tab-${id}`);
+                btn.classList.remove('bg-gray-700', 'text-white');
+                btn.classList.add('hover:bg-gray-700');
+                if (id === 'pro') {
+                    btn.classList.add('text-frevo-neon');
+                } else {
+                    btn.classList.add('text-gray-400');
+                }
+            });
+
+            // Mostrar Painel Selecionado
+            document.getElementById(`panel-${tabId}`).classList.remove('hidden');
+            
+            // Destacar Botão Selecionado
+            const activeBtn = document.getElementById(`tab-${tabId}`);
+            activeBtn.classList.remove('hover:bg-gray-700', 'text-gray-400', 'text-frevo-neon');
+            activeBtn.classList.add('bg-gray-700', 'text-white');
+        }
+
+        function toggleDropdown(menuId) {
+            document.getElementById(menuId).classList.toggle('hidden');
+        }
+
+        const fonts = [
+            'Inter', 'Montserrat', 'Roboto', 'Oswald', 'Anton', 'Bebas Neue', 'Poppins', 
+            'Playfair Display', 'Righteous', 'Teko', 'Ubuntu', 'Comfortaa', 'Cinzel',
+            'Dancing Script', 'Pacifico', 'Lobster', 'Caveat', 'Rock Salt', 
+            'Permanent Marker', 'Bangers', 'Sedgwick Ave', 'Press Start 2P'
+        ];
+
+        window.onload = function() {
+            // Inicializa Fabric.js
+            canvas = new fabric.Canvas('c', {
+                width: CANVAS_SIZE,
+                height: CANVAS_SIZE,
+                backgroundColor: '#111827',
+                preserveObjectStacking: true // Mantém a ordem das camadas ao selecionar
+            });
+
+            // Popular Fontes no Dropdown
+            const fontSelect = document.getElementById('prop-fontFamily');
+            fonts.forEach(font => {
+                let opt = document.createElement('option');
+                opt.value = font;
+                opt.text = font;
+                opt.style.fontFamily = font;
+                fontSelect.appendChild(opt);
+            });
+
+            // Event Listeners do Canvas
+            canvas.on('object:added', saveHistory);
+            canvas.on('object:modified', saveHistory);
+            canvas.on('object:removed', saveHistory);
+            
+            canvas.on('selection:created', updatePropertiesPanel);
+            canvas.on('selection:updated', updatePropertiesPanel);
+            canvas.on('selection:cleared', updatePropertiesPanel);
+
+            // Responsive Scaling Inicial
+            fitCanvas();
+            window.addEventListener('resize', fitCanvas);
+
+            // Verifica status PRO
+            checkProStatus();
+            
+            // PWA Setup
+            setupPWA();
+        };
+
+        // --- 3. RESPONSIVIDADE E ZOOM (CORRIGIDO PARA O CORTE) ---
+        function fitCanvas() {
+            const wrapper = document.getElementById('workspace');
+            const padding = 40; // Espaço seguro nas bordas
+            
+            // Área disponível na tela
+            const availableWidth = wrapper.clientWidth - padding;
+            const availableHeight = wrapper.clientHeight - (padding + 60); // +60 para não bater na barra de zoom embaixo
+            
+            // Calcula a escala necessária para fazer 1080px caber na área disponível
+            const scale = Math.min(availableWidth / CANVAS_SIZE, availableHeight / CANVAS_SIZE);
+            
+            // Aplica o zoom com escala absoluta
+            zoomCanvas(scale, true);
+        }
+
+        function zoomCanvas(factor, absolute = false) {
+            if (absolute) {
+                currentZoom = factor;
+            } else {
+                currentZoom *= factor;
+            }
+            
+            // Limites de zoom (10% a 300%)
+            if (currentZoom < 0.1) currentZoom = 0.1;
+            if (currentZoom > 3) currentZoom = 3;
+
+            const wrapper = document.getElementById('canvas-wrapper');
+            const workspace = document.getElementById('workspace');
+            
+            // Aplica a escala via CSS (isso não afeta a resolução interna de 1080x1080)
+            wrapper.style.transform = `scale(${currentZoom})`;
+            
+            // Centralização matemática baseada no tamanho final escalonado
+            const scaledWidth = CANVAS_SIZE * currentZoom;
+            const scaledHeight = CANVAS_SIZE * currentZoom;
+            
+            const left = (workspace.clientWidth - scaledWidth) / 2;
+            const top = (workspace.clientHeight - scaledHeight) / 2;
+            
+            wrapper.style.left = `${left}px`;
+            wrapper.style.top = `${top}px`;
+            
+            // Atualiza o texto na UI
+            document.getElementById('zoom-level').innerText = Math.round(currentZoom * 100) + '%';
+        }
+
+        // Garante que o resize da janela reajuste o canvas
+        window.addEventListener('resize', fitCanvas);
+
+        // --- 4. FERRAMENTAS DE FUNDO ---
+        function setBgColor(color) {
+            canvas.setBackgroundColor(color, canvas.renderAll.bind(canvas));
+        }
+
+        function setGradientBg(type) {
+            let grad;
+            if (type === 'purple') {
+                grad = new fabric.Gradient({
+                    type: 'linear', coords: { x1: 0, y1: 0, x2: CANVAS_SIZE, y2: CANVAS_SIZE },
+                    colorStops: [{ offset: 0, color: '#312e81' }, { offset: 0.5, color: '#581c87' }, { offset: 1, color: '#000000' }]
+                });
+            } else {
+                grad = new fabric.Gradient({
+                    type: 'linear', coords: { x1: CANVAS_SIZE, y1: 0, x2: 0, y2: CANVAS_SIZE },
+                    colorStops: [{ offset: 0, color: '#1e3a8a' }, { offset: 0.5, color: '#164e63' }, { offset: 1, color: '#000000' }]
+                });
+            }
+            canvas.setBackgroundColor(grad, canvas.renderAll.bind(canvas));
+        }
+
+        // --- STREAMING_CHUNK:Ferramentas de Criação (Texto, Formas, Imagens) ---
+        // --- 5. FERRAMENTAS DE TEXTO E FORMAS ---
+        function addText(text, size, font, bold, color = '#ffffff') {
+            const itext = new fabric.IText(text, {
+                left: CANVAS_SIZE / 2,
+                top: CANVAS_SIZE / 2,
+                originX: 'center',
+                originY: 'center',
+                fontFamily: font,
+                fontSize: size,
+                fill: color,
+                fontWeight: bold ? 'bold' : 'normal',
+                textAlign: 'center'
+            });
+            canvas.add(itext);
+            canvas.setActiveObject(itext);
+            
+            if(color !== '#ffffff') {
+                // Adiciona brilho automático se for fonte PRO
+                itext.set('shadow', new fabric.Shadow({ color: color, blur: 20, offsetX: 0, offsetY: 0 }));
+            }
+        }
+
+        function addShape(type) {
+            let shape;
+            const props = { left: CANVAS_SIZE/2, top: CANVAS_SIZE/2, originX: 'center', originY: 'center', fill: '#4B5563', strokeWidth: 0, stroke: '#ffffff' };
+            
+            if(type === 'rect') shape = new fabric.Rect({ ...props, width: 200, height: 200, rx: 10, ry: 10 });
+            if(type === 'circle') shape = new fabric.Circle({ ...props, radius: 100 });
+            if(type === 'triangle') shape = new fabric.Triangle({ ...props, width: 200, height: 200 });
+            if(type === 'line') shape = new fabric.Line([0, 0, 300, 0], { ...props, stroke: '#ffffff', strokeWidth: 10, fill: null });
+            
+            if(shape) {
+                canvas.add(shape);
+                canvas.setActiveObject(shape);
+            }
+        }
+
+        function addNeonFrame(colorStr) {
+            const colorHex = colorStr === 'cyan' ? '#06b6d4' : '#d946ef';
+            const rect = new fabric.Rect({
+                left: CANVAS_SIZE/2, top: CANVAS_SIZE/2, originX: 'center', originY: 'center',
+                width: CANVAS_SIZE - 100, height: CANVAS_SIZE - 100,
+                fill: 'transparent',
+                stroke: colorHex,
+                strokeWidth: 15,
+                rx: 20, ry: 20,
+                shadow: new fabric.Shadow({ color: colorHex, blur: 30, offsetX: 0, offsetY: 0 })
+            });
+            canvas.add(rect);
+        }
+
+        function addSVG(type) {
+            // Assets SVGs simulados criados como caminhos ou grupos simples para não depender de URLs externas
+            let svgString = '';
+            if(type === 'sombrinha') {
+                svgString = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M50 10 L90 50 L10 50 Z" fill="#ef4444"/><path d="M48 50 L48 80 A 10 10 0 0 0 58 90" stroke="#fcd34d" stroke-width="4" fill="none"/></svg>`;
+            } else if (type === 'mascara') {
+                svgString = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 50"><path d="M10 25 C10 10, 40 10, 50 25 C60 10, 90 10, 90 25 C90 40, 70 45, 50 45 C30 45, 10 40, 10 25" fill="#a855f7"/><circle cx="30" cy="25" r="8" fill="#fff"/><circle cx="70" cy="25" r="8" fill="#fff"/></svg>`;
+            } else if (type === 'paredao') {
+                svgString = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 150"><rect x="10" y="10" width="80" height="130" fill="#1f2937" rx="5"/><circle cx="50" cy="40" r="20" fill="#111827" stroke="#eab308" stroke-width="2"/><circle cx="50" cy="90" r="25" fill="#111827" stroke="#eab308" stroke-width="3"/><circle cx="50" cy="130" r="10" fill="#374151"/></svg>`;
+            } else if (type === 'dj') {
+                svgString = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path d="M20 50 A30 30 0 0 1 80 50" stroke="#3b82f6" stroke-width="8" fill="none"/><rect x="10" y="45" width="20" height="30" rx="10" fill="#1e3a8a"/><rect x="70" y="45" width="20" height="30" rx="10" fill="#1e3a8a"/></svg>`;
+            }
+
+            fabric.loadSVGFromString(svgString, function(objects, options) {
+                const obj = fabric.util.groupSVGElements(objects, options);
+                obj.set({ left: CANVAS_SIZE/2, top: CANVAS_SIZE/2, originX: 'center', originY: 'center', scaleX: 3, scaleY: 3 });
+                canvas.add(obj);
+                canvas.setActiveObject(obj);
+            });
+        }
+
+        // Upload de Imagens
+        function uploadImage(e, isBg) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(f) {
+                const data = f.target.result;
+                fabric.Image.fromURL(data, function(img) {
+                    if (isBg) {
+                        // Escala para cobrir
+                        const scale = Math.max(CANVAS_SIZE / img.width, CANVAS_SIZE / img.height);
+                        img.set({ originX: 'center', originY: 'center', left: CANVAS_SIZE/2, top: CANVAS_SIZE/2, scaleX: scale, scaleY: scale });
+                        canvas.setBackgroundImage(img, canvas.renderAll.bind(canvas));
+                    } else {
+                        // Objeto normal
+                        img.scaleToWidth(CANVAS_SIZE / 2);
+                        img.set({ left: CANVAS_SIZE/2, top: CANVAS_SIZE/2, originX: 'center', originY: 'center' });
+                        canvas.add(img);
+                        canvas.setActiveObject(img);
+                    }
+                });
+            };
+            reader.readAsDataURL(file);
+            e.target.value = ''; // reseta
+        }
+
+        // --- STREAMING_CHUNK:Lógica de Painel de Propriedades e Filtros ---
+        // --- 6. ATUALIZAÇÃO DO PAINEL DIREITO ---
+        function updatePropertiesPanel() {
+            const obj = canvas.getActiveObject();
+            const panelNone = document.getElementById('no-selection');
+            const panelHas = document.getElementById('has-selection');
+            const pText = document.getElementById('props-text');
+            const pShape = document.getElementById('props-shape');
+            const pImage = document.getElementById('props-image');
+
+            if (!obj) {
+                panelNone.classList.remove('hidden');
+                panelHas.classList.add('hidden');
+                return;
+            }
+
+            panelNone.classList.add('hidden');
+            panelHas.classList.remove('hidden');
+            
+            // Oculta todos especificos
+            pText.classList.add('hidden');
+            pShape.classList.add('hidden');
+            pImage.classList.add('hidden');
+
+            // Propriedades Globais
+            document.getElementById('prop-opacity').value = obj.opacity || 1;
+            document.getElementById('val-opacity').innerText = Math.round((obj.opacity || 1) * 100) + '%';
+
+            // Tipo Especifico
+            if (obj.type === 'i-text' || obj.type === 'text') {
+                pText.classList.remove('hidden');
+                document.getElementById('prop-fontFamily').value = obj.fontFamily;
+                document.getElementById('prop-fill-text').value = obj.fill;
+                
+                // Botões de estilo
+                document.getElementById('btn-bold').classList.toggle('bg-frevo-accent', obj.fontWeight === 'bold');
+                document.getElementById('btn-italic').classList.toggle('bg-frevo-accent', obj.fontStyle === 'italic');
+                document.getElementById('btn-underline').classList.toggle('bg-frevo-accent', obj.underline);
+
+                // Shadow
+                if(obj.shadow) {
+                    document.getElementById('prop-shadow-blur').value = obj.shadow.blur;
+                    document.getElementById('prop-shadow-color').value = obj.shadow.color;
+                } else {
+                    document.getElementById('prop-shadow-blur').value = 0;
+                }
+            } 
+            else if (['rect', 'circle', 'triangle', 'polygon', 'path'].includes(obj.type) && !obj.isType('image')) {
+                pShape.classList.remove('hidden');
+                document.getElementById('prop-fill-shape').value = obj.fill && typeof obj.fill === 'string' ? obj.fill : '#000000';
+                document.getElementById('prop-stroke-color').value = obj.stroke || '#000000';
+                document.getElementById('prop-stroke-width').value = obj.strokeWidth || 0;
+            }
+            else if (obj.type === 'image') {
+                pImage.classList.remove('hidden');
+                // Sincroniza os sliders com os filtros existentes (simplificado)
+                document.getElementById('filter-brightness').value = 0;
+                document.getElementById('filter-contrast').value = 0;
+                document.getElementById('filter-saturation').value = 0;
+                document.getElementById('filter-blur').value = 0;
+            }
+        }
+
+        function updateProp(key, value) {
+            const obj = canvas.getActiveObject();
+            if(!obj) return;
+            obj.set(key, value);
+            canvas.requestRenderAll();
+        }
+
+        function toggleTextProp(key, onVal, offVal) {
+            const obj = canvas.getActiveObject();
+            if(!obj) return;
+            const current = obj.get(key);
+            obj.set(key, current === onVal ? offVal : onVal);
+            canvas.requestRenderAll();
+            updatePropertiesPanel();
+        }
+
+        function updateShadow() {
+            const obj = canvas.getActiveObject();
+            if(!obj) return;
+            const blur = parseInt(document.getElementById('prop-shadow-blur').value);
+            const color = document.getElementById('prop-shadow-color').value;
+            
+            if (blur > 0) {
+                obj.set('shadow', new fabric.Shadow({ color: color, blur: blur, offsetX: 0, offsetY: 0 }));
+            } else {
+                obj.set('shadow', null);
+            }
+            canvas.requestRenderAll();
+        }
+
+        // --- 7. FILTROS WEBGL PARA IMAGENS ---
+        function applyFilter(type, value) {
+            const obj = canvas.getActiveObject();
+            if (!obj || obj.type !== 'image') return;
+
+            let filter;
+            // Remove o filtro do mesmo tipo se existir para não acumular
+            if (type === 'brightness') {
+                filter = new fabric.Image.filters.Brightness({ brightness: parseFloat(value) });
+                removeFilterByType(obj, 'Brightness');
+            } else if (type === 'contrast') {
+                filter = new fabric.Image.filters.Contrast({ contrast: parseFloat(value) });
+                removeFilterByType(obj, 'Contrast');
+            } else if (type === 'saturation') {
+                filter = new fabric.Image.filters.Saturation({ saturation: parseFloat(value) });
+                removeFilterByType(obj, 'Saturation');
+            } else if (type === 'blur') {
+                filter = new fabric.Image.filters.Blur({ blur: parseFloat(value) });
+                removeFilterByType(obj, 'Blur');
+            } else if (type === 'sepia') {
+                filter = new fabric.Image.filters.Sepia();
+                removeFilterByType(obj, 'Sepia');
+            } else if (type === 'invert') {
+                filter = new fabric.Image.filters.Invert();
+                removeFilterByType(obj, 'Invert');
+            }
+
+            if (filter && (type === 'sepia' || type === 'invert' || parseFloat(value) !== 0)) {
+                obj.filters.push(filter);
+            }
+            
+            obj.applyFilters();
+            canvas.requestRenderAll();
+        }
+
+        function removeFilterByType(obj, filterName) {
+            obj.filters = obj.filters.filter(f => f.type !== filterName);
+        }
+
+        function clearFilters() {
+            const obj = canvas.getActiveObject();
+            if (!obj || obj.type !== 'image') return;
+            obj.filters = [];
+            obj.applyFilters();
+            canvas.requestRenderAll();
+            
+            // Reseta UI
+            document.getElementById('filter-brightness').value = 0;
+            document.getElementById('filter-contrast').value = 0;
+            document.getElementById('filter-saturation').value = 0;
+            document.getElementById('filter-blur').value = 0;
+        }
+
+        // --- STREAMING_CHUNK:Outras Funções (Desenho, Grid, Sistema PRO) ---
+        // --- 8. DESENHO LIVRE ---
+        function toggleDrawingMode() {
+            const isDrawing = document.getElementById('draw-mode-toggle').checked;
+            canvas.isDrawingMode = isDrawing;
+            const settings = document.getElementById('draw-settings');
+            
+            if(isDrawing) {
+                settings.classList.remove('opacity-50', 'pointer-events-none');
+                updateDrawStyle();
+            } else {
+                settings.classList.add('opacity-50', 'pointer-events-none');
+            }
+        }
+
+        function updateDrawStyle() {
+            const color = document.getElementById('draw-color').value;
+            const size = parseInt(document.getElementById('draw-size').value, 10);
+            const type = document.getElementById('draw-type').value;
+
+            if (type === 'Pencil') {
+                canvas.freeDrawingBrush = new fabric.PencilBrush(canvas);
+            } else if (type === 'Circle') {
+                canvas.freeDrawingBrush = new fabric.CircleBrush(canvas);
+            } else if (type === 'Spray') {
+                canvas.freeDrawingBrush = new fabric.SprayBrush(canvas);
+            }
+
+            canvas.freeDrawingBrush.color = color;
+            canvas.freeDrawingBrush.width = size;
+        }
+
+        // --- 9. LAYOUTS / TEMPLATES ---
+        function applyGrid2x2() {
+            clearCanvas();
+            const s = CANVAS_SIZE / 2;
+            const colors = ['#e11d48', '#3b82f6', '#10b981', '#f59e0b'];
+            const positions = [{l:0, t:0}, {l:s, t:0}, {l:0, t:s}, {l:s, t:s}];
+            
+            positions.forEach((pos, i) => {
+                const rect = new fabric.Rect({ left: pos.l, top: pos.t, width: s, height: s, fill: colors[i], selectable: false });
+                canvas.add(rect);
+            });
+            addText('SUA FOTO', 60, 'Inter', true);
+        }
+
+        function applyTemplate(type) {
+            clearCanvas();
+            if(type === 'explosao') {
+                setGradientBg('purple');
+                addNeonFrame('magenta');
+                const t1 = new fabric.IText("BAILE DO FREVO", { left: CANVAS_SIZE/2, top: 300, originX: 'center', originY: 'center', fontFamily: 'Bangers', fontSize: 120, fill: '#fcd34d', shadow: new fabric.Shadow({color: '#f59e0b', blur: 20})});
+                const t2 = new fabric.IText("SÁBADO 22H", { left: CANVAS_SIZE/2, top: 450, originX: 'center', originY: 'center', fontFamily: 'Montserrat', fontWeight: 'bold', fontSize: 60, fill: '#fff'});
+                const t3 = new fabric.IText("DJs Convidados - Open Bar", { left: CANVAS_SIZE/2, top: 800, originX: 'center', originY: 'center', fontFamily: 'Inter', fontSize: 40, fill: '#9ca3af'});
+                canvas.add(t1, t2, t3);
+            }
+        }
+
+        // --- 10. AÇÕES GERAIS E EXPORTAÇÃO ---
+        function deleteObject() {
+            const obj = canvas.getActiveObject();
+            if(obj) { canvas.remove(obj); canvas.discardActiveObject(); }
+        }
+
+        function duplicateObject() {
+            const obj = canvas.getActiveObject();
+            if(!obj) return;
+            obj.clone(function(cloned) {
+                cloned.set({ left: obj.left + 50, top: obj.top + 50 });
+                canvas.add(cloned);
+                canvas.setActiveObject(cloned);
+            });
+        }
+
+        function clearCanvas() {
+            canvas.clear();
+            canvas.setBackgroundColor('#111827', canvas.renderAll.bind(canvas));
+        }
+
+        function saveHistory() {
+            if(isRedoing) return;
+            // Implementação simplificada de histórico para performance
+        }
+        function undo() {
+            showToast('Função Desfazer disponível na versão desktop nativa.', 'warning');
+        }
+
+        function exportImage(format) {
+            document.getElementById('export-menu').classList.add('hidden');
+            
+            if(canvas.getObjects().length === 0 && !canvas.backgroundImage && canvas.backgroundColor === '#111827') {
+                showToast('O quadro está vazio! Adicione algo antes de exportar.', 'error');
+                return;
+            }
+
+            canvas.discardActiveObject();
+            canvas.requestRenderAll();
+            
+            try {
+                // BMP usa fallback para PNG pq navegadores não suportam toDataURL('image/bmp')
+                const realFormat = format === 'bmp' ? 'png' : format;
+                const dataURL = canvas.toDataURL({
+                    format: realFormat,
+                    quality: 1,
+                    multiplier: 1 // Mantém 1080x1080 original
+                });
+
+                const link = document.createElement('a');
+                link.download = `QQfrevo_Flyer_${new Date().getTime()}.${format}`;
+                link.href = dataURL;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                
+                showToast(`Arte exportada com sucesso em ${format.toUpperCase()}!`, 'success');
+            } catch (err) {
+                showToast('Erro ao exportar. Imagens externas podem bloquear o download por segurança.', 'error');
+            }
+        }
+
+        // --- 11. SISTEMA PRO (TikTok Paywall) ---
+        function checkProStatus() {
+            const isPro = localStorage.getItem('qqfrevo_pro') === 'true';
+            if (isPro) {
+                document.getElementById('pro-locked').classList.add('hidden');
+                document.getElementById('pro-unlocked').classList.remove('hidden');
+            }
+        }
+
+        function unlockPro() {
+            const input = document.getElementById('pro-code-input').value.trim().toUpperCase();
+            if (input === 'ACE15SAE') {
+                localStorage.setItem('qqfrevo_pro', 'true');
+                showToast('✅ MODO PRO DESBLOQUEADO!', 'success');
+                checkProStatus();
+            } else {
+                showToast('❌ Código inválido. Acesse a BIO do TikTok para pegar o código correto.', 'error');
+            }
+        }
+
+        // --- 12. TOAST NOTIFICATIONS ---
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            
+            let bg = 'bg-gray-800 border-gray-600';
+            let icon = '<i class="fa-solid fa-circle-info text-blue-400"></i>';
+            if(type === 'success') { bg = 'bg-green-900 border-green-700 text-green-100'; icon = '<i class="fa-solid fa-check text-green-400"></i>'; }
+            if(type === 'error') { bg = 'bg-red-900 border-red-700 text-red-100'; icon = '<i class="fa-solid fa-triangle-exclamation text-red-400"></i>'; }
+            if(type === 'warning') { bg = 'bg-yellow-900 border-yellow-700 text-yellow-100'; icon = '<i class="fa-solid fa-bell text-yellow-400"></i>'; }
+
+            toast.className = `flex items-center gap-3 px-4 py-3 rounded-lg shadow-2xl border ${bg} text-sm font-bold toast-enter`;
+            toast.innerHTML = `${icon} <span>${message}</span>`;
+            
+            container.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.classList.replace('toast-enter', 'toast-leave');
+                setTimeout(() => toast.remove(), 300);
+            }, 3500);
+        }
+
+        // --- 13. PWA SETUP (Instalar App) ---
+        let deferredPrompt;
+        function setupPWA() {
+            // Cria um manifesto dinâmico invisível
+            const manifest = {
+                name: "QQfrevo Flyer Maker",
+                short_name: "QQfrevo",
+                display: "standalone",
+                background_color: "#111827",
+                theme_color: "#8b5cf6",
+                icons: [{ src: "https://placehold.co/192x192/8b5cf6/ffffff?text=QQ", sizes: "192x192", type: "image/png" }]
+            };
+            const stringManifest = JSON.stringify(manifest);
+            const blob = new Blob([stringManifest], {type: 'application/json'});
+            const manifestURL = URL.createObjectURL(blob);
+            document.head.insertAdjacentHTML('beforeend', `<link rel="manifest" href="${manifestURL}">`);
+
+            // Escuta o evento de instalação do Chrome/Android
+            window.addEventListener('beforeinstallprompt', (e) => {
+                e.preventDefault();
+                deferredPrompt = e;
+                const installBtn = document.getElementById('btn-install');
+                installBtn.classList.remove('hidden');
+                installBtn.classList.add('flex');
+                
+                installBtn.addEventListener('click', async () => {
+                    installBtn.classList.add('hidden');
+                    deferredPrompt.prompt();
+                    const { outcome } = await deferredPrompt.userChoice;
+                    if (outcome === 'accepted') showToast('Obrigado por instalar o app!', 'success');
+                    deferredPrompt = null;
+                });
+            });
+        }
+    </script>
+</body>
+</html>
