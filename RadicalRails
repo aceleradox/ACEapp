@@ -1,0 +1,1480 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Radical Rails 3.0</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #020617; 
+            font-family: 'Inter', sans-serif;
+            touch-action: none; 
+            user-select: none;
+        }
+        #gameCanvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+        }
+        .ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none; 
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        .ui-content {
+            pointer-events: auto; 
+        }
+        .garage-scroll::-webkit-scrollbar {
+            width: 8px;
+        }
+        .garage-scroll::-webkit-scrollbar-track {
+            background: rgba(0,0,0,0.3);
+            border-radius: 4px;
+        }
+        .garage-scroll::-webkit-scrollbar-thumb {
+            background: #4a5568;
+            border-radius: 4px;
+        }
+        .mobile-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            backdrop-filter: blur(4px);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-weight: bold;
+            pointer-events: auto;
+            user-select: none;
+        }
+        .mobile-btn:active {
+            background: rgba(255, 255, 255, 0.3);
+            transform: scale(0.95);
+        }
+        /* Efeito legal para o botão de anúncio */
+        .ad-btn {
+            background-size: 200% auto;
+            animation: shine 3s linear infinite;
+        }
+        @keyframes shine {
+            to { background-position: 200% center; }
+        }
+    </style>
+</head>
+<body class="text-white">
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- Ícones de Redes Sociais Laterais -->
+    <div class="absolute right-4 top-1/2 transform -translate-y-1/2 flex flex-col space-y-4 z-20 pointer-events-auto">
+        <a href="https://www.tiktok.com/@vulgo_acelerado_ofc" target="_blank" class="w-10 h-10 rounded-full bg-black border-2 border-pink-500 flex items-center justify-center shadow-[0_0_10px_rgba(236,72,153,0.5)] hover:scale-110 transition-transform" title="TikTok">
+            <svg class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93v7.2c0 1.96-.75 3.9-2.12 5.3-1.37 1.4-3.32 2.21-5.28 2.23-2.02.01-4.04-.76-5.46-2.17-1.42-1.4-2.22-3.37-2.23-5.38-.02-2.02.76-4.04 2.17-5.46 1.4-1.42 3.37-2.22 5.38-2.23h.36v4.1c-.81.04-1.6.43-2.18 1.01-.58.58-.96 1.36-1 2.18-.04.81.35 1.6.93 2.18.58.58 1.36.96 2.18 1 .82.04 1.61-.35 2.19-.93.58-.58.96-1.36 1-2.18v-16.1z"/></svg>
+        </a>
+        <a href="https://www.youtube.com/@aceleradomovies" target="_blank" class="w-10 h-10 rounded-full bg-red-600 border-2 border-white flex items-center justify-center shadow-[0_0_10px_rgba(220,38,38,0.5)] hover:scale-110 transition-transform" title="Canal Movies">
+            <svg class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+        </a>
+        <a href="https://www.youtube.com/@SupraRenalMusic" target="_blank" class="w-10 h-10 rounded-full bg-gray-900 border-2 border-red-500 flex items-center justify-center shadow-[0_0_10px_rgba(220,38,38,0.5)] hover:scale-110 transition-transform" title="Canal Music">
+            <svg class="w-5 h-5 text-red-500" fill="currentColor" viewBox="0 0 24 24"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+        </a>
+        <a href="https://discord.gg/SAeBQjr6fB" target="_blank" class="w-10 h-10 rounded-full bg-indigo-600 border-2 border-indigo-400 flex items-center justify-center shadow-[0_0_10px_rgba(79,70,229,0.5)] hover:scale-110 transition-transform" title="Discord">
+            <svg class="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M20.317 4.3698a19.7913 19.7913 0 00-4.8851-1.5152.0741.0741 0 00-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 00-.0785-.037 19.7363 19.7363 0 00-4.8852 1.515.0699.0699 0 00-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 00.0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 00.0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 00-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 01-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 01.0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 01.0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 01-.0066.1276 12.2986 12.2986 0 01-1.873.8914.0766.0766 0 00-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 00.0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 00.0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 00-.0312-.0286zM8.02 15.3312c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9555-2.4189 2.157-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.9555 2.4189-2.1569 2.4189zm7.9748 0c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9554-2.4189 2.1569-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.946 2.4189-2.1568 2.4189Z"/></svg>
+        </a>
+    </div>
+
+    <!-- HUD -->
+    <div id="hud" class="absolute top-0 left-0 w-full p-4 flex justify-between items-start pointer-events-none hidden z-10">
+        <div class="flex flex-col drop-shadow-md">
+            <span class="text-4xl font-black italic tracking-wider text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.8)]" id="scoreDisplay">0</span>
+            <span class="text-sm font-bold text-gray-300" id="highScoreDisplay">Recorde: 0</span>
+            <span id="wheelieBonus" class="text-pink-400 font-bold text-sm hidden animate-pulse">EMPINA +PONTOS!</span>
+        </div>
+        <div class="flex items-center space-x-2 bg-gray-900 bg-opacity-80 px-4 py-2 rounded-full border border-yellow-500 drop-shadow-[0_0_8px_rgba(234,179,8,0.5)]">
+            <svg class="w-6 h-6 text-yellow-400" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2a8 8 0 100 16 8 8 0 000-16zm0 14a6 6 0 110-12 6 6 0 010 12zM9 5h2v2H9V5zm0 4h2v6H9V9z"></path></svg>
+            <span class="text-xl font-bold text-yellow-400" id="coinDisplay">0</span>
+        </div>
+    </div>
+
+    <!-- Mobile Controls -->
+    <div id="mobileControls" class="absolute bottom-4 left-0 w-full px-6 flex justify-between items-end pointer-events-none hidden h-40 z-10">
+        <div class="flex space-x-4">
+            <button id="btnDrop" class="mobile-btn w-20 h-20 text-3xl">▼</button>
+        </div>
+        <div class="flex space-x-4">
+            <button id="btnWheelie" class="mobile-btn w-16 h-16 text-xl border-pink-500 text-pink-400">🚴</button>
+            <button id="btnJump" class="mobile-btn w-20 h-20 text-3xl border-cyan-500 text-cyan-400">▲</button>
+        </div>
+    </div>
+
+    <!-- Toast Notification (Sistema de Aviso) -->
+    <div id="toast" class="absolute top-10 left-1/2 transform -translate-x-1/2 bg-gray-900 border-2 px-6 py-3 rounded-full text-white font-bold z-[100] opacity-0 transition-opacity duration-300 pointer-events-none hidden shadow-2xl">
+        Mensagem
+    </div>
+
+    <!-- Main Menu -->
+    <div id="mainMenu" class="ui-layer bg-black bg-opacity-80 backdrop-blur-md transition-opacity duration-300 z-50">
+        <div class="ui-content text-center flex flex-col items-center">
+            <h1 class="text-6xl font-black italic text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-purple-500 to-pink-500 mb-2 drop-shadow-[0_0_15px_rgba(236,72,153,0.8)]">RADICAL RAILS</h1>
+            <p class="text-gray-300 mb-8 font-bold tracking-widest uppercase">Corrida Insana</p>
+            
+            <button onclick="startGame()" class="mb-4 px-14 py-4 bg-gradient-to-r from-purple-600 to-pink-600 rounded-full text-3xl font-black uppercase tracking-wider shadow-[0_0_20px_rgba(236,72,153,0.6)] hover:scale-105 transition-transform border-2 border-pink-300">
+                Jogar
+            </button>
+            
+            <div class="flex space-x-4 mb-8">
+                <button onclick="openGarage()" class="px-6 py-3 bg-gray-800 border-2 border-cyan-500 rounded-full text-lg font-bold uppercase tracking-wider hover:bg-gray-700 hover:shadow-[0_0_15px_rgba(6,182,212,0.5)] transition-all">
+                    🏍️ Garagem
+                </button>
+                <button onclick="openMaps()" class="px-6 py-3 bg-gray-800 border-2 border-green-500 rounded-full text-lg font-bold uppercase tracking-wider hover:bg-gray-700 hover:shadow-[0_0_15px_rgba(34,197,94,0.5)] transition-all">
+                    🌍 Mapas
+                </button>
+            </div>
+            
+            <button onclick="openSaveMenu()" class="mb-8 px-6 py-3 bg-gray-800 border-2 border-yellow-500 rounded-full text-lg font-bold uppercase tracking-wider hover:bg-gray-700 hover:shadow-[0_0_15px_rgba(234,179,8,0.5)] transition-all">
+                💾 Progresso (Save)
+            </button>
+            
+            <div class="bg-gray-900 bg-opacity-80 p-4 rounded-xl border border-gray-700 text-gray-300 text-sm max-w-md">
+                <p class="text-pink-400 font-bold mb-2 text-base">COMO SOBREVIVER</p>
+                <p class="mb-1"><strong>PC:</strong> [↑] Pular, [↓] Descer, [→] Empinar (Multiplica Pontos)</p>
+                <p>Desvie de caixotes, barris e pule nos veículos e no topo das casas!</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Garage Screen -->
+    <div id="garageMenu" class="ui-layer bg-gray-950 hidden opacity-0 transition-opacity duration-300 z-50">
+        <div class="ui-content w-full max-w-4xl h-[90vh] bg-gray-900 rounded-2xl shadow-[0_0_40px_rgba(6,182,212,0.3)] p-6 flex flex-col relative border border-cyan-800">
+            <button onclick="closeGarage()" class="absolute top-4 right-4 text-gray-400 hover:text-white bg-gray-800 p-2 rounded-full">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-3xl font-black italic text-cyan-400 drop-shadow-[0_0_8px_rgba(6,182,212,0.8)]">GARAGEM NEON</h2>
+                <div class="flex items-center space-x-2 bg-gray-800 px-4 py-2 rounded-full border border-yellow-500">
+                    <span class="text-xl font-bold text-yellow-400" id="garageCoinDisplay">0</span>
+                </div>
+            </div>
+            <div id="bikeGrid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 overflow-y-auto garage-scroll pr-2 flex-grow"></div>
+        </div>
+    </div>
+
+    <!-- Maps Screen -->
+    <div id="mapMenu" class="ui-layer bg-gray-950 hidden opacity-0 transition-opacity duration-300 z-50">
+        <div class="ui-content w-full max-w-4xl h-[90vh] bg-gray-900 rounded-2xl shadow-[0_0_40px_rgba(34,197,94,0.3)] p-6 flex flex-col relative border border-green-800">
+            <button onclick="closeMaps()" class="absolute top-4 right-4 text-gray-400 hover:text-white bg-gray-800 p-2 rounded-full">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-3xl font-black italic text-green-400 drop-shadow-[0_0_8px_rgba(34,197,94,0.8)]">DESTINOS</h2>
+                <div class="flex items-center space-x-2 bg-gray-800 px-4 py-2 rounded-full border border-yellow-500">
+                    <span class="text-xl font-bold text-yellow-400" id="mapCoinDisplay">0</span>
+                </div>
+            </div>
+            <div id="mapGrid" class="grid grid-cols-1 md:grid-cols-2 gap-6 overflow-y-auto garage-scroll pr-2 flex-grow"></div>
+        </div>
+    </div>
+
+    <!-- Save Menu -->
+    <div id="saveMenu" class="ui-layer bg-gray-950 hidden opacity-0 transition-opacity duration-300 z-50">
+        <div class="ui-content w-full max-w-4xl h-[90vh] bg-gray-900 rounded-2xl shadow-[0_0_40px_rgba(234,179,8,0.3)] p-6 flex flex-col relative border border-yellow-800">
+            <button onclick="closeSaveMenu()" class="absolute top-4 right-4 text-gray-400 hover:text-white bg-gray-800 p-2 rounded-full">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-3xl font-black italic text-yellow-400 drop-shadow-[0_0_8px_rgba(234,179,8,0.8)]">SLOTS DE SAVE</h2>
+            </div>
+            <div id="saveGrid" class="grid grid-cols-1 md:grid-cols-2 gap-4 overflow-y-auto garage-scroll pr-2 flex-grow"></div>
+        </div>
+    </div>
+
+    <!-- Game Over Screen -->
+    <div id="gameOverMenu" class="ui-layer bg-black bg-opacity-95 hidden opacity-0 transition-opacity duration-300 z-50">
+        <div class="ui-content text-center bg-gray-900 p-8 rounded-3xl border-4 border-red-600 shadow-[0_0_40px_rgba(220,38,38,0.6)] w-[90%] max-w-md">
+            <h2 class="text-5xl font-black italic text-red-500 mb-2 drop-shadow-[0_0_10px_rgba(220,38,38,0.8)]">DESTRUÍDO!</h2>
+            <p class="text-gray-400 mb-6 font-bold uppercase">Você não sobreviveu à velocidade</p>
+            
+            <div class="grid grid-cols-2 gap-4 mb-6">
+                <div class="bg-gray-800 p-4 rounded-xl border border-cyan-800">
+                    <p class="text-xs text-cyan-400 uppercase font-bold">Pontuação</p>
+                    <p class="text-3xl font-black text-white" id="goScore">0</p>
+                </div>
+                <div class="bg-gray-800 p-4 rounded-xl border border-yellow-500/30">
+                    <p class="text-xs text-yellow-500 uppercase font-bold">Moedas (x5)</p>
+                    <p class="text-3xl font-black text-yellow-400" id="goCoins">+0</p>
+                </div>
+            </div>
+
+            <!-- Ad Space Dinâmico -->
+            <a id="gameOverAd" href="#" target="_blank" class="w-full mb-6 p-4 border-2 rounded-xl flex items-center justify-center space-x-3 text-white font-bold transition-transform hover:scale-105 shadow-lg pointer-events-auto ad-btn">
+                <span id="goAdIcon" class="text-2xl"></span>
+                <span id="goAdText" class="uppercase tracking-wide text-sm"></span>
+            </a>
+
+            <div class="flex space-x-3">
+                <button onclick="startGame()" class="flex-1 px-4 py-3 bg-gradient-to-r from-purple-600 to-pink-600 rounded-xl text-lg font-bold uppercase tracking-wider shadow-[0_0_15px_rgba(236,72,153,0.5)] hover:scale-105 transition-transform">
+                    Tentar Novamente
+                </button>
+                <button onclick="goToMenu()" class="px-4 py-3 bg-gray-800 rounded-xl font-bold uppercase tracking-wider hover:bg-gray-700 border border-gray-600 transition-colors">
+                    Voltar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        let width, height;
+        
+        function resize() {
+            width = window.innerWidth;
+            height = window.innerHeight;
+            canvas.width = width;
+            canvas.height = height;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        if ('ontouchstart' in window || navigator.maxTouchPoints > 0) {
+            document.getElementById('mobileControls').classList.remove('hidden');
+        }
+
+        // --- Core Variables ---
+        let state = 'MENU';
+        let animationId;
+        let worldX = 0;
+        let gameSpeed = 12; 
+        let maxGameSpeed = 35; 
+        let score = 0;
+        let timeOfDay = 0; 
+        
+        let cameraX = 0;
+        let cameraY = 0;
+        const trackY = 400; 
+        
+        let coins = parseInt(localStorage.getItem('radicalRails_coins')) || 0;
+        let highScore = parseInt(localStorage.getItem('radicalRails_highScore')) || 0;
+        let sessionCoins = 0;
+
+        // --- Redes Sociais / Anúncios ---
+        const socialAds = [
+            { name: 'TikTok', text: 'Siga-me no TikTok', url: 'https://www.tiktok.com/@vulgo_acelerado_ofc', color: 'bg-black border-pink-500 bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900', icon: '🎵' },
+            { name: 'YouTube 1', text: 'Inscreva-se: Acelerado Movies', url: 'https://www.youtube.com/@aceleradomovies', color: 'bg-red-700 border-red-400 bg-gradient-to-r from-red-700 via-red-600 to-red-700', icon: '▶️' },
+            { name: 'YouTube 2', text: 'Inscreva-se: SupraRenalMusic', url: 'https://www.youtube.com/@SupraRenalMusic', color: 'bg-red-800 border-red-500 bg-gradient-to-r from-red-800 via-red-600 to-red-800', icon: '🎧' },
+            { name: 'Discord', text: 'Entre no nosso Servidor', url: 'https://discord.gg/SAeBQjr6fB', color: 'bg-indigo-700 border-indigo-400 bg-gradient-to-r from-indigo-700 via-indigo-500 to-indigo-700', icon: '💬' }
+        ];
+
+        // --- Maps Data ---
+        const mapData = [
+            { id: 0, name: "Trilhos Radicais", cost: 0, type: 'train', color: '#06b6d4', desc: "O clássico. Trens velozes e montanhas rochosas." },
+            { id: 1, name: "Porto de Cargas", cost: 2000, type: 'ship', color: '#3b82f6', desc: "Pule entre navios cargueiros no oceano agitado." },
+            { id: 2, name: "Céu Aberto", cost: 5000, type: 'plane', color: '#fcd34d', desc: "Acrobacias extremas nas asas de aviões em voo." },
+            { id: 3, name: "Favela & Periferia", cost: 10000, type: 'bus', color: '#ef4444', desc: "A selva de pedra. Salte sobre lotações e telhados." }
+        ];
+        let unlockedMaps = JSON.parse(localStorage.getItem('radicalRails_unlockedMaps')) || [0];
+        let currentMapId = parseInt(localStorage.getItem('radicalRails_currentMap')) || 0;
+
+        // --- Bikes Data ---
+        const bikeData = [
+            { id: 0, name: "Ferrugem", cost: 0, color: "#9ca3af", frameColor: "#4b5563" },
+            { id: 1, name: "Verde Ácido", cost: 100, color: "#a3e635", frameColor: "#4d7c0f", neon: true },
+            { id: 2, name: "Azul Neon", cost: 300, color: "#22d3ee", frameColor: "#155e75", neon: true },
+            { id: 3, name: "Rosa Choque", cost: 600, color: "#f43f5e", frameColor: "#881337", neon: true },
+            { id: 4, name: "Amarela", cost: 1000, color: "#eab308", frameColor: "#854d0e" },
+            { id: 5, name: "Roxa Void", cost: 1500, color: "#c084fc", frameColor: "#581c87", neon: true },
+            { id: 6, name: "Laranja Solar", cost: 2000, color: "#fb923c", frameColor: "#9a3412", neon: true },
+            { id: 7, name: "Carbono", cost: 4500, color: "#1f2937", frameColor: "#000000" },
+            { id: 8, name: "Hacker", cost: 7000, color: "#4ade80", frameColor: "#064e3b", neon: true },
+            { id: 9, name: "Cyberpunk", cost: 12000, color: "#f0abfc", frameColor: "#020617", neon: true }
+        ];
+        let unlockedBikes = JSON.parse(localStorage.getItem('radicalRails_unlockedBikes')) || [0];
+        let currentBikeId = parseInt(localStorage.getItem('radicalRails_currentBike')) || 0;
+
+        // --- Audio System ---
+        let audioInitialized = false;
+        const sfx = { jump: null, coin: null, crash: null, music: null };
+
+        async function initAudio() {
+            if (audioInitialized) return;
+            await Tone.start();
+            
+            sfx.jump = new Tone.Synth({ oscillator: { type: "triangle" }, envelope: { attack: 0.01, decay: 0.2, sustain: 0, release: 0.1 } }).toDestination();
+            sfx.jump.volume.value = -12;
+            sfx.coin = new Tone.Synth({ oscillator: { type: "square" }, envelope: { attack: 0.01, decay: 0.1, sustain: 0, release: 0.1 } }).toDestination();
+            sfx.coin.volume.value = -15;
+            sfx.crash = new Tone.NoiseSynth({ noise: { type: "brown" }, envelope: { attack: 0.01, decay: 0.6, sustain: 0, release: 0.2 } }).toDestination();
+            sfx.crash.volume.value = -5;
+
+            const synth = new Tone.PolySynth(Tone.Synth, { oscillator: { type: "sawtooth" }, envelope: { attack: 0.05, decay: 0.1, sustain: 0.1, release: 0.5 } }).toDestination();
+            synth.volume.value = -22;
+
+            const notes = ["C3", "Eb3", "F3", "G3", "Bb3"];
+            let step = 0;
+            
+            sfx.music = new Tone.Loop((time) => {
+                if(state === 'PLAYING') {
+                    synth.triggerAttackRelease(notes[step % notes.length], "16n", time);
+                    step++;
+                    sfx.music.playbackRate = 1 + ((gameSpeed - 12) * 0.03); 
+                }
+            }, "8n");
+            
+            Tone.Transport.start();
+            sfx.music.start(0);
+            audioInitialized = true;
+        }
+        function playSound(type) {
+            if (!audioInitialized) return;
+            try {
+                if (type === 'jump') sfx.jump.triggerAttackRelease("G4", "8n");
+                else if (type === 'coin') sfx.coin.triggerAttackRelease("E5", "16n");
+                else if (type === 'crash') sfx.crash.triggerAttackRelease("8n");
+            } catch (e) {}
+        }
+
+        // --- Environment & Entities ---
+        let terrainPoints = [];
+        let currentTerrainX = 0;
+        let chunks = [];
+        let vehicles = [];
+        let houses = [];
+        let coinsList = [];
+        let obstacles = [];
+        let particles = [];
+
+        function generateTerrainChunk() {
+            const chunkTypes = ['FLAT', 'MOUNTAIN', 'BRIDGE'];
+            const type = currentTerrainX === 0 ? 'FLAT' : chunkTypes[Math.floor(Math.random() * chunkTypes.length)];
+            let chunkWidth = 0;
+            const currentMap = mapData.find(m => m.id === currentMapId).type;
+
+            if (type === 'FLAT') {
+                chunkWidth = 1500 + Math.random() * 1000;
+                terrainPoints.push({ x: currentTerrainX, y: trackY });
+                terrainPoints.push({ x: currentTerrainX + chunkWidth, y: trackY });
+                
+                // Spawn Vehicles or Houses
+                if (currentTerrainX > 1000) {
+                    if(Math.random() > 0.4) {
+                        vehicles.push(new VehiclePlatform(currentTerrainX + 300, currentMap));
+                    }
+                    if(Math.random() > 0.3) {
+                        houses.push(new House(currentTerrainX + 800 + Math.random()*300, currentMap));
+                    }
+                }
+
+                // Ground Obstacles
+                if (Math.random() > 0.3) {
+                    obstacles.push(new Obstacle(currentTerrainX + 600 + Math.random()*400, trackY));
+                }
+            } 
+            else if (type === 'MOUNTAIN') {
+                chunkWidth = 2000;
+                const peakY = trackY - (currentMap === 'plane' ? 400 : 300); 
+                
+                terrainPoints.push({ x: currentTerrainX, y: trackY });
+                terrainPoints.push({ x: currentTerrainX + 400, y: peakY }); 
+                terrainPoints.push({ x: currentTerrainX + 1600, y: peakY }); 
+                terrainPoints.push({ x: currentTerrainX + 2000, y: trackY }); 
+
+                let v = new VehiclePlatform(currentTerrainX + 500, currentMap);
+                v.hasTunnel = true; 
+                vehicles.push(v);
+                
+                if (Math.random() > 0.5) houses.push(new House(currentTerrainX + 1000, currentMap, peakY));
+
+                for(let i=0; i<6; i++) {
+                    coinsList.push(new Coin(currentTerrainX + 800 + (i*80), peakY - 40));
+                }
+                if (Math.random() > 0.3) {
+                    obstacles.push(new Obstacle(currentTerrainX + 1300, peakY));
+                }
+            } 
+            else if (type === 'BRIDGE') {
+                chunkWidth = 2000;
+                const valleyY = trackY + 300;
+                terrainPoints.push({ x: currentTerrainX, y: trackY });
+                terrainPoints.push({ x: currentTerrainX + 300, y: valleyY }); 
+                terrainPoints.push({ x: currentTerrainX + 1700, y: valleyY }); 
+                terrainPoints.push({ x: currentTerrainX + 2000, y: trackY }); 
+
+                obstacles.push(new Obstacle(currentTerrainX + 1000, valleyY));
+                if(Math.random() > 0.4) houses.push(new House(currentTerrainX + 1200, currentMap, valleyY));
+
+                if(Math.random() > 0.2) {
+                    vehicles.push(new VehiclePlatform(currentTerrainX + 800, currentMap));
+                }
+                
+                for(let i=0; i<5; i++) {
+                    coinsList.push(new Coin(currentTerrainX + 900 + (i*100), valleyY - 40));
+                }
+            }
+
+            chunks.push({ type, startX: currentTerrainX, endX: currentTerrainX + chunkWidth });
+            currentTerrainX += chunkWidth;
+        }
+
+        function getGroundY(x) {
+            for(let i=0; i<terrainPoints.length - 1; i++) {
+                let p1 = terrainPoints[i];
+                let p2 = terrainPoints[i+1];
+                if (x >= p1.x && x <= p2.x) {
+                    let t = (x - p1.x) / (p2.x - p1.x);
+                    return p1.y + t * (p2.y - p1.y);
+                }
+            }
+            return trackY; 
+        }
+
+        // --- Classes Definition ---
+        class Player {
+            constructor() {
+                this.worldX = 200;
+                this.worldY = trackY - 100;
+                this.vy = 0;
+                this.width = 50;
+                this.height = 50;
+                this.gravity = 0.8; 
+                this.jumpPower = -15; // Altura suficiente para pular casas pequenas
+                this.isGrounded = false;
+                this.jumps = 0;
+                this.maxJumps = 1; 
+                this.rotation = 0;
+                this.bike = bikeData.find(b => b.id === currentBikeId);
+                this.dropCooldown = 0;
+                this.isWheelie = false;
+                this.onPlatform = false;
+            }
+
+            update() {
+                this.worldX += gameSpeed;
+                this.vy += this.gravity;
+                this.worldY += this.vy;
+                
+                if (this.dropCooldown > 0) this.dropCooldown--;
+
+                let groundY = getGroundY(this.worldX);
+                let floorY = groundY;
+                this.onPlatform = false;
+
+                // Colisão com Plataformas (Veículos E Casas)
+                const platforms = [...vehicles, ...houses];
+                if (this.vy >= 0 && this.dropCooldown === 0) {
+                    for(let p of platforms) {
+                        if (this.worldX + this.width > p.worldX && this.worldX < p.worldX + p.width) {
+                            let pTop = p.worldY - p.height;
+                            if (this.worldY + this.height >= pTop && this.worldY + this.height - this.vy <= pTop + 30) {
+                                floorY = pTop;
+                                this.onPlatform = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                if (this.worldY + this.height >= floorY) {
+                    this.worldY = floorY - this.height;
+                    this.vy = 0;
+                    this.isGrounded = true;
+                    this.jumps = 0;
+                    
+                    if (this.isWheelie) {
+                        this.rotation += (-0.6 - this.rotation) * 0.2;
+                        score += 3; 
+                        ui.wheelieText.classList.remove('hidden');
+                        if (Math.random() > 0.5) createParticles(this.worldX, this.worldY + this.height, '#facc15', 1);
+                    } else {
+                        this.rotation += (0 - this.rotation) * 0.2; 
+                        ui.wheelieText.classList.add('hidden');
+                    }
+                } else {
+                    this.isGrounded = false;
+                    ui.wheelieText.classList.add('hidden');
+                    if (this.isWheelie) this.rotation += (-0.8 - this.rotation) * 0.1; 
+                    else this.rotation += 0.02; 
+                }
+            }
+
+            jump() {
+                if (this.jumps < this.maxJumps) {
+                    this.vy = this.jumpPower;
+                    this.jumps++;
+                    this.isGrounded = false;
+                    this.rotation = -0.3;
+                    playSound('jump');
+                    createParticles(this.worldX, this.worldY + this.height, '#ffffff', 5);
+                }
+            }
+
+            dropDown() {
+                if (this.onPlatform || this.worldY + this.height < getGroundY(this.worldX) - 10) {
+                    this.vy = 10; 
+                    this.dropCooldown = 15; 
+                }
+            }
+
+            draw(ctx, screenX, screenY) {
+                ctx.save();
+                ctx.translate(screenX + this.width/2, screenY + this.height/2);
+                ctx.rotate(this.rotation);
+                
+                const color = this.bike.color;
+                const frameColor = this.bike.frameColor;
+                let wheelRot = (this.worldX * 0.05) % (Math.PI * 2);
+
+                const drawWheel = (x, y) => {
+                    ctx.save();
+                    ctx.translate(x, y);
+                    ctx.rotate(wheelRot);
+                    ctx.fillStyle = '#111';
+                    ctx.strokeStyle = '#555';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath(); ctx.arc(0, 0, 12, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+                    ctx.strokeStyle = frameColor;
+                    ctx.beginPath(); ctx.moveTo(-12, 0); ctx.lineTo(12, 0); ctx.stroke();
+                    ctx.beginPath(); ctx.moveTo(0, -12); ctx.lineTo(0, 12); ctx.stroke();
+                    ctx.restore();
+                };
+
+                drawWheel(-20, 15);
+                drawWheel(20, 15);
+
+                ctx.strokeStyle = frameColor;
+                ctx.lineWidth = 4;
+                ctx.beginPath();
+                ctx.moveTo(-20, 15); ctx.lineTo(-5, -5); ctx.lineTo(15, -5); ctx.lineTo(20, 15); ctx.lineTo(-10, 10);
+                ctx.closePath();
+                ctx.stroke();
+
+                ctx.fillStyle = color;
+                if(this.bike.neon || timeOfDay < 0.3) {
+                    ctx.shadowBlur = 15; ctx.shadowColor = color;
+                }
+                ctx.beginPath(); ctx.moveTo(-5, -5); ctx.lineTo(5, -5); ctx.lineTo(0, 5); ctx.fill();
+                ctx.shadowBlur = 0; 
+
+                // Stickman
+                ctx.strokeStyle = '#fff'; ctx.lineWidth = 3; ctx.lineCap = 'round';
+                ctx.beginPath(); ctx.moveTo(-5, -5); ctx.lineTo(this.isWheelie ? -5 : 5, -20); ctx.stroke();
+                ctx.beginPath(); ctx.arc(this.isWheelie ? -5 : 10, -25, 6, 0, Math.PI * 2); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(this.isWheelie ? -5 : 5, -20); ctx.lineTo(15, -5); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(-5, -5); ctx.lineTo(0, 5); ctx.lineTo(-10, 10); ctx.stroke();
+
+                ctx.restore();
+            }
+        }
+
+        class House {
+            constructor(x, mapType, yPos = trackY) {
+                this.worldX = x;
+                this.worldY = yPos;
+                this.width = 120 + Math.random() * 80;
+                this.height = 70 + Math.random() * 40; // Altura que o player consegue pular
+                this.mapType = mapType;
+
+                if(Math.random() > 0.5) coinsList.push(new Coin(this.worldX + this.width/2, this.worldY - this.height - 30));
+            }
+            update() {} // Estática
+            draw(ctx, screenX, screenY) {
+                if (this.mapType === 'bus') {
+                    // Casa de Favela / Tijolo
+                    ctx.fillStyle = '#b45309'; 
+                    ctx.fillRect(screenX, screenY - this.height, this.width, this.height);
+                    ctx.fillStyle = '#78350f'; // Detalhes de tijolo
+                    for(let i=0; i<this.width; i+=20) {
+                        for(let j=10; j<this.height; j+=20) {
+                            if(Math.random() > 0.3) ctx.fillRect(screenX + i, screenY - this.height + j, 15, 10);
+                        }
+                    }
+                    // Telhado improvisado
+                    ctx.fillStyle = '#475569';
+                    ctx.fillRect(screenX - 5, screenY - this.height - 5, this.width + 10, 10);
+                } else if (this.mapType === 'ship') {
+                    // Contêiner
+                    ctx.fillStyle = Math.random() > 0.5 ? '#0ea5e9' : '#eab308';
+                    ctx.fillRect(screenX, screenY - this.height, this.width, this.height);
+                    ctx.strokeStyle = '#000'; ctx.lineWidth = 2;
+                    ctx.strokeRect(screenX, screenY - this.height, this.width, this.height);
+                    ctx.beginPath(); ctx.moveTo(screenX, screenY - this.height); ctx.lineTo(screenX + this.width, screenY); ctx.stroke();
+                } else {
+                    // Galpão ou Torre de Controle
+                    ctx.fillStyle = '#475569';
+                    ctx.fillRect(screenX, screenY - this.height, this.width, this.height);
+                    ctx.fillStyle = '#1e293b';
+                    ctx.fillRect(screenX + 20, screenY - this.height + 20, 30, 30);
+                    ctx.fillRect(screenX + 70, screenY - this.height + 20, 30, 30);
+                }
+            }
+        }
+
+        class VehiclePlatform {
+            constructor(x, mapType) {
+                this.worldX = x;
+                this.worldY = trackY;
+                this.width = 500 + Math.random() * 400; 
+                this.height = 120;
+                this.speed = gameSpeed * 0.7; 
+                this.mapType = mapType;
+                this.hasTunnel = false; 
+
+                if (Math.random() > 0.5) {
+                    obstacles.push(new Obstacle(this.worldX + 200 + Math.random() * (this.width - 300), this.worldY - this.height));
+                }
+                if (Math.random() > 0.3) {
+                    for(let i=0; i<3; i++) coinsList.push(new Coin(this.worldX + this.width/2 + (i*50), this.worldY - this.height - 40));
+                }
+            }
+            update() {
+                this.worldX += this.speed;
+            }
+            draw(ctx, screenX, screenY) {
+                if (this.mapType === 'train') {
+                    ctx.fillStyle = '#1f2937'; 
+                    ctx.fillRect(screenX, screenY - this.height, this.width, this.height);
+                    ctx.fillStyle = '#4b5563';
+                    ctx.fillRect(screenX, screenY - this.height, this.width, 10);
+                    if (timeOfDay < 0.5) {
+                        ctx.shadowBlur = 10; ctx.shadowColor = '#06b6d4'; 
+                        ctx.fillStyle = '#06b6d4';
+                        ctx.fillRect(screenX, screenY - this.height + 15, this.width, 4);
+                        ctx.shadowBlur = 0;
+                    }
+                    ctx.fillStyle = '#000';
+                    let wheelOffset = (this.worldX * 0.1) % 40;
+                    for(let i=0; i<this.width; i+=100) {
+                        ctx.beginPath();
+                        ctx.arc(screenX + i + 20 + Math.sin(wheelOffset)*2, screenY - 15, 15, 0, Math.PI*2);
+                        ctx.arc(screenX + i + 60 + Math.cos(wheelOffset)*2, screenY - 15, 15, 0, Math.PI*2);
+                        ctx.fill();
+                    }
+                } 
+                else if (this.mapType === 'ship') {
+                    ctx.fillStyle = '#b91c1c';
+                    ctx.beginPath();
+                    ctx.moveTo(screenX, screenY - this.height);
+                    ctx.lineTo(screenX + this.width - 50, screenY - this.height);
+                    ctx.lineTo(screenX + this.width, screenY - 20); 
+                    ctx.lineTo(screenX, screenY);
+                    ctx.fill();
+                    ctx.fillStyle = '#0ea5e9';
+                    ctx.fillRect(screenX + 50, screenY - this.height, 120, -60);
+                }
+                else if (this.mapType === 'plane') {
+                    ctx.fillStyle = '#f8fafc';
+                    ctx.beginPath();
+                    ctx.moveTo(screenX, screenY - this.height);
+                    ctx.lineTo(screenX + this.width, screenY - this.height);
+                    ctx.lineTo(screenX + this.width + 40, screenY - this.height/2); 
+                    ctx.lineTo(screenX + this.width, screenY);
+                    ctx.lineTo(screenX, screenY);
+                    ctx.fill();
+                    ctx.fillStyle = '#38bdf8';
+                    for(let i=40; i<this.width-50; i+=40) {
+                        ctx.fillRect(screenX + i, screenY - this.height + 30, 20, 20);
+                    }
+                }
+                else if (this.mapType === 'bus') {
+                    ctx.fillStyle = '#f59e0b';
+                    ctx.fillRect(screenX, screenY - this.height, this.width, this.height);
+                    ctx.fillStyle = '#1e293b';
+                    for(let i=20; i<this.width-40; i+=80) {
+                        ctx.fillRect(screenX + i, screenY - this.height + 20, 60, 40);
+                    }
+                    ctx.fillStyle = '#000';
+                    ctx.beginPath(); ctx.arc(screenX + 60, screenY, 20, 0, Math.PI*2); ctx.fill();
+                    ctx.beginPath(); ctx.arc(screenX + this.width - 80, screenY, 20, 0, Math.PI*2); ctx.fill();
+                }
+            }
+        }
+
+        class Obstacle {
+            constructor(x, y) {
+                this.worldX = x;
+                this.worldY = y;
+                this.type = Math.floor(Math.random() * 3); // 0=Cone/Barrel, 1=Crate, 2=Barrier
+                this.width = this.type === 2 ? 60 : 40;
+                this.height = this.type === 1 ? 40 : 45;
+            }
+            draw(ctx, screenX, screenY) {
+                if (this.type === 0) {
+                    ctx.fillStyle = '#ef4444'; 
+                    if (timeOfDay < 0.5) { ctx.shadowBlur = 15; ctx.shadowColor = '#ef4444'; }
+                    ctx.beginPath();
+                    ctx.moveTo(screenX + 10, screenY - this.height);
+                    ctx.lineTo(screenX + this.width - 10, screenY - this.height);
+                    ctx.lineTo(screenX + this.width, screenY);
+                    ctx.lineTo(screenX, screenY);
+                    ctx.fill();
+                    ctx.fillStyle = '#facc15';
+                    ctx.shadowBlur = 0;
+                    ctx.fillRect(screenX + 5, screenY - 30, this.width - 10, 8);
+                } else if (this.type === 1) {
+                    ctx.fillStyle = '#a16207'; // Caixote
+                    ctx.fillRect(screenX, screenY - this.height, this.width, this.height);
+                    ctx.strokeStyle = '#713f12'; ctx.lineWidth = 2;
+                    ctx.strokeRect(screenX, screenY - this.height, this.width, this.height);
+                    ctx.beginPath(); ctx.moveTo(screenX, screenY - this.height); ctx.lineTo(screenX + this.width, screenY); ctx.stroke();
+                } else {
+                    ctx.fillStyle = '#94a3b8'; // Barreira
+                    ctx.beginPath();
+                    ctx.moveTo(screenX + 10, screenY - this.height);
+                    ctx.lineTo(screenX + this.width - 10, screenY - this.height);
+                    ctx.lineTo(screenX + this.width, screenY);
+                    ctx.lineTo(screenX, screenY);
+                    ctx.fill();
+                    ctx.fillStyle = '#ef4444';
+                    ctx.fillRect(screenX + 15, screenY - this.height + 10, this.width - 30, 10);
+                }
+            }
+        }
+
+        class Coin {
+            constructor(x, y) {
+                this.worldX = x;
+                this.worldY = y;
+                this.radius = 12;
+                this.collected = false;
+                this.frame = Math.random() * 100;
+            }
+            draw(ctx, screenX, screenY) {
+                if (this.collected) return;
+                this.frame++;
+                ctx.save();
+                ctx.translate(screenX, screenY);
+                ctx.scale(Math.abs(Math.sin(this.frame * 0.05)), 1);
+                
+                ctx.fillStyle = '#facc15';
+                if (timeOfDay < 0.5) { ctx.shadowBlur = 10; ctx.shadowColor = '#facc15'; }
+                ctx.beginPath(); ctx.arc(0, 0, this.radius, 0, Math.PI * 2); ctx.fill();
+                ctx.shadowBlur = 0;
+                ctx.strokeStyle = '#ca8a04'; ctx.lineWidth = 2; ctx.stroke();
+                ctx.restore();
+            }
+        }
+
+        function createParticles(x, y, color, count=10) {
+            for(let i=0; i<count; i++) {
+                particles.push({
+                    worldX: x, worldY: y,
+                    vx: (Math.random() - 0.5) * 12,
+                    vy: (Math.random() - 1) * 12,
+                    life: 1, color: color
+                });
+            }
+        }
+
+        // --- Game Loop & Logic ---
+        let player;
+
+        function resetGame() {
+            terrainPoints = [];
+            currentTerrainX = -2000; 
+            chunks = [];
+            vehicles = [];
+            houses = [];
+            obstacles = [];
+            coinsList = [];
+            particles = [];
+            
+            for(let i=0; i<8; i++) generateTerrainChunk(); 
+
+            player = new Player();
+            cameraY = trackY - height/2;
+            worldX = player.worldX;
+            score = 0;
+            sessionCoins = 0;
+            gameSpeed = 12;
+            timeOfDay = 0.5; 
+            updateHUD();
+        }
+
+        function hexToRgb(hex) {
+            var result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+            return result ? { r: parseInt(result[1], 16), g: parseInt(result[2], 16), b: parseInt(result[3], 16) } : {r:0,g:0,b:0};
+        }
+        function lerpColor(c1, c2, factor) {
+            let rgb1 = hexToRgb(c1); let rgb2 = hexToRgb(c2);
+            let r = Math.round(rgb1.r + factor * (rgb2.r - rgb1.r));
+            let g = Math.round(rgb1.g + factor * (rgb2.g - rgb1.g));
+            let b = Math.round(rgb1.b + factor * (rgb2.b - rgb1.b));
+            return `rgb(${r}, ${g}, ${b})`;
+        }
+
+        function gameLoop() {
+            if (state !== 'PLAYING') return;
+            
+            timeOfDay = (Math.sin(Date.now() * 0.0004) + 1) / 2; 
+            const currentMap = mapData.find(m => m.id === currentMapId).type;
+
+            let skyC1, skyC2, bgC1, bgC2, fgC1, fgC2;
+            if (currentMap === 'train') {
+                skyC1 = '#020617'; skyC2 = '#38bdf8'; 
+                bgC1 = '#0f172a'; bgC2 = '#64748b';   
+                fgC1 = '#1e293b'; fgC2 = '#22c55e';   
+            } else if (currentMap === 'ship') {
+                skyC1 = '#172554'; skyC2 = '#fdba74'; 
+                bgC1 = '#1e3a8a'; bgC2 = '#0284c7';   
+                fgC1 = '#1f2937'; fgC2 = '#d6d3d1';   
+            } else if (currentMap === 'plane') {
+                skyC1 = '#1e1b4b'; skyC2 = '#60a5fa'; 
+                bgC1 = '#312e81'; bgC2 = '#e0f2fe';   
+                fgC1 = '#4338ca'; fgC2 = '#f8fafc';   
+            } else if (currentMap === 'bus') {
+                skyC1 = '#450a0a'; skyC2 = '#fca5a5'; 
+                bgC1 = '#262626'; bgC2 = '#737373';   
+                fgC1 = '#171717'; fgC2 = '#52525b';   
+            }
+
+            let skyColor = lerpColor(skyC1, skyC2, timeOfDay);
+            let bgMtnColor = lerpColor(bgC1, bgC2, timeOfDay);
+            let fgColor = lerpColor(fgC1, fgC2, timeOfDay);
+
+            ctx.clearRect(0, 0, width, height);
+            
+            // Sky
+            ctx.fillStyle = skyColor;
+            ctx.fillRect(0, 0, width, height);
+
+            cameraX = player.worldX - width * 0.25; 
+            let targetCameraY = player.worldY - height * 0.55;
+            cameraY += (targetCameraY - cameraY) * 0.1; 
+
+            // Parallax
+            ctx.fillStyle = bgMtnColor;
+            let bgOffset = cameraX * 0.2;
+            
+            if (currentMap === 'train' || currentMap === 'plane') {
+                ctx.beginPath();
+                for(let i=-1; i<width/300 + 2; i++) {
+                    let x = (i * 300) - (bgOffset % 300);
+                    ctx.moveTo(x, height);
+                    if (currentMap === 'plane') {
+                        ctx.arc(x + 150, height/2 - (cameraY*0.1), 100, Math.PI, 0); 
+                    } else {
+                        ctx.lineTo(x + 150, height/2 - 100 - (cameraY*0.1)); 
+                    }
+                    ctx.lineTo(x + 300, height);
+                }
+                ctx.fill();
+            } else if (currentMap === 'bus' || currentMap === 'ship') {
+                for(let i=-1; i<width/150 + 2; i++) {
+                    let x = (i * 150) - (bgOffset % 150);
+                    let h = 100 + (Math.sin(i) * 50);
+                    ctx.fillRect(x, height/2 + 50 - (cameraY*0.1) - h, 100, h + 500);
+                }
+            }
+
+            if (currentTerrainX - cameraX < width * 3) {
+                generateTerrainChunk();
+            }
+
+            player.update();
+            vehicles.forEach(v => v.update());
+
+            // Track
+            ctx.save();
+            ctx.translate(0, -cameraY);
+            
+            if (currentMap === 'train') {
+                ctx.fillStyle = '#451a03'; 
+                for(let i=0; i<width; i+=40) {
+                    ctx.fillRect(i - (cameraX % 40), trackY - 2, 10, 8);
+                }
+                ctx.fillStyle = '#9ca3af';
+                if (timeOfDay < 0.4) { ctx.shadowBlur = 10; ctx.shadowColor = '#ec4899'; ctx.fillStyle = '#ec4899'; }
+                ctx.fillRect(0, trackY - 4, width, 3);
+                ctx.fillRect(0, trackY + 2, width, 3);
+            } 
+            else if (currentMap === 'ship') {
+                ctx.fillStyle = '#0284c7';
+                ctx.globalAlpha = 0.6;
+                ctx.fillRect(0, trackY - 10, width, height); 
+                ctx.globalAlpha = 1;
+            }
+            else if (currentMap === 'bus') {
+                ctx.fillStyle = '#3f3f46';
+                ctx.fillRect(0, trackY - 10, width, 20);
+                ctx.fillStyle = '#fbbf24';
+                for(let i=0; i<width; i+=80) {
+                    ctx.fillRect(i - (cameraX % 80), trackY - 2, 40, 4);
+                }
+            }
+            ctx.shadowBlur = 0;
+            ctx.restore();
+
+            // Vehicles & Houses
+            vehicles.forEach(v => {
+                let sx = v.worldX - cameraX;
+                let sy = v.worldY - cameraY;
+                if (sx + v.width > -200 && sx < width + 200) v.draw(ctx, sx, sy);
+            });
+            houses.forEach(h => {
+                let sx = h.worldX - cameraX;
+                let sy = h.worldY - cameraY;
+                if (sx + h.width > -200 && sx < width + 200) h.draw(ctx, sx, sy);
+            });
+
+            // Ground Polygon
+            ctx.save();
+            ctx.translate(0, -cameraY);
+            ctx.fillStyle = fgColor;
+            
+            ctx.beginPath();
+            if (terrainPoints.length > 0) {
+                ctx.moveTo(terrainPoints[0].x - cameraX, trackY + 3000);
+                for(let i = 0; i < terrainPoints.length; i++) {
+                    ctx.lineTo(terrainPoints[i].x - cameraX, terrainPoints[i].y);
+                }
+                ctx.lineTo(terrainPoints[terrainPoints.length - 1].x - cameraX, trackY + 3000);
+                ctx.fill();
+
+                ctx.strokeStyle = timeOfDay < 0.4 ? (currentMap === 'train' ? '#22d3ee' : '#f43f5e') : '#15803d'; 
+                if(timeOfDay < 0.4) { ctx.shadowBlur = 10; ctx.shadowColor = ctx.strokeStyle; }
+                ctx.lineWidth = 6;
+                ctx.stroke();
+                ctx.shadowBlur = 0;
+            }
+
+            chunks.forEach(chunk => {
+                if(chunk.type === 'MOUNTAIN') {
+                    let sx = chunk.startX - cameraX;
+                    if (sx < width && sx + 2000 > -500) {
+                        ctx.fillStyle = '#000';
+                        ctx.beginPath();
+                        ctx.arc(sx + 400, trackY - 60, 90, Math.PI, 0); 
+                        ctx.fill();
+                        ctx.arc(sx + 1600, trackY - 60, 90, Math.PI, 0); 
+                        ctx.fill();
+                    }
+                }
+                if(chunk.type === 'BRIDGE') {
+                    let sx = chunk.startX - cameraX;
+                    if (sx < width && sx + 2000 > -500) {
+                        ctx.fillStyle = '#334155';
+                        for(let pX = sx + 300; pX < sx + 1700; pX += 300) {
+                            ctx.fillRect(pX, trackY, 50, 500); 
+                        }
+                    }
+                }
+            });
+            ctx.restore();
+
+            // Items
+            obstacles.forEach(o => {
+                let sx = o.worldX - cameraX;
+                if(sx > -100 && sx < width + 100) o.draw(ctx, sx, o.worldY - cameraY);
+            });
+            coinsList.forEach(c => {
+                let sx = c.worldX - cameraX;
+                if(sx > -100 && sx < width + 100) c.draw(ctx, sx, c.worldY - cameraY);
+            });
+
+            // Player & Particles
+            player.draw(ctx, player.worldX - cameraX, player.worldY - cameraY);
+
+            particles.forEach((p, index) => {
+                p.worldX += p.vx;
+                p.worldY += p.vy;
+                p.life -= 0.03; 
+                if(p.life <= 0) particles.splice(index, 1);
+                else {
+                    ctx.globalAlpha = p.life;
+                    ctx.fillStyle = p.color;
+                    ctx.shadowBlur = 10; ctx.shadowColor = p.color;
+                    ctx.beginPath(); ctx.arc(p.worldX - cameraX, p.worldY - cameraY, 4, 0, Math.PI*2); ctx.fill();
+                    ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+                }
+            });
+
+            checkCollisions();
+
+            // Garbage Collection
+            while (terrainPoints.length > 50 && terrainPoints[5].x < cameraX - 2000) {
+                terrainPoints.shift();
+            }
+            vehicles = vehicles.filter(v => v.worldX + v.width > cameraX - 1500);
+            houses = houses.filter(h => h.worldX + h.width > cameraX - 1500);
+            obstacles = obstacles.filter(o => o.worldX > cameraX - 500);
+            coinsList = coinsList.filter(c => c.worldX > cameraX - 500 && !c.collected);
+
+            score += gameSpeed * 0.15; 
+            gameSpeed += 0.003; 
+            if(gameSpeed > maxGameSpeed) gameSpeed = maxGameSpeed;
+            
+            updateHUD();
+
+            animationId = requestAnimationFrame(gameLoop);
+        }
+
+        // --- Collisions & Logic ---
+        function checkCollisions() {
+            const px = player.worldX;
+            const py = player.worldY;
+            const pw = player.width;
+            const ph = player.height;
+
+            const rectIntersect = (x1, y1, w1, h1, x2, y2, w2, h2) => {
+                return x2 < x1 + w1 - 10 && x2 + w2 > x1 + 10 && y2 < y1 + h1 - 10 && y2 + h2 > y1 + 10;
+            };
+
+            // Tunnel
+            let currentChunk = chunks.find(c => px > c.startX && px < c.endX);
+            if (currentChunk && currentChunk.type === 'MOUNTAIN') {
+                if (px > currentChunk.startX + 250 && px < currentChunk.endX - 250) {
+                    if (py + ph > trackY - 20 && !player.onPlatform) {
+                        gameOver(); 
+                        return;
+                    }
+                }
+            }
+
+            // Batida nas Casas (Se não estiver no telhado)
+            for (let h of houses) {
+                if (px + pw > h.worldX + 15 && px < h.worldX + h.width - 15) {
+                    if (py + ph > h.worldY - h.height + 15) {
+                        gameOver();
+                        return;
+                    }
+                }
+            }
+
+            // Obstáculos
+            for (let obs of obstacles) {
+                if (rectIntersect(px, py, pw, ph, obs.worldX, obs.worldY - obs.height, obs.width, obs.height)) {
+                    gameOver();
+                    return;
+                }
+            }
+
+            // Moedas
+            for (let c of coinsList) {
+                if (!c.collected && rectIntersect(px, py, pw, ph, c.worldX - c.radius, c.worldY - c.radius, c.radius*2, c.radius*2)) {
+                    c.collected = true;
+                    sessionCoins++;
+                    coins += 5; 
+                    score += 100; 
+                    playSound('coin');
+                    createParticles(c.worldX, c.worldY, '#facc15', 15);
+                }
+            }
+        }
+
+        const ui = {
+            mainMenu: document.getElementById('mainMenu'),
+            garageMenu: document.getElementById('garageMenu'),
+            mapMenu: document.getElementById('mapMenu'),
+            saveMenu: document.getElementById('saveMenu'),
+            gameOverMenu: document.getElementById('gameOverMenu'),
+            hud: document.getElementById('hud'),
+            score: document.getElementById('scoreDisplay'),
+            highScore: document.getElementById('highScoreDisplay'),
+            coin: document.getElementById('coinDisplay'),
+            garageCoin: document.getElementById('garageCoinDisplay'),
+            mapCoin: document.getElementById('mapCoinDisplay'),
+            goScore: document.getElementById('goScore'),
+            goCoins: document.getElementById('goCoins'),
+            bikeGrid: document.getElementById('bikeGrid'),
+            mapGrid: document.getElementById('mapGrid'),
+            saveGrid: document.getElementById('saveGrid'),
+            toast: document.getElementById('toast'),
+            wheelieText: document.getElementById('wheelieBonus')
+        };
+
+        function showToast(message, colorClass = 'border-white text-white') {
+            ui.toast.innerText = message;
+            ui.toast.className = `absolute top-10 left-1/2 transform -translate-x-1/2 bg-gray-900 border-2 px-6 py-3 rounded-full font-bold z-[100] transition-opacity duration-300 pointer-events-none shadow-[0_0_15px_rgba(0,0,0,0.8)] ${colorClass}`;
+            ui.toast.classList.remove('hidden');
+            
+            // Allow browser reflow
+            setTimeout(() => {
+                ui.toast.classList.remove('opacity-0');
+            }, 10);
+            
+            setTimeout(() => {
+                ui.toast.classList.add('opacity-0');
+                setTimeout(() => ui.toast.classList.add('hidden'), 300);
+            }, 3000);
+        }
+
+        function startGame() {
+            initAudio();
+            state = 'PLAYING';
+            ui.mainMenu.classList.add('opacity-0');
+            ui.gameOverMenu.classList.add('opacity-0');
+            
+            setTimeout(() => {
+                ui.mainMenu.classList.add('hidden');
+                ui.gameOverMenu.classList.add('hidden');
+                ui.hud.classList.remove('hidden');
+                resetGame();
+                gameLoop();
+            }, 300);
+        }
+
+        function gameOver() {
+            state = 'GAMEOVER';
+            cancelAnimationFrame(animationId);
+            playSound('crash');
+            createParticles(player.worldX, player.worldY + player.height/2, '#ef4444', 40);
+            
+            ctx.fillStyle = "rgba(255,0,0,0.4)";
+            ctx.fillRect(0,0,width,height);
+            
+            let finalScore = Math.floor(score);
+            if (finalScore > highScore) {
+                highScore = finalScore;
+                localStorage.setItem('radicalRails_highScore', highScore);
+            }
+            localStorage.setItem('radicalRails_coins', coins);
+
+            ui.goScore.innerText = finalScore;
+            ui.goCoins.innerText = '+' + (sessionCoins * 5);
+
+            // Seleciona um anúncio aleatório
+            const randomAd = socialAds[Math.floor(Math.random() * socialAds.length)];
+            const adEl = document.getElementById('gameOverAd');
+            adEl.href = randomAd.url;
+            adEl.className = `w-full mb-6 p-4 border-2 rounded-xl flex items-center justify-center space-x-3 text-white font-bold transition-transform hover:scale-105 shadow-lg pointer-events-auto ad-btn ${randomAd.color}`;
+            document.getElementById('goAdIcon').innerText = randomAd.icon;
+            document.getElementById('goAdText').innerText = randomAd.text;
+            
+            ui.hud.classList.add('hidden');
+            ui.gameOverMenu.classList.remove('hidden');
+            setTimeout(() => ui.gameOverMenu.classList.remove('opacity-0'), 50);
+        }
+
+        function goToMenu() {
+            ui.gameOverMenu.classList.add('opacity-0');
+            setTimeout(() => {
+                ui.gameOverMenu.classList.add('hidden');
+                ui.mainMenu.classList.remove('hidden');
+                setTimeout(() => ui.mainMenu.classList.remove('opacity-0'), 50);
+            }, 300);
+        }
+
+        function updateHUD() {
+            ui.score.innerText = Math.floor(score);
+            ui.highScore.innerText = 'Recorde: ' + Math.floor(highScore);
+            ui.coin.innerText = coins;
+            ui.garageCoin.innerText = coins;
+            ui.mapCoin.innerText = coins;
+        }
+
+        // --- Garage System ---
+        function openGarage() {
+            initAudio();
+            ui.mainMenu.classList.add('opacity-0');
+            setTimeout(() => {
+                ui.mainMenu.classList.add('hidden');
+                ui.garageMenu.classList.remove('hidden');
+                renderGarage();
+                setTimeout(() => ui.garageMenu.classList.remove('opacity-0'), 50);
+            }, 300);
+        }
+
+        function closeGarage() {
+            ui.garageMenu.classList.add('opacity-0');
+            setTimeout(() => {
+                ui.garageMenu.classList.add('hidden');
+                ui.mainMenu.classList.remove('hidden');
+                setTimeout(() => ui.mainMenu.classList.remove('opacity-0'), 50);
+            }, 300);
+        }
+
+        function renderGarage() {
+            ui.garageCoin.innerText = coins;
+            ui.bikeGrid.innerHTML = '';
+            
+            bikeData.forEach(bike => {
+                const isUnlocked = unlockedBikes.includes(bike.id);
+                const isSelected = currentBikeId === bike.id;
+                const card = document.createElement('div');
+                card.className = `p-4 rounded-xl flex flex-col items-center justify-between border-2 transition-all ${isSelected ? 'border-cyan-400 bg-gray-800 shadow-[0_0_15px_rgba(6,182,212,0.5)]' : 'border-gray-700 bg-gray-900 hover:border-gray-500'}`;
+                
+                const neonStyle = bike.neon ? `filter: drop-shadow(0 0 8px ${bike.color});` : '';
+                const visual = `
+                    <div class="w-24 h-16 relative mb-4" style="${neonStyle}">
+                        <div class="absolute bottom-0 left-0 w-6 h-6 rounded-full border-2 border-gray-400 bg-gray-900"></div>
+                        <div class="absolute bottom-0 right-0 w-6 h-6 rounded-full border-2 border-gray-400 bg-gray-900"></div>
+                        <div class="absolute top-4 left-4 w-16 h-8 border-t-4 border-l-4" style="border-color: ${bike.frameColor}; border-radius: 8px 0 0 0"></div>
+                        <div class="absolute top-4 right-4 w-10 h-8 bg-current" style="color: ${bike.color}; clip-path: polygon(0 0, 100% 0, 50% 100%);"></div>
+                    </div>
+                `;
+
+                let actionButton = '';
+                if (isSelected) {
+                    actionButton = `<button class="w-full py-2 bg-cyan-600 text-white font-bold rounded-lg cursor-default">Equipada</button>`;
+                } else if (isUnlocked) {
+                    actionButton = `<button onclick="selectBike(${bike.id})" class="w-full py-2 bg-gray-700 hover:bg-gray-600 border border-gray-500 text-white font-bold rounded-lg transition-colors">Usar</button>`;
+                } else {
+                    const canAfford = coins >= bike.cost;
+                    actionButton = `
+                        <button onclick="buyBike(${bike.id}, ${bike.cost})" 
+                            class="w-full py-2 flex justify-center items-center space-x-1 font-bold rounded-lg transition-colors ${canAfford ? 'bg-pink-600 hover:bg-pink-500 text-white' : 'bg-gray-800 border border-gray-700 text-gray-500 cursor-not-allowed'}">
+                            <span>${bike.cost}</span>
+                            <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2a8 8 0 100 16 8 8 0 000-16zm0 14a6 6 0 110-12 6 6 0 010 12zM9 5h2v2H9V5zm0 4h2v6H9V9z"></path></svg>
+                        </button>
+                    `;
+                }
+
+                card.innerHTML = `
+                    <div class="text-center w-full">
+                        <h3 class="font-bold text-gray-200 mb-1 truncate">${bike.name}</h3>
+                        ${bike.neon ? '<span class="text-[10px] text-pink-400 font-bold uppercase tracking-widest block mb-2">NEON</span>' : '<span class="text-[10px] opacity-0 block mb-2">-</span>'}
+                        ${visual}
+                        ${actionButton}
+                    </div>
+                `;
+                ui.bikeGrid.appendChild(card);
+            });
+        }
+
+        function buyBike(id, cost) {
+            if (coins >= cost && !unlockedBikes.includes(id)) {
+                coins -= cost;
+                unlockedBikes.push(id);
+                localStorage.setItem('radicalRails_coins', coins);
+                localStorage.setItem('radicalRails_unlockedBikes', JSON.stringify(unlockedBikes));
+                selectBike(id); 
+                playSound('coin'); 
+            }
+        }
+        function selectBike(id) {
+            currentBikeId = id;
+            localStorage.setItem('radicalRails_currentBike', currentBikeId);
+            renderGarage();
+        }
+
+        // --- Map System ---
+        function openMaps() {
+            initAudio();
+            ui.mainMenu.classList.add('opacity-0');
+            setTimeout(() => {
+                ui.mainMenu.classList.add('hidden');
+                ui.mapMenu.classList.remove('hidden');
+                renderMaps();
+                setTimeout(() => ui.mapMenu.classList.remove('opacity-0'), 50);
+            }, 300);
+        }
+
+        function closeMaps() {
+            ui.mapMenu.classList.add('opacity-0');
+            setTimeout(() => {
+                ui.mapMenu.classList.add('hidden');
+                ui.mainMenu.classList.remove('hidden');
+                setTimeout(() => ui.mainMenu.classList.remove('opacity-0'), 50);
+            }, 300);
+        }
+
+        function renderMaps() {
+            ui.mapCoin.innerText = coins;
+            ui.mapGrid.innerHTML = '';
+            
+            mapData.forEach(map => {
+                const isUnlocked = unlockedMaps.includes(map.id);
+                const isSelected = currentMapId === map.id;
+                const card = document.createElement('div');
+                
+                card.className = `p-5 rounded-2xl flex flex-col justify-between border-2 transition-all ${isSelected ? 'border-green-400 bg-gray-800 shadow-[0_0_20px_rgba(34,197,94,0.4)]' : 'border-gray-700 bg-gray-900 hover:border-gray-500'}`;
+                
+                let actionButton = '';
+                if (isSelected) {
+                    actionButton = `<button class="w-full py-3 bg-green-600 text-white font-bold rounded-xl cursor-default uppercase tracking-wider">Viagem Atual</button>`;
+                } else if (isUnlocked) {
+                    actionButton = `<button onclick="selectMap(${map.id})" class="w-full py-3 bg-gray-700 hover:bg-gray-600 border border-gray-500 text-white font-bold rounded-xl transition-colors uppercase tracking-wider">Viajar para cá</button>`;
+                } else {
+                    const canAfford = coins >= map.cost;
+                    actionButton = `
+                        <button onclick="buyMap(${map.id}, ${map.cost})" 
+                            class="w-full py-3 flex justify-center items-center space-x-2 font-bold rounded-xl transition-colors text-lg ${canAfford ? 'bg-pink-600 hover:bg-pink-500 text-white' : 'bg-gray-800 border border-gray-700 text-gray-500 cursor-not-allowed'}">
+                            <span>DESBLOQUEAR POR ${map.cost}</span>
+                            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2a8 8 0 100 16 8 8 0 000-16zm0 14a6 6 0 110-12 6 6 0 010 12zM9 5h2v2H9V5zm0 4h2v6H9V9z"></path></svg>
+                        </button>
+                    `;
+                }
+
+                card.innerHTML = `
+                    <div class="mb-4">
+                        <div class="flex items-center space-x-3 mb-2">
+                            <div class="w-8 h-8 rounded-full shadow-lg border border-gray-400" style="background-color: ${map.color}"></div>
+                            <h3 class="text-2xl font-black italic text-gray-100">${map.name}</h3>
+                        </div>
+                        <p class="text-gray-400 text-sm font-medium leading-relaxed">${map.desc}</p>
+                    </div>
+                    ${actionButton}
+                `;
+                ui.mapGrid.appendChild(card);
+            });
+        }
+
+        function buyMap(id, cost) {
+            if (coins >= cost && !unlockedMaps.includes(id)) {
+                coins -= cost;
+                unlockedMaps.push(id);
+                localStorage.setItem('radicalRails_coins', coins);
+                localStorage.setItem('radicalRails_unlockedMaps', JSON.stringify(unlockedMaps));
+                selectMap(id); 
+                playSound('coin'); 
+            }
+        }
+        function selectMap(id) {
+            currentMapId = id;
+            localStorage.setItem('radicalRails_currentMap', currentMapId);
+            renderMaps();
+        }
+
+        // --- Save System ---
+        function openSaveMenu() {
+            initAudio();
+            ui.mainMenu.classList.add('opacity-0');
+            setTimeout(() => {
+                ui.mainMenu.classList.add('hidden');
+                ui.saveMenu.classList.remove('hidden');
+                renderSaveSlots();
+                setTimeout(() => ui.saveMenu.classList.remove('opacity-0'), 50);
+            }, 300);
+        }
+
+        function closeSaveMenu() {
+            ui.saveMenu.classList.add('opacity-0');
+            setTimeout(() => {
+                ui.saveMenu.classList.add('hidden');
+                ui.mainMenu.classList.remove('hidden');
+                setTimeout(() => ui.mainMenu.classList.remove('opacity-0'), 50);
+            }, 300);
+        }
+
+        function renderSaveSlots() {
+            ui.saveGrid.innerHTML = '';
+            for (let i = 1; i <= 8; i++) {
+                const slotDataStr = localStorage.getItem(`radicalRails_slot_${i}`);
+                const slotData = slotDataStr ? JSON.parse(slotDataStr) : null;
+                
+                const card = document.createElement('div');
+                card.className = `p-4 rounded-xl flex flex-col justify-between border-2 transition-all ${slotData ? 'border-yellow-600 bg-gray-800 shadow-[0_0_15px_rgba(234,179,8,0.2)]' : 'border-gray-700 bg-gray-900'}`;
+                
+                let infoHtml = '';
+                let actionsHtml = '';
+
+                if (slotData) {
+                    infoHtml = `
+                        <div class="mb-3">
+                            <h3 class="text-xl font-black italic text-yellow-400 drop-shadow-[0_0_5px_rgba(234,179,8,0.8)]">SLOT ${i}</h3>
+                            <p class="text-xs text-gray-400 font-bold mb-2">${slotData.date}</p>
+                            <div class="grid grid-cols-2 gap-2 text-sm bg-gray-900 p-2 rounded-lg border border-gray-700">
+                                <div><span class="text-gray-400">Moedas:</span> <span class="text-yellow-400 font-bold">${slotData.coins}</span></div>
+                                <div><span class="text-gray-400">Recorde:</span> <span class="text-cyan-400 font-bold">${slotData.highScore}</span></div>
+                            </div>
+                        </div>
+                    `;
+                    actionsHtml = `
+                        <div class="flex space-x-2">
+                            <button onclick="loadFromSlot(${i})" class="flex-1 py-2 bg-green-600 hover:bg-green-500 text-white font-bold rounded-lg transition-colors border border-green-400">Carregar</button>
+                            <button onclick="saveToSlot(${i})" class="flex-1 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg transition-colors border border-blue-400">Salvar</button>
+                            <button onclick="deleteSlot(${i})" class="w-12 flex justify-center items-center bg-red-600 hover:bg-red-500 text-white font-bold rounded-lg transition-colors border border-red-400" title="Apagar Slot">X</button>
+                        </div>
+                    `;
+                } else {
+                    infoHtml = `
+                        <div class="mb-3 flex-grow flex items-center">
+                            <h3 class="text-xl font-black italic text-gray-500">SLOT ${i} - VAZIO</h3>
+                        </div>
+                    `;
+                    actionsHtml = `
+                        <div class="flex space-x-2">
+                            <button onclick="saveToSlot(${i})" class="w-full py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg transition-colors border border-blue-400">Salvar Novo Jogo</button>
+                        </div>
+                    `;
+                }
+
+                card.innerHTML = infoHtml + actionsHtml;
+                ui.saveGrid.appendChild(card);
+            }
+        }
+
+        function saveToSlot(i) {
+            const data = {
+                date: new Date().toLocaleString('pt-BR'),
+                coins: coins,
+                highScore: highScore,
+                unlockedBikes: unlockedBikes,
+                currentBikeId: currentBikeId,
+                unlockedMaps: unlockedMaps,
+                currentMapId: currentMapId
+            };
+            localStorage.setItem(`radicalRails_slot_${i}`, JSON.stringify(data));
+            playSound('coin');
+            showToast(`Progresso salvo no Slot ${i}!`, 'border-blue-400 text-blue-400');
+            renderSaveSlots();
+        }
+
+        function loadFromSlot(i) {
+            const slotDataStr = localStorage.getItem(`radicalRails_slot_${i}`);
+            if (slotDataStr) {
+                const data = JSON.parse(slotDataStr);
+                coins = data.coins;
+                highScore = data.highScore;
+                unlockedBikes = data.unlockedBikes;
+                currentBikeId = data.currentBikeId;
+                unlockedMaps = data.unlockedMaps;
+                currentMapId = data.currentMapId;
+
+                // Sincroniza com o auto-save ativo (global state)
+                localStorage.setItem('radicalRails_coins', coins);
+                localStorage.setItem('radicalRails_highScore', highScore);
+                localStorage.setItem('radicalRails_unlockedBikes', JSON.stringify(unlockedBikes));
+                localStorage.setItem('radicalRails_currentBike', currentBikeId);
+                localStorage.setItem('radicalRails_unlockedMaps', JSON.stringify(unlockedMaps));
+                localStorage.setItem('radicalRails_currentMap', currentMapId);
+
+                updateHUD();
+                playSound('jump');
+                showToast(`Progresso carregado do Slot ${i}!`, 'border-green-400 text-green-400');
+                renderSaveSlots();
+            }
+        }
+
+        function deleteSlot(i) {
+            localStorage.removeItem(`radicalRails_slot_${i}`);
+            playSound('crash');
+            showToast(`Slot ${i} foi apagado!`, 'border-red-500 text-red-500');
+            renderSaveSlots();
+        }
+
+        // --- Inputs & Controls ---
+        function handleJump() { if (state === 'PLAYING' && player) player.jump(); }
+        function handleDrop() { if (state === 'PLAYING' && player) player.dropDown(); }
+        function setWheelie(stateBool) { if (state === 'PLAYING' && player) player.isWheelie = stateBool; }
+
+        window.addEventListener('keydown', (e) => {
+            if(e.code === 'ArrowUp' || e.code === 'Space' || e.code === 'KeyW') { handleJump(); e.preventDefault(); }
+            if(e.code === 'ArrowDown' || e.code === 'KeyS') { handleDrop(); e.preventDefault(); }
+            if(e.code === 'ArrowRight' || e.code === 'KeyD') { setWheelie(true); e.preventDefault(); }
+        });
+        window.addEventListener('keyup', (e) => {
+            if(e.code === 'ArrowRight' || e.code === 'KeyD') { setWheelie(false); e.preventDefault(); }
+        });
+
+        const btnJump = document.getElementById('btnJump');
+        const btnDrop = document.getElementById('btnDrop');
+        const btnWheelie = document.getElementById('btnWheelie');
+
+        btnJump.addEventListener('touchstart', (e) => { e.preventDefault(); handleJump(); });
+        btnDrop.addEventListener('touchstart', (e) => { e.preventDefault(); handleDrop(); });
+        btnWheelie.addEventListener('touchstart', (e) => { e.preventDefault(); setWheelie(true); });
+        btnWheelie.addEventListener('touchend', (e) => { e.preventDefault(); setWheelie(false); });
+
+        updateHUD();
+    </script>
+</body>
+</html>
