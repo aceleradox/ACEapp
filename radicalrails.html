@@ -1,0 +1,1069 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Radical Rails 2 - Definitivo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #020617; font-family: 'Inter', sans-serif; touch-action: none; user-select: none; }
+        #gameCanvas { display: block; width: 100vw; height: 100vh; }
+        .ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+        .ui-content { pointer-events: auto; }
+        .garage-scroll::-webkit-scrollbar { width: 8px; }
+        .garage-scroll::-webkit-scrollbar-track { background: rgba(0,0,0,0.3); border-radius: 4px; }
+        .garage-scroll::-webkit-scrollbar-thumb { background: #4a5568; border-radius: 4px; }
+        .mobile-btn { background: rgba(255,255,255,0.1); border: 2px solid rgba(255,255,255,0.3); backdrop-filter: blur(4px); border-radius: 50%; display: flex; justify-content: center; align-items: center; color: white; font-weight: bold; pointer-events: auto; user-select: none; }
+        .mobile-btn:active { background: rgba(255,255,255,0.3); transform: scale(0.95); }
+        #bossHpBar { transition: width 0.3s ease; }
+    </style>
+</head>
+<body class="text-white">
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- HUD Principal -->
+    <div id="hud" class="absolute top-0 left-0 w-full p-4 flex justify-between items-start pointer-events-none hidden z-10">
+        <div class="flex flex-col drop-shadow-md">
+            <span class="text-4xl font-black italic tracking-wider text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.8)]" id="scoreDisplay">0</span>
+            <span class="text-sm font-bold text-gray-300" id="highScoreDisplay">Recorde: 0</span>
+            <span id="biomeDisplay" class="text-cyan-400 font-bold text-sm mt-1 uppercase tracking-widest">Trilhos</span>
+            <span id="wheelieBonus" class="text-pink-400 font-bold text-sm hidden animate-pulse mt-1">EMPINA +PONTOS!</span>
+        </div>
+        <div class="flex items-center space-x-2 bg-gray-900 bg-opacity-80 px-4 py-2 rounded-full border border-yellow-500 drop-shadow-[0_0_8px_rgba(234,179,8,0.5)]">
+            <svg class="w-6 h-6 text-yellow-400" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2a8 8 0 100 16 8 8 0 000-16zm0 14a6 6 0 110-12 6 6 0 010 12zM9 5h2v2H9V5zm0 4h2v6H9V9z"></path></svg>
+            <span class="text-xl font-bold text-yellow-400" id="coinDisplay">0</span>
+        </div>
+    </div>
+
+    <!-- HUD do Chefão -->
+    <div id="bossHud" class="absolute top-4 left-1/2 transform -translate-x-1/2 w-64 pointer-events-none hidden z-10 text-center">
+        <h3 id="bossName" class="text-red-500 font-black italic text-xl drop-shadow-md uppercase mb-1">CHEFÃO</h3>
+        <div class="w-full h-4 bg-gray-900 border-2 border-red-500 rounded-full overflow-hidden">
+            <div id="bossHpBar" class="h-full bg-red-500 w-full"></div>
+        </div>
+        <p class="text-xs text-white mt-1">Pule no teto para dar dano!</p>
+    </div>
+
+    <!-- Controles Mobile -->
+    <div id="mobileControls" class="absolute bottom-4 left-0 w-full px-6 flex justify-between items-end pointer-events-none hidden h-40 z-10">
+        <div class="flex space-x-4">
+            <button id="btnDrop" class="mobile-btn w-20 h-20 text-3xl">▼</button>
+        </div>
+        <div class="flex space-x-4">
+            <button id="btnWheelie" class="mobile-btn w-16 h-16 text-xl border-pink-500 text-pink-400">🚴</button>
+            <button id="btnJump" class="mobile-btn w-20 h-20 text-3xl border-cyan-500 text-cyan-400">▲</button>
+        </div>
+    </div>
+
+    <!-- Toast de Notificações -->
+    <div id="toast" class="absolute top-10 left-1/2 transform -translate-x-1/2 bg-gray-900 border-2 px-6 py-3 rounded-full text-white font-bold z-[100] opacity-0 transition-opacity duration-300 pointer-events-none hidden shadow-2xl">
+        Mensagem
+    </div>
+
+    <!-- Menu de Saves -->
+    <div id="saveMenu" class="ui-layer bg-gray-950 transition-opacity duration-300 z-50">
+        <div class="ui-content w-full max-w-4xl h-[90vh] bg-gray-900 rounded-2xl shadow-[0_0_40px_rgba(234,179,8,0.3)] p-6 flex flex-col relative border border-yellow-800">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-4xl font-black italic text-yellow-400 drop-shadow-[0_0_8px_rgba(234,179,8,0.8)]">RADICAL RAILS 2</h2>
+                <span class="text-gray-400 font-bold uppercase">Selecione seu Perfil</span>
+            </div>
+            <div id="saveGrid" class="grid grid-cols-1 md:grid-cols-2 gap-4 overflow-y-auto garage-scroll pr-2 flex-grow"></div>
+        </div>
+    </div>
+
+    <!-- Menu Principal -->
+    <div id="mainMenu" class="ui-layer bg-black bg-opacity-80 backdrop-blur-md transition-opacity duration-300 z-40 hidden opacity-0">
+        <div class="ui-content text-center flex flex-col items-center">
+            <h1 class="text-7xl font-black italic text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-purple-500 to-pink-500 mb-2 drop-shadow-[0_0_15px_rgba(236,72,153,0.8)]">RADICAL RAILS 2</h1>
+            <p class="text-gray-300 mb-6 font-bold tracking-widest uppercase">Física & Rampas</p>
+            
+            <button onclick="startGame()" class="mb-4 px-16 py-5 bg-gradient-to-r from-purple-600 to-pink-600 rounded-full text-4xl font-black uppercase tracking-wider shadow-[0_0_30px_rgba(236,72,153,0.6)] hover:scale-105 transition-transform border-2 border-pink-300">
+                CORRER
+            </button>
+            
+            <div class="flex space-x-4 mb-6">
+                <button onclick="openGarage()" class="px-8 py-3 bg-gray-800 border-2 border-cyan-500 rounded-full text-lg font-bold uppercase tracking-wider hover:bg-gray-700 hover:shadow-[0_0_15px_rgba(6,182,212,0.5)] transition-all">
+                    🏍️ Garagem
+                </button>
+                <button onclick="openUpgrades()" class="px-8 py-3 bg-gray-800 border-2 border-green-500 rounded-full text-lg font-bold uppercase tracking-wider hover:bg-gray-700 hover:shadow-[0_0_15px_rgba(34,197,94,0.5)] transition-all">
+                    🔧 Oficina
+                </button>
+            </div>
+            
+            <!-- Botão EXTRA (Recomendações) -->
+            <div class="mb-6 flex flex-col items-center bg-gray-900 bg-opacity-90 p-4 rounded-xl border border-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.4)] pointer-events-auto">
+                <p class="text-blue-400 font-bold uppercase text-xs mb-3 tracking-widest">🔥 Jogos Extras Recomendados</p>
+                <div class="flex space-x-3">
+                    <a href="https://shrinkme.click/Donetrino-Forense" target="_blank" class="px-4 py-2 bg-gradient-to-r from-blue-700 to-blue-600 border border-blue-400 rounded-lg font-bold text-sm hover:scale-105 transition-transform shadow-md">
+                        Donetrino Forense
+                    </a>
+                    <a href="https://shrinkme.click/Donetrino-Dos" target="_blank" class="px-4 py-2 bg-gradient-to-r from-blue-700 to-blue-600 border border-blue-400 rounded-lg font-bold text-sm hover:scale-105 transition-transform shadow-md">
+                        Donetrino Dos
+                    </a>
+                </div>
+            </div>
+
+            <button onclick="goToProfiles()" class="px-6 py-2 text-sm bg-transparent border border-gray-600 text-gray-400 rounded-full hover:bg-gray-800 transition-colors pointer-events-auto">
+                Trocar Perfil de Save
+            </button>
+        </div>
+    </div>
+
+    <!-- Garagem (Skins) -->
+    <div id="garageMenu" class="ui-layer bg-gray-950 hidden opacity-0 transition-opacity duration-300 z-50">
+        <div class="ui-content w-full max-w-4xl h-[90vh] bg-gray-900 rounded-2xl shadow-[0_0_40px_rgba(6,182,212,0.3)] p-6 flex flex-col relative border border-cyan-800">
+            <button onclick="closeGarage()" class="absolute top-4 right-4 text-gray-400 hover:text-white bg-gray-800 p-2 rounded-full">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-3xl font-black italic text-cyan-400 drop-shadow-[0_0_8px_rgba(6,182,212,0.8)]">GARAGEM</h2>
+                <div class="flex items-center space-x-2 bg-gray-800 px-4 py-2 rounded-full border border-yellow-500">
+                    <span class="text-xl font-bold text-yellow-400" id="garageCoinDisplay">0</span>
+                </div>
+            </div>
+            <div id="bikeGrid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 overflow-y-auto garage-scroll pr-2 flex-grow"></div>
+        </div>
+    </div>
+
+    <!-- Oficina (Upgrades) -->
+    <div id="upgradeMenu" class="ui-layer bg-gray-950 hidden opacity-0 transition-opacity duration-300 z-50">
+        <div class="ui-content w-full max-w-4xl h-[90vh] bg-gray-900 rounded-2xl shadow-[0_0_40px_rgba(34,197,94,0.3)] p-6 flex flex-col relative border border-green-800">
+            <button onclick="closeUpgrades()" class="absolute top-4 right-4 text-gray-400 hover:text-white bg-gray-800 p-2 rounded-full">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-3xl font-black italic text-green-400 drop-shadow-[0_0_8px_rgba(34,197,94,0.8)]">OFICINA</h2>
+                <div class="flex items-center space-x-2 bg-gray-800 px-4 py-2 rounded-full border border-yellow-500">
+                    <span class="text-xl font-bold text-yellow-400" id="upgradeCoinDisplay">0</span>
+                </div>
+            </div>
+            <div id="upgradeGrid" class="grid grid-cols-1 md:grid-cols-2 gap-6 overflow-y-auto garage-scroll pr-2 flex-grow"></div>
+        </div>
+    </div>
+
+    <!-- Menu de Game Over -->
+    <div id="gameOverMenu" class="ui-layer bg-black bg-opacity-95 hidden opacity-0 transition-opacity duration-300 z-50">
+        <div class="ui-content text-center bg-gray-900 p-6 rounded-3xl border-4 border-red-600 shadow-[0_0_40px_rgba(220,38,38,0.6)] w-[95%] max-w-lg h-[95vh] flex flex-col justify-between overflow-y-auto garage-scroll">
+            
+            <div>
+                <h2 class="text-5xl font-black italic text-red-500 mb-2 drop-shadow-[0_0_10px_rgba(220,38,38,0.8)]">FIM DA LINHA!</h2>
+                
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div class="bg-gray-800 p-3 rounded-xl border border-cyan-800">
+                        <p class="text-xs text-cyan-400 uppercase font-bold">Pontuação</p>
+                        <p class="text-3xl font-black text-white" id="goScore">0</p>
+                    </div>
+                    <div class="bg-gray-800 p-3 rounded-xl border border-yellow-500/30">
+                        <p class="text-xs text-yellow-500 uppercase font-bold">Moedas</p>
+                        <p class="text-3xl font-black text-yellow-400" id="goCoins">+0</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Banner Ad Space (ShrinkMe) -->
+            <div class="w-full mb-4 flex justify-center pointer-events-auto shrink-0">
+                <!-- Start of banner code -->
+                <a href="https://shrinkme.io/ref/116633573127883922598" target="_blank">
+                    <img src="https://shrinkme.io/banners/ref/728x90GIF.gif" title="Make short links and earn the biggest money" class="rounded border border-gray-600 max-w-full h-auto shadow-[0_0_15px_rgba(255,255,255,0.2)] hover:scale-105 transition-transform" />
+                </a>
+                <!-- End of banner code -->
+            </div>
+
+            <!-- Social Networks (Recomendações) -->
+            <div class="flex flex-col items-center mb-4 pointer-events-auto shrink-0 bg-gray-950 p-4 rounded-2xl border border-gray-700">
+                <p class="text-yellow-400 font-bold uppercase text-xs mb-3 tracking-widest">Recomendações Incríveis</p>
+                <div class="flex justify-center space-x-5">
+                    <!-- TikTok -->
+                    <a href="https://www.tiktok.com/@vulgo_acelerado_ofc" target="_blank" class="w-12 h-12 rounded-full bg-black border-2 border-pink-500 flex items-center justify-center hover:scale-110 transition-transform shadow-[0_0_10px_rgba(236,72,153,0.5)]" title="TikTok @vulgo_acelerado_ofc">
+                        <svg class="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93v7.2c0 1.96-.75 3.9-2.12 5.3-1.37 1.4-3.32 2.21-5.28 2.23-2.02.01-4.04-.76-5.46-2.17-1.42-1.4-2.22-3.37-2.23-5.38-.02-2.02.76-4.04 2.17-5.46 1.4-1.42 3.37-2.22 5.38-2.23h.36v4.1c-.81.04-1.6.43-2.18 1.01-.58.58-.96 1.36-1 2.18-.04.81.35 1.6.93 2.18.58.58 1.36.96 2.18 1 .82.04 1.61-.35 2.19-.93.58-.58.96-1.36 1-2.18v-16.1z"/></svg>
+                    </a>
+                    <!-- YT Movies -->
+                    <a href="https://www.youtube.com/@aceleradomovies" target="_blank" class="w-12 h-12 rounded-full bg-red-600 border-2 border-white flex items-center justify-center hover:scale-110 transition-transform shadow-[0_0_10px_rgba(220,38,38,0.5)]" title="Canal Movies @aceleradomovies">
+                        <svg class="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+                    </a>
+                    <!-- YT Music -->
+                    <a href="https://www.youtube.com/@SupraRenalMusic" target="_blank" class="w-12 h-12 rounded-full bg-gray-900 border-2 border-red-500 flex items-center justify-center hover:scale-110 transition-transform shadow-[0_0_10px_rgba(239,68,68,0.5)]" title="Canal Music @SupraRenalMusic">
+                        <svg class="w-6 h-6 text-red-500" fill="currentColor" viewBox="0 0 24 24"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+                    </a>
+                    <!-- Discord -->
+                    <a href="https://www.tiktok.com/link/v2?aid=1988&lang=pt-BR&scene=bio_url&target=https%3A%2F%2Fdiscord.gg%2FSAeBQjr6fB" target="_blank" class="w-12 h-12 rounded-full bg-indigo-600 border-2 border-indigo-400 flex items-center justify-center hover:scale-110 transition-transform shadow-[0_0_10px_rgba(79,70,229,0.5)]" title="Servidor do Discord">
+                        <svg class="w-7 h-7 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M20.317 4.3698a19.7913 19.7913 0 00-4.8851-1.5152.0741.0741 0 00-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 00-.0785-.037 19.7363 19.7363 0 00-4.8852 1.515.0699.0699 0 00-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 00.0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 00.0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 00-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 01-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 01.0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 01.0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 01-.0066.1276 12.2986 12.2986 0 01-1.873.8914.0766.0766 0 00-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 00.0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 00.0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 00-.0312-.0286zM8.02 15.3312c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9555-2.4189 2.157-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.9555 2.4189-2.1569 2.4189zm7.9748 0c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9554-2.4189 2.1569-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.946 2.4189-2.1568 2.4189Z"/></svg>
+                    </a>
+                </div>
+            </div>
+
+            <div class="flex space-x-3 shrink-0">
+                <button onclick="startGame()" class="flex-1 px-4 py-3 bg-gradient-to-r from-purple-600 to-pink-600 rounded-xl text-lg font-bold uppercase tracking-wider shadow-[0_0_15px_rgba(236,72,153,0.5)] hover:scale-105 transition-transform">
+                    Jogar Novamente
+                </button>
+                <button onclick="goToMenuFromGame()" class="px-4 py-3 bg-gray-800 rounded-xl font-bold uppercase tracking-wider hover:bg-gray-700 border border-gray-600 transition-colors">
+                    Menu
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        let width, height;
+        
+        function resize() {
+            width = window.innerWidth;
+            height = window.innerHeight;
+            canvas.width = width;
+            canvas.height = height;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        if ('ontouchstart' in window || navigator.maxTouchPoints > 0) {
+            document.getElementById('mobileControls').classList.remove('hidden');
+        }
+
+        let state = 'SAVE_MENU';
+        let animationId;
+        let gameSpeed = 12; 
+        let baseGameSpeed = 12;
+        let score = 0;
+        let timeOfDay = 0; 
+        
+        let cameraX = 0;
+        let cameraY = 0;
+        
+        // CHÃO FIXO ABSOLUTO. A matemática da câmera agora respeita este eixo!
+        const trackY = 450; 
+        
+        let currentSlot = 1;
+        let profile = {
+            coins: 0, highScore: 0, unlockedBikes: [0], currentBikeId: 0,
+            skills: { motor: 1, pneu: 1, suspensao: 1, gasolina: 1, rodas: 1, transmissao: 1 }
+        };
+        let sessionCoins = 0;
+
+        const biomes = ['TRILHOS', 'FAVELA', 'PERIFERIA', 'AEROPORTO', 'AGUA', 'CEU'];
+        let currentBiomeIndex = 0;
+        let biomeLength = 3500;
+        let isBossFight = false;
+        let currentBoss = null;
+
+        let audioInitialized = false;
+        const sfx = {};
+
+        async function initAudio() {
+            if (audioInitialized) return;
+            await Tone.start();
+            
+            sfx.jump = new Tone.Synth({ oscillator: { type: "triangle" }, envelope: { attack: 0.01, decay: 0.2 } }).toDestination();
+            sfx.jump.volume.value = -12;
+            sfx.coin = new Tone.Synth({ oscillator: { type: "square" }, envelope: { attack: 0.01, decay: 0.1 } }).toDestination();
+            sfx.coin.volume.value = -15;
+            sfx.crash = new Tone.NoiseSynth({ noise: { type: "brown" }, envelope: { attack: 0.01, decay: 0.6 } }).toDestination();
+            sfx.crash.volume.value = -5;
+            sfx.hit = new Tone.MembraneSynth().toDestination();
+            sfx.hit.volume.value = -5;
+
+            const fmSynth = new Tone.PolySynth(Tone.FMSynth, {
+                modulationIndex: 12,
+                envelope: { attack: 0.01, decay: 0.2, sustain: 0.1, release: 0.5 },
+                modulation: { type: "square" }
+            }).toDestination();
+            fmSynth.volume.value = -20;
+
+            const kick = new Tone.MembraneSynth().toDestination();
+            kick.volume.value = -15;
+
+            const bassNotes = ["C2", "C2", "Eb2", "F2", "C2", "Bb1", "G1", "Bb1"];
+            const leadNotes = ["C4", null, "Eb4", "F4", "G4", "C5", "Bb4", "G4"];
+            let step = 0;
+            
+            Tone.Transport.bpm.value = 120;
+            
+            sfx.music = new Tone.Loop((time) => {
+                if(state === 'PLAYING') {
+                    fmSynth.triggerAttackRelease(bassNotes[step % bassNotes.length], 0.1, time);
+                    if (step % 4 === 0) kick.triggerAttackRelease("C1", 0.1, time);
+                    if (step % 2 === 0 && leadNotes[step % leadNotes.length]) {
+                         fmSynth.triggerAttackRelease(leadNotes[step % leadNotes.length], 0.1, time, 0.5);
+                    }
+                    step++;
+                    let targetBpm = 120 + ((gameSpeed - baseGameSpeed) * 4);
+                    if (targetBpm > 240) targetBpm = 240;
+                    Tone.Transport.bpm.rampTo(targetBpm, 0.5);
+                }
+            }, "16n");
+            
+            Tone.Transport.start();
+            sfx.music.start(0);
+            audioInitialized = true;
+        }
+        function playSound(type) {
+            if (!audioInitialized) return;
+            try {
+                if (type === 'jump') sfx.jump.triggerAttackRelease("G4", "8n");
+                else if (type === 'coin') sfx.coin.triggerAttackRelease("E5", "16n");
+                else if (type === 'crash') sfx.crash.triggerAttackRelease("8n");
+                else if (type === 'hit') sfx.hit.triggerAttackRelease("C2", "8n");
+            } catch (e) {}
+        }
+
+        const bikeData = [
+            { id: 0, name: "Ferrugem", cost: 0, color: "#9ca3af", frameColor: "#4b5563" },
+            { id: 1, name: "Neon Acid", cost: 100, color: "#a3e635", frameColor: "#4d7c0f", neon: true },
+            { id: 2, name: "Cyber Blue", cost: 300, color: "#22d3ee", frameColor: "#155e75", neon: true },
+            { id: 3, name: "Pink Shock", cost: 600, color: "#f43f5e", frameColor: "#881337", neon: true },
+            { id: 4, name: "Ouro", cost: 1000, color: "#eab308", frameColor: "#854d0e" },
+            { id: 5, name: "Void", cost: 1500, color: "#c084fc", frameColor: "#581c87", neon: true },
+            { id: 6, name: "Carbon", cost: 3000, color: "#1f2937", frameColor: "#000000" },
+            { id: 7, name: "Hacker", cost: 5000, color: "#4ade80", frameColor: "#064e3b", neon: true }
+        ];
+
+        const skillsData = {
+            motor: { name: "Motor", desc: "+ Multiplicador de Pontos", max: 5, baseCost: 200 },
+            pneu: { name: "Pneus", desc: "+ Controle no Ar", max: 5, baseCost: 150 },
+            suspensao: { name: "Suspensão", desc: "+ Altura do Pulo", max: 5, baseCost: 300 },
+            gasolina: { name: "Nitro Gas", desc: "+ Velocidade Inicial", max: 5, baseCost: 250 },
+            rodas: { name: "Rodas Imã", desc: "+ Moedas Extras", max: 5, baseCost: 400 },
+            transmissao: { name: "Transmissão", desc: "Mergulho Rápido (Baixo)", max: 5, baseCost: 200 }
+        };
+
+        let currentTerrainX = 0;
+        let platformsList = []; 
+        let entitiesList = []; 
+        let particles = [];
+        let decorations = []; 
+
+        function getBiomeName() { return biomes[currentBiomeIndex]; }
+
+        class Decoration {
+            constructor(x, y, type) { this.worldX = x; this.worldY = y; this.type = type; }
+            draw(ctx, sx, sy) {
+                if(this.type === 'tree') {
+                    ctx.fillStyle='#78350f'; ctx.fillRect(sx+10, sy-40, 10, 40);
+                    ctx.fillStyle='#166534'; ctx.beginPath(); ctx.arc(sx+15, sy-50, 25, 0, Math.PI*2); ctx.fill();
+                } else if(this.type === 'post') {
+                    ctx.fillStyle='#475569'; ctx.fillRect(sx, sy-100, 5, 100); ctx.fillRect(sx, sy-100, 30, 5);
+                    ctx.fillStyle='#fef08a'; ctx.beginPath(); ctx.arc(sx+25, sy-95, 5, 0, Math.PI*2); ctx.fill();
+                } else if(this.type === 'box') {
+                    ctx.fillStyle='#a16207'; ctx.fillRect(sx, sy-30, 30, 30);
+                    ctx.strokeStyle='#78350f'; ctx.lineWidth=2; ctx.strokeRect(sx, sy-30, 30, 30);
+                } else if(this.type === 'cloud') {
+                    ctx.fillStyle='rgba(255,255,255,0.4)'; ctx.beginPath(); ctx.arc(sx, sy, 30, 0, Math.PI*2); ctx.arc(sx+30, sy-10, 40, 0, Math.PI*2); ctx.arc(sx+60, sy, 30, 0, Math.PI*2); ctx.fill();
+                }
+            }
+        }
+
+        class SolidPlatform {
+            constructor(x, y, w, h) {
+                this.worldX = x; this.worldY = y; 
+                this.width = w; this.height = h;
+                this.isSolid = true; this.isCar = false; this.isBoss = false; this.type = 'flat';
+            }
+            update() {}
+            draw(ctx, sx, sy) {}
+        }
+
+        // RAMPAS REAIS COM FÍSICA PARA SALTO
+        class RampPlatform extends SolidPlatform {
+            constructor(x, y, w, h, dir='up') { 
+                super(x, y, w, h); 
+                this.dir = dir; // 'up' ou 'down'
+                this.type = 'ramp';
+            }
+            draw(ctx, sx, sy) {
+                ctx.fillStyle = '#475569'; 
+                ctx.beginPath();
+                ctx.moveTo(sx, sy); 
+                ctx.lineTo(sx + this.width, sy); 
+                
+                if (this.dir === 'up') {
+                    ctx.lineTo(sx + this.width, sy - this.height); 
+                    ctx.lineTo(sx, sy); 
+                } else {
+                    ctx.lineTo(sx + this.width, sy); 
+                    ctx.lineTo(sx, sy - this.height);
+                }
+                ctx.fill();
+                
+                // Faixa amarela de sinalização na borda
+                ctx.strokeStyle = '#eab308';
+                ctx.lineWidth = 4;
+                ctx.beginPath();
+                if (this.dir === 'up') {
+                    ctx.moveTo(sx, sy); ctx.lineTo(sx + this.width, sy - this.height);
+                } else {
+                    ctx.moveTo(sx, sy - this.height); ctx.lineTo(sx + this.width, sy);
+                }
+                ctx.stroke();
+            }
+        }
+
+        class TrainPlatform extends SolidPlatform {
+            constructor(x) { super(x, trackY, 800, 120); this.speed = gameSpeed * 0.75; }
+            update() { this.worldX += this.speed; }
+            draw(ctx, sx, sy) {
+                ctx.fillStyle='#1f2937'; ctx.fillRect(sx, sy-this.height, this.width, this.height);
+                ctx.fillStyle='#dc2626'; ctx.fillRect(sx, sy-this.height+20, this.width, 10);
+                for(let i=0; i<this.width; i+=120) {
+                    ctx.fillStyle='#000'; ctx.beginPath(); ctx.arc(sx+i+30, sy-15, 15, 0, Math.PI*2); ctx.arc(sx+i+70, sy-15, 15, 0, Math.PI*2); ctx.fill();
+                }
+            }
+        }
+        
+        class BusPlatform extends SolidPlatform {
+            constructor(x) { super(x, trackY, 400, 110); this.speed = gameSpeed * 0.5; }
+            update() { this.worldX += this.speed; }
+            draw(ctx, sx, sy) {
+                ctx.fillStyle='#f59e0b'; ctx.fillRect(sx, sy-this.height, this.width, this.height);
+                ctx.fillStyle='#1e293b'; for(let i=20; i<this.width-40; i+=80) ctx.fillRect(sx+i, sy-this.height+20, 60, 40);
+                ctx.fillStyle='#000'; ctx.beginPath(); ctx.arc(sx+60, sy, 20, 0, Math.PI*2); ctx.arc(sx+this.width-60, sy, 20, 0, Math.PI*2); ctx.fill();
+            }
+        }
+
+        class ShipPlatform extends SolidPlatform {
+            constructor(x) { super(x, trackY, 700, 140); this.speed = gameSpeed * 0.3; }
+            update() { this.worldX += this.speed; }
+            draw(ctx, sx, sy) {
+                ctx.fillStyle='#b91c1c'; ctx.beginPath(); ctx.moveTo(sx, sy-this.height); ctx.lineTo(sx+this.width-50, sy-this.height); ctx.lineTo(sx+this.width, sy-20); ctx.lineTo(sx, sy); ctx.fill();
+                ctx.fillStyle='#0ea5e9'; ctx.fillRect(sx+100, sy-this.height, 150, -80);
+            }
+        }
+
+        class PlanePlatform extends SolidPlatform {
+            constructor(x, onGround) { super(x, onGround ? trackY : trackY - 250, 500, 60); this.speed = gameSpeed * (onGround ? 0.2 : 1.5); }
+            update() { this.worldX += this.speed; }
+            draw(ctx, sx, sy) {
+                ctx.fillStyle='#f8fafc'; ctx.beginPath(); ctx.moveTo(sx, sy-this.height); ctx.lineTo(sx+this.width, sy-this.height); ctx.lineTo(sx+this.width+50, sy-this.height/2); ctx.lineTo(sx+this.width, sy); ctx.lineTo(sx, sy); ctx.fill();
+                ctx.fillStyle='#38bdf8'; ctx.fillRect(sx+100, sy-this.height-40, 100, 40); 
+            }
+        }
+
+        class FloatingBlock extends SolidPlatform {
+            constructor(x, y, w, type) { super(x, y, w, 40); this.blockType = type; }
+            draw(ctx, sx, sy) {
+                if(this.blockType === 'wood') { ctx.fillStyle='#854d0e'; ctx.fillRect(sx, sy-this.height, this.width, this.height); ctx.fillStyle='#a16207'; ctx.fillRect(sx, sy-this.height, this.width, 10); }
+                else if(this.blockType === 'metal') { ctx.fillStyle='#475569'; ctx.fillRect(sx, sy-this.height, this.width, this.height); ctx.fillStyle='#94a3b8'; ctx.fillRect(sx, sy-this.height, this.width, 10); }
+                else if(this.blockType === 'grass') { ctx.fillStyle='#78350f'; ctx.fillRect(sx, sy-this.height, this.width, this.height); ctx.fillStyle='#22c55e'; ctx.fillRect(sx, sy-this.height, this.width, 15); }
+                else if(this.blockType === 'brick') { ctx.fillStyle='#b91c1c'; ctx.fillRect(sx, sy-this.height, this.width, this.height); ctx.fillStyle='#f87171'; ctx.fillRect(sx, sy-this.height, this.width, 5); }
+            }
+        }
+        
+        class TrafficCar extends SolidPlatform {
+            constructor(x) { super(x, trackY, 140, 60); this.speed = gameSpeed*0.4; this.isCar=true; this.isDamaged=false; this.color = ['#ef4444','#3b82f6','#eab308'][Math.floor(Math.random()*3)]; }
+            update() { if(!this.isDamaged) this.worldX += this.speed; else { if(Math.random()>0.8) createParticles(this.worldX+this.width/2, this.worldY-this.height, '#4b5563', 2); } }
+            breakDown() { this.isDamaged = true; playSound('crash'); createParticles(this.worldX+this.width/2, this.worldY-this.height, '#000', 10); }
+            draw(ctx, sx, sy) {
+                ctx.fillStyle = this.isDamaged ? '#374151' : this.color; ctx.fillRect(sx, sy-this.height, this.width, this.height-15);
+                ctx.fillStyle='#94a3b8'; ctx.fillRect(sx+20, sy-this.height-20, this.width-40, 20);
+                ctx.fillStyle='#000'; ctx.beginPath(); ctx.arc(sx+30, sy-5, 12, 0, Math.PI*2); ctx.arc(sx+this.width-30, sy-5, 12, 0, Math.PI*2); ctx.fill();
+            }
+        }
+
+        class Obstacle {
+            constructor(x, y) { this.worldX=x; this.worldY=y; this.width=40; this.height=45; }
+            draw(ctx, sx, sy) {
+                ctx.fillStyle='#ef4444'; ctx.beginPath(); ctx.moveTo(sx+10, sy-this.height); ctx.lineTo(sx+this.width-10, sy-this.height); ctx.lineTo(sx+this.width, sy); ctx.lineTo(sx, sy); ctx.fill();
+            }
+        }
+        class Coin {
+            constructor(x, y) { this.worldX=x; this.worldY=y; this.radius=12; this.collected=false; this.frame=Math.random()*100; }
+            draw(ctx, sx, sy) {
+                if (this.collected) return;
+                this.frame++; ctx.save(); ctx.translate(sx, sy); ctx.scale(Math.abs(Math.sin(this.frame*0.05)), 1);
+                ctx.fillStyle='#facc15'; ctx.beginPath(); ctx.arc(0,0,this.radius,0,Math.PI*2); ctx.fill();
+                ctx.strokeStyle='#ca8a04'; ctx.lineWidth=2; ctx.stroke(); ctx.restore();
+            }
+        }
+
+        function generatePlatformChunk() {
+            // Chunks gerados na frente para evitar que apareçam sobre o jogador
+            let chunkWidth = 1000 + Math.random() * 800;
+            const b = getBiomeName();
+
+            // 1. Geração Baseada em Bioma (Ação Principal, Veículos e Rampas)
+            if (b === 'TRILHOS') {
+                if(Math.random() > 0.3) platformsList.push(new TrainPlatform(currentTerrainX + 300));
+                
+                let platY = trackY - 120;
+                platformsList.push(new FloatingBlock(currentTerrainX + 600, platY, 300, 'metal'));
+                
+                // Rampas Frequentes para Impulso
+                if(Math.random() > 0.4) {
+                    platformsList.push(new RampPlatform(currentTerrainX + 1000, trackY, 200, 100, 'up'));
+                    platformsList.push(new FloatingBlock(currentTerrainX + 1200, trackY - 100, 200, 'metal'));
+                    platformsList.push(new RampPlatform(currentTerrainX + 1400, trackY, 200, 100, 'down'));
+                }
+                
+                for(let i=0; i<3; i++) entitiesList.push(new Coin(currentTerrainX + 1050 + (i*40), trackY - 150));
+            } 
+            else if (b === 'FAVELA') {
+                // Plataformas Empilháveis estilo Super Mario
+                let platY = trackY - 130;
+                platformsList.push(new FloatingBlock(currentTerrainX + 450, platY, 150, 'brick')); 
+                platformsList.push(new FloatingBlock(currentTerrainX + 600, platY - 80, 150, 'wood')); 
+                
+                if(Math.random() > 0.3) platformsList.push(new TrafficCar(currentTerrainX + 800));
+                
+                // Conjunto de Rampas para o grau
+                platformsList.push(new RampPlatform(currentTerrainX + 900, trackY, 150, 60, 'up'));
+                platformsList.push(new RampPlatform(currentTerrainX + 1050, trackY, 150, 60, 'down'));
+                
+                for(let i=0; i<4; i++) entitiesList.push(new Coin(currentTerrainX + 950 + (i*40), trackY - 100));
+            }
+            else if (b === 'PERIFERIA') {
+                platformsList.push(new BusPlatform(currentTerrainX + 400));
+                if(Math.random() > 0.4) platformsList.push(new TrafficCar(currentTerrainX + 900));
+                
+                let platY = trackY - 150;
+                platformsList.push(new FloatingBlock(currentTerrainX + 600, platY, 400, 'brick')); 
+                for(let i=0; i<5; i++) entitiesList.push(new Coin(currentTerrainX + 650 + (i*50), platY - 30));
+            }
+            else if (b === 'AEROPORTO') {
+                platformsList.push(new PlanePlatform(currentTerrainX + 500, true));
+                
+                // Rampa gigante de aeroporto
+                platformsList.push(new RampPlatform(currentTerrainX + 1000, trackY, 300, 150, 'up'));
+                
+                if(Math.random() > 0.3) entitiesList.push(new Obstacle(currentTerrainX + 800, trackY)); 
+            }
+            else if (b === 'AGUA') {
+                platformsList.push(new ShipPlatform(currentTerrainX + 500));
+                platformsList.push(new FloatingBlock(currentTerrainX + 700, trackY - 140, 200, 'metal'));
+                for(let i=0; i<3; i++) entitiesList.push(new Coin(currentTerrainX + 750 + (i*40), trackY - 170));
+            }
+            else if (b === 'CEU') {
+                let platY = trackY - 150;
+                platformsList.push(new FloatingBlock(currentTerrainX + 400, platY, 300, 'grass'));
+                platformsList.push(new PlanePlatform(currentTerrainX + 900, false));
+                for(let i=0; i<5; i++) entitiesList.push(new Coin(currentTerrainX + 1000 + (i*40), platY - 140));
+            }
+
+            // 2. Decorações de Fundo Fixo (Postes e Árvores que ficam no nível do chão)
+            if(Math.random() > 0.3) decorations.push(new Decoration(currentTerrainX + Math.random()*500, trackY, 'post'));
+            if(b === 'TRILHOS' || b === 'FAVELA' || b === 'PERIFERIA') {
+                if(Math.random() > 0.3) decorations.push(new Decoration(currentTerrainX + 600, trackY, 'tree'));
+            }
+
+            // 3. Mais Moedas no chão e Obstáculos comuns
+            if (Math.random() > 0.2 && b !== 'CEU') {
+                for(let i=0; i<4; i++) entitiesList.push(new Coin(currentTerrainX + 800 + (i*60), trackY - 50));
+            } else if (Math.random() > 0.5) {
+                entitiesList.push(new Obstacle(currentTerrainX + 800, trackY));
+            }
+
+            currentTerrainX += chunkWidth;
+        }
+
+        class Boss extends SolidPlatform {
+            constructor(type) {
+                super(player.worldX + width + 200, trackY, 300, 120);
+                this.isBoss = true; this.type = type;
+                this.maxHp = 3; this.hp = 3;
+                this.targetDist = 200; this.invulnerable = false;
+                
+                ui.bossHud.classList.remove('hidden');
+                document.getElementById('bossName').innerText = `CHEFÃO: ${this.type}`;
+                this.updateHpBar();
+            }
+            updateHpBar() { document.getElementById('bossHpBar').style.width = `${(this.hp/this.maxHp)*100}%`; }
+            update() {
+                let targetX = player.worldX + this.targetDist + Math.sin(Date.now()*0.005)*50;
+                this.worldX += (targetX - this.worldX) * 0.05;
+                if (this.type === 'Jato VIP' || this.type === 'Nave Mãe') {
+                    this.worldY = trackY - 200 + Math.sin(Date.now()*0.002)*30; 
+                } else { this.worldY = trackY; }
+            }
+            takeDamage() {
+                this.hp--; this.updateHpBar(); playSound('hit');
+                createParticles(this.worldX + this.width/2, this.worldY - this.height, '#ef4444', 30);
+                if(this.hp <= 0) this.die();
+                else {
+                    this.invulnerable = true; this.targetDist = 600; 
+                    setTimeout(() => { this.targetDist = 200; this.invulnerable = false; }, 2000);
+                }
+            }
+            die() {
+                playSound('crash'); createParticles(this.worldX + this.width/2, this.worldY - this.height/2, '#f59e0b', 100);
+                let coinB = profile.skills.rodas; profile.coins += 100 * coinB; score += 5000; sessionCoins += 100;
+                isBossFight = false; currentBoss = null; ui.bossHud.classList.add('hidden');
+                showToast(`Chefão Destruído! +${100*coinB} Moedas`, 'border-yellow-400 text-yellow-400');
+                currentBiomeIndex = (currentBiomeIndex + 1) % biomes.length; ui.biome.innerText = getBiomeName();
+            }
+            draw(ctx, sx, sy) {
+                if (this.invulnerable && Math.floor(Date.now() / 100) % 2 === 0) return;
+                ctx.fillStyle = '#b91c1c'; ctx.fillRect(sx, sy-this.height, this.width, this.height);
+                ctx.fillStyle = '#000'; ctx.fillRect(sx+20, sy-this.height+20, 50, 40); 
+                ctx.beginPath(); ctx.arc(sx+50, sy, 20, 0, Math.PI*2); ctx.arc(sx+this.width-50, sy, 20, 0, Math.PI*2); ctx.fill();
+            }
+        }
+
+        class Player {
+            constructor() {
+                this.worldX = 200;
+                this.worldY = trackY - 100;
+                this.vy = 0;
+                this.width = 50; this.height = 50;
+                this.gravity = 0.8; 
+                this.isGrounded = false;
+                this.jumps = 0; this.maxJumps = 1; 
+                this.rotation = 0;
+                this.targetRotation = 0; 
+                this.bike = bikeData.find(b => b.id === profile.currentBikeId) || bikeData[0];
+                this.dropCooldown = 0;
+                this.isWheelie = false;
+                
+                this.onPlatformObj = null;
+
+                let jumpLvl = profile.skills.suspensao; this.jumpPower = -14 - (jumpLvl * 0.8);
+                let pneuLvl = profile.skills.pneu; this.rotSpeed = 0.02 + (pneuLvl * 0.01);
+                let transLvl = profile.skills.transmissao; this.diveForce = 10 + (transLvl * 1.5);
+            }
+
+            update() {
+                this.worldX += gameSpeed;
+                this.vy += this.gravity;
+                this.worldY += this.vy;
+                
+                if (this.dropCooldown > 0) this.dropCooldown--;
+
+                let floorY = trackY; 
+                this.onPlatformObj = null;
+                this.targetRotation = 0;
+
+                let allPlatforms = [...platformsList];
+                if (isBossFight && currentBoss) allPlatforms.push(currentBoss);
+
+                // Detectar aterrissagem Suave e Rampas
+                for(let p of allPlatforms) {
+                    if (p.isCar && p.isDamaged) continue; 
+                    
+                    if (this.worldX + this.width > p.worldX && this.worldX < p.worldX + p.width) {
+                        
+                        if (p.type === 'ramp') {
+                            let localX = (this.worldX + this.width/2) - p.worldX;
+                            let progress = Math.max(0, Math.min(1, localX / p.width));
+                            let currentRampY = p.worldY - (p.dir === 'up' ? progress * p.height : (1 - progress) * p.height);
+
+                            // Tolera a subida da rampa suavemente
+                            if (this.worldY + this.height >= currentRampY - 25 && this.worldY + this.height - this.vy <= currentRampY + 35) {
+                                floorY = currentRampY;
+                                this.onPlatformObj = p;
+                                this.targetRotation = p.dir === 'up' ? -Math.atan2(p.height, p.width) : Math.atan2(p.height, p.width);
+                                break;
+                            }
+                        } else {
+                            // Plataforma Normal Flutuante
+                            let pTop = p.worldY - p.height; 
+                            if (this.vy >= 0 && this.dropCooldown === 0) {
+                                let prevBottom = this.worldY + this.height - this.vy;
+                                if (prevBottom <= pTop + 25 && this.worldY + this.height >= pTop) {
+                                    floorY = pTop;
+                                    this.onPlatformObj = p;
+                                    
+                                    if (p.isBoss && !p.invulnerable) {
+                                        p.takeDamage(); this.vy = this.jumpPower * 0.8; 
+                                        floorY = trackY; this.onPlatformObj = null;
+                                    }
+                                    if (p.isCar && !p.isDamaged) p.breakDown();
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Aplicação da física e Rotação visual
+                if (this.worldY + this.height >= floorY) {
+                    this.worldY = floorY - this.height;
+                    this.vy = 0; 
+                    this.isGrounded = true; 
+                    this.jumps = 0;
+                    
+                    if (this.isWheelie) {
+                        this.rotation += (-0.6 - this.rotation) * 0.2;
+                        score += 3 * profile.skills.motor; 
+                        ui.wheelieText.classList.remove('hidden');
+                        if (Math.random() > 0.5) createParticles(this.worldX, this.worldY + this.height, '#facc15', 1);
+                    } else {
+                        this.rotation += (this.targetRotation - this.rotation) * 0.2; 
+                        ui.wheelieText.classList.add('hidden');
+                    }
+                } else {
+                    this.isGrounded = false;
+                    ui.wheelieText.classList.add('hidden');
+                    if (this.isWheelie) this.rotation += (-0.8 - this.rotation) * 0.1; 
+                    else this.rotation += this.rotSpeed; 
+                }
+            }
+
+            jump() {
+                if (this.jumps < this.maxJumps) {
+                    // IMPULSO EXTRA DE RAMPA (BOOST DE SALTO!)
+                    let jumpForce = this.jumpPower;
+                    if (this.onPlatformObj && this.onPlatformObj.type === 'ramp' && this.onPlatformObj.dir === 'up') {
+                        jumpForce *= 1.35; // Salto gigantesco saindo de rampas!
+                    }
+
+                    this.rotation = this.targetRotation - 0.3; 
+                    this.vy = jumpForce; this.jumps++; this.isGrounded = false;
+                    playSound('jump');
+                    createParticles(this.worldX, this.worldY + this.height, '#ffffff', 5);
+                }
+            }
+
+            dropDown() {
+                if (this.onPlatformObj || this.worldY + this.height < trackY - 10) {
+                    this.vy = this.diveForce; this.dropCooldown = 15; 
+                }
+            }
+
+            draw(ctx, screenX, screenY) {
+                ctx.save(); ctx.translate(screenX + this.width/2, screenY + this.height/2); ctx.rotate(this.rotation);
+                const color = this.bike.color; const frameColor = this.bike.frameColor;
+                let wheelRot = (this.worldX * 0.05) % (Math.PI * 2);
+
+                const drawWheel = (x, y) => {
+                    ctx.save(); ctx.translate(x, y); ctx.rotate(wheelRot);
+                    ctx.fillStyle = '#111'; ctx.strokeStyle = '#555'; ctx.lineWidth = 2;
+                    ctx.beginPath(); ctx.arc(0, 0, 12, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+                    ctx.strokeStyle = frameColor; ctx.beginPath(); ctx.moveTo(-12, 0); ctx.lineTo(12, 0); ctx.stroke();
+                    ctx.beginPath(); ctx.moveTo(0, -12); ctx.lineTo(0, 12); ctx.stroke(); ctx.restore();
+                };
+
+                drawWheel(-20, 15); drawWheel(20, 15);
+                ctx.strokeStyle = frameColor; ctx.lineWidth = 4;
+                ctx.beginPath(); ctx.moveTo(-20, 15); ctx.lineTo(-5, -5); ctx.lineTo(15, -5); ctx.lineTo(20, 15); ctx.lineTo(-10, 10); ctx.closePath(); ctx.stroke();
+                ctx.fillStyle = color;
+                if(this.bike.neon || timeOfDay < 0.3) { ctx.shadowBlur = 15; ctx.shadowColor = color; }
+                ctx.beginPath(); ctx.moveTo(-5, -5); ctx.lineTo(5, -5); ctx.lineTo(0, 5); ctx.fill(); ctx.shadowBlur = 0; 
+                ctx.strokeStyle = '#fff'; ctx.lineWidth = 3; ctx.lineCap = 'round';
+                ctx.beginPath(); ctx.moveTo(-5, -5); ctx.lineTo(this.isWheelie ? -5 : 5, -20); ctx.stroke();
+                ctx.beginPath(); ctx.arc(this.isWheelie ? -5 : 10, -25, 6, 0, Math.PI * 2); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(this.isWheelie ? -5 : 5, -20); ctx.lineTo(15, -5); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(-5, -5); ctx.lineTo(0, 5); ctx.lineTo(-10, 10); ctx.stroke(); ctx.restore();
+            }
+        }
+
+        function createParticles(x, y, color, count=10) {
+            for(let i=0; i<count; i++) particles.push({ worldX: x, worldY: y, vx: (Math.random()-0.5)*15, vy: (Math.random()-1)*15, life: 1, color: color });
+        }
+
+        function resetGame() {
+            currentTerrainX = 1000; // COMEÇA LONGE PRA NÃO MATAR NO INÍCIO E NÃO NASCER NO ROSTO
+            platformsList = []; entitiesList = []; particles = []; decorations = [];
+            currentBiomeIndex = 0;
+            ui.biome.innerText = getBiomeName();
+            isBossFight = false; currentBoss = null;
+            ui.bossHud.classList.add('hidden');
+            
+            for(let i=0; i<8; i++) generatePlatformChunk(); 
+
+            player = new Player();
+            player.worldX = 200; 
+            
+            cameraX = player.worldX - width * 0.25;
+            cameraY = trackY - height * 0.65;
+            
+            score = 0; sessionCoins = 0;
+            
+            let gasLvl = profile.skills.gasolina;
+            baseGameSpeed = 10 + (gasLvl * 1.5); gameSpeed = baseGameSpeed;
+            timeOfDay = 0.5; updateHUD();
+        }
+
+        function lerpColor(c1, c2, factor) {
+            let r1 = parseInt(c1.substring(1,3),16), g1 = parseInt(c1.substring(3,5),16), b1 = parseInt(c1.substring(5,7),16);
+            let r2 = parseInt(c2.substring(1,3),16), g2 = parseInt(c2.substring(3,5),16), b2 = parseInt(c2.substring(5,7),16);
+            return `rgb(${Math.round(r1 + factor*(r2-r1))}, ${Math.round(g1 + factor*(g2-g1))}, ${Math.round(b1 + factor*(b2-b1))})`;
+        }
+
+        function gameLoop() {
+            if (state !== 'PLAYING') return;
+            timeOfDay = (Math.sin(Date.now() * 0.0002) + 1) / 2; 
+            const b = getBiomeName();
+
+            let skyC1, skyC2, bgC1, bgC2, fgC1, fgC2;
+            if (b === 'TRILHOS') { skyC1='#020617'; skyC2='#38bdf8'; bgC1='#0f172a'; bgC2='#64748b'; fgC1='#1e293b'; fgC2='#16a34a'; } 
+            else if (b === 'FAVELA') { skyC1='#451a03'; skyC2='#fcd34d'; bgC1='#78350f'; bgC2='#d97706'; fgC1='#7c2d12'; fgC2='#b45309'; } 
+            else if (b === 'PERIFERIA') { skyC1='#171717'; skyC2='#9ca3af'; bgC1='#262626'; bgC2='#6b7280'; fgC1='#1e293b'; fgC2='#475569'; } 
+            else if (b === 'AEROPORTO') { skyC1='#082f49'; skyC2='#7dd3fc'; bgC1='#0c4a6e'; bgC2='#38bdf8'; fgC1='#1e293b'; fgC2='#94a3b8'; }
+            else if (b === 'AGUA') { skyC1='#172554'; skyC2='#fdba74'; bgC1='#1e3a8a'; bgC2='#0284c7'; fgC1='#1f2937'; fgC2='#b45309'; } 
+            else if (b === 'CEU') { skyC1='#1e1b4b'; skyC2='#60a5fa'; bgC1='#312e81'; bgC2='#e0f2fe'; fgC1='#4338ca'; fgC2='#f8fafc'; } 
+
+            ctx.fillStyle = lerpColor(skyC1, skyC2, timeOfDay); ctx.fillRect(0, 0, width, height);
+
+            cameraX = player.worldX - width * 0.25; 
+            
+            // CÂMERA FIXA NO CHÃO (RESOLVE TODOS OS BUGS). Não sobe a menos que vá muito alto (Céu)
+            let targetCameraY = trackY - height * 0.65; 
+            if (player.worldY < trackY - height * 0.4) {
+                targetCameraY = player.worldY - height * 0.25; 
+            }
+            cameraY += (targetCameraY - cameraY) * 0.1; 
+
+            // PARALLAX DESENHADO CORRETAMENTE NA TELA
+            ctx.fillStyle = lerpColor(bgC1, bgC2, timeOfDay);
+            let bgOffset = cameraX * 0.2;
+            let bgY = height - 50 + (cameraY * 0.2); // Leve movimento de paralaxe Y
+            ctx.beginPath();
+            
+            if (b === 'FAVELA' || b === 'PERIFERIA') {
+                for(let i=-1; i<width/100 + 2; i++) {
+                    let x = (i * 100) - (bgOffset % 100);
+                    let h1 = 150 + (Math.sin(i * 123) * 80); 
+                    let h2 = 250 + (Math.cos(i * 321) * 100);
+                    ctx.fillRect(x, bgY - h1, 60, h1);
+                    ctx.fillStyle = lerpColor(bgC1, '#000', 0.2); 
+                    ctx.fillRect(x + 40, bgY - h2, 50, h2);
+                    ctx.fillStyle = lerpColor(bgC1, bgC2, timeOfDay); 
+                }
+            } else {
+                for(let i=-1; i<width/300 + 2; i++) {
+                    let x = (i * 300) - (bgOffset % 300);
+                    ctx.arc(x + 150, bgY, 200, Math.PI, 0);
+                }
+                ctx.fill();
+            }
+
+            if (currentTerrainX - cameraX < width * 3) generatePlatformChunk();
+
+            if (!isBossFight && score > 0 && score % biomeLength < 50 && (score / biomeLength) >= 1) {
+                isBossFight = true;
+                let bosses = ['Trem Blindado', 'Caveirão', 'Ônibus Ligeirinho', 'Jato VIP', 'Lancha Patrulha', 'Nave Mãe'];
+                currentBoss = new Boss(bosses[currentBiomeIndex]);
+                platformsList.push(currentBoss);
+            }
+
+            player.update();
+            platformsList.forEach(p => p.update());
+            entitiesList.forEach(e => { if(e.update) e.update(); });
+
+            // Layer da Câmera Principal (AQUI O MISTÉRIO FOI RESOLVIDO)
+            ctx.save(); ctx.translate(0, -cameraY);
+            
+            // Decorações
+            decorations.forEach(d => { let sx = d.worldX - cameraX; if(sx>-200 && sx<width) d.draw(ctx, sx, d.worldY); });
+
+            // CHÃO FIXO INFINITO SEMPRE NO trackY EXATO
+            ctx.fillStyle = lerpColor(fgC1, fgC2, timeOfDay);
+            ctx.fillRect(-200, trackY, width + 400, height); 
+            
+            // Detalhes do Asfalto / Chão
+            ctx.strokeStyle = timeOfDay < 0.4 ? '#22d3ee' : '#15803d'; ctx.lineWidth = 4;
+            if (b === 'TRILHOS') {
+                ctx.beginPath(); ctx.moveTo(-200, trackY); ctx.lineTo(width+200, trackY); ctx.stroke();
+                ctx.fillStyle = '#000';
+                for(let i=-100; i<width+100; i+=50) ctx.fillRect(i - (cameraX%50), trackY, 10, 5);
+            } else if (b === 'PERIFERIA' || b === 'AEROPORTO') {
+                ctx.fillStyle = 'rgba(255,255,255,0.7)'; 
+                for(let i=-100; i<width+100; i+=100) ctx.fillRect(i - (cameraX%100), trackY + 10, 50, 5);
+            }
+
+            // ATENÇÃO: Passando o worldY exato para o draw! Isso acaba com a flutuação e centraliza a física!
+            const drawArr = (arr) => {
+                arr.forEach(e => { let sx = e.worldX - cameraX; if(sx+e.width>-200 && sx<width+200) e.draw(ctx, sx, e.worldY); });
+            };
+            drawArr(platformsList);
+            entitiesList.forEach(e => { let sx = e.worldX-cameraX; if(sx>-100 && sx<width) e.draw(ctx, sx, e.worldY); });
+            
+            // Desenhando o jogador sem subtração de câmera duplicada
+            player.draw(ctx, player.worldX - cameraX, player.worldY);
+            
+            // Partículas
+            particles.forEach((p, i) => {
+                p.worldX += p.vx; p.worldY += p.vy; p.life -= 0.03; 
+                if(p.life<=0) particles.splice(i,1);
+                else { ctx.globalAlpha = p.life; ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(p.worldX-cameraX, p.worldY, 4, 0, Math.PI*2); ctx.fill(); ctx.globalAlpha = 1; }
+            });
+
+            ctx.restore(); 
+            checkCollisions();
+
+            // Limpeza Segura do Mapa
+            platformsList = platformsList.filter(p => p.worldX + p.width > cameraX - 1500 || p.isBoss);
+            entitiesList = entitiesList.filter(e => e.worldX + (e.width||0) > cameraX - 1500 && !e.collected);
+            decorations = decorations.filter(d => d.worldX > cameraX - 1500);
+
+            score += (gameSpeed * 0.1) * profile.skills.motor; 
+            gameSpeed += 0.001; if(gameSpeed > 35) gameSpeed = 35;
+            
+            updateHUD(); animationId = requestAnimationFrame(gameLoop);
+        }
+
+        function checkCollisions() {
+            const px = player.worldX, py = player.worldY, pw = player.width, ph = player.height;
+            const rectIntersect = (x1,y1,w1,h1, x2,y2,w2,h2) => x2<x1+w1-15 && x2+w2>x1+15 && y2<y1+h1-10 && y2+h2>y1+15;
+
+            // Bater de Frente nas Plataformas Sólidas (Evitando bater em Rampa de frente por ser perigoso)
+            for (let p of platformsList) {
+                if (player.onPlatformObj !== p) {
+                    if (p.isCar && p.isDamaged) continue;
+                    if (p.type === 'ramp') continue; // Passa liso pela lateral da rampa pra subir naturalmente
+                    
+                    if (px + pw > p.worldX + 15 && px < p.worldX + p.width - 15) {
+                        if (py + ph > p.worldY - p.height + 20 && py < p.worldY) {
+                            gameOver(); return;
+                        }
+                    }
+                }
+            }
+            
+            for (let e of entitiesList) {
+                if(e instanceof Coin && !e.collected) {
+                    if (rectIntersect(px,py,pw,ph, e.worldX-e.radius,e.worldY-e.radius,e.radius*2,e.radius*2)) {
+                        let coinMult = profile.skills.rodas;
+                        e.collected = true; sessionCoins += coinMult; profile.coins += (5 * coinMult); score += 50; 
+                        playSound('coin'); createParticles(e.worldX, e.worldY, '#facc15', 10);
+                    }
+                } else if (!(e instanceof Coin)) {
+                    // Morte nos obstáculos (Espinhos, cones, etc)
+                    if (rectIntersect(px,py,pw,ph, e.worldX,e.worldY-e.height,e.width,e.height)) { gameOver(); return; }
+                }
+            }
+        }
+
+        const ui = {
+            saveMenu: document.getElementById('saveMenu'), mainMenu: document.getElementById('mainMenu'),
+            garageMenu: document.getElementById('garageMenu'), upgradeMenu: document.getElementById('upgradeMenu'),
+            gameOverMenu: document.getElementById('gameOverMenu'), hud: document.getElementById('hud'),
+            bossHud: document.getElementById('bossHud'), score: document.getElementById('scoreDisplay'),
+            highScore: document.getElementById('highScoreDisplay'), biome: document.getElementById('biomeDisplay'),
+            coin: document.getElementById('coinDisplay'), garageCoin: document.getElementById('garageCoinDisplay'),
+            upgradeCoin: document.getElementById('upgradeCoinDisplay'), saveGrid: document.getElementById('saveGrid'),
+            toast: document.getElementById('toast'), wheelieText: document.getElementById('wheelieBonus')
+        };
+
+        function showToast(msg, colorClass = 'border-white text-white') {
+            ui.toast.innerText = msg; ui.toast.className = `absolute top-10 left-1/2 transform -translate-x-1/2 bg-gray-900 border-2 px-6 py-3 rounded-full font-bold z-[100] transition-opacity duration-300 pointer-events-none shadow-[0_0_15px_rgba(0,0,0,0.8)] ${colorClass}`;
+            ui.toast.classList.remove('hidden'); setTimeout(() => ui.toast.classList.remove('opacity-0'), 10);
+            setTimeout(() => { ui.toast.classList.add('opacity-0'); setTimeout(() => ui.toast.classList.add('hidden'), 300); }, 3000);
+        }
+
+        function renderProfiles() {
+            ui.saveGrid.innerHTML = '';
+            for (let i = 1; i <= 8; i++) {
+                const dataStr = localStorage.getItem(`rr2_slot_${i}`);
+                const data = dataStr ? JSON.parse(dataStr) : null;
+                const card = document.createElement('div');
+                card.className = `p-4 rounded-xl flex flex-col justify-between border-2 transition-all ${data ? 'border-yellow-600 bg-gray-800' : 'border-gray-700 bg-gray-900'}`;
+                
+                if (data) {
+                    card.innerHTML = `<div class="mb-3"><h3 class="text-xl font-black text-yellow-400">SLOT ${i}</h3>
+                            <div class="grid grid-cols-2 gap-2 text-sm mt-2"><div>Moedas: <span class="text-yellow-400 font-bold">${data.coins}</span></div>
+                            <div>Recorde: <span class="text-cyan-400 font-bold">${data.highScore}</span></div></div></div>
+                        <div class="flex space-x-2"><button onclick="selectProfile(${i}, true)" class="flex-1 py-2 bg-green-600 text-white font-bold rounded-lg hover:bg-green-500">Carregar</button>
+                            <button onclick="deleteProfile(${i})" class="w-12 bg-red-600 text-white font-bold rounded-lg hover:bg-red-500">X</button></div>`;
+                } else {
+                    card.innerHTML = `<div class="mb-3 flex-grow flex items-center justify-center"><h3 class="text-xl font-black text-gray-500">VAZIO</h3></div>
+                        <button onclick="selectProfile(${i}, false)" class="w-full py-2 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-500">Novo Jogo</button>`;
+                }
+                ui.saveGrid.appendChild(card);
+            }
+        }
+
+        function selectProfile(slot, isLoad) {
+            initAudio(); currentSlot = slot;
+            if (isLoad) { profile = JSON.parse(localStorage.getItem(`rr2_slot_${currentSlot}`)); showToast(`Slot ${slot} Carregado!`, 'border-green-400 text-green-400'); } 
+            else { profile = { coins: 0, highScore: 0, unlockedBikes: [0], currentBikeId: 0, skills: { motor: 1, pneu: 1, suspensao: 1, gasolina: 1, rodas: 1, transmissao: 1 } }; saveProfile(); showToast(`Novo Jogo no Slot ${slot}!`, 'border-blue-400 text-blue-400'); }
+            ui.saveMenu.classList.add('opacity-0');
+            setTimeout(() => { ui.saveMenu.classList.add('hidden'); ui.mainMenu.classList.remove('hidden'); setTimeout(() => ui.mainMenu.classList.remove('opacity-0'), 50); }, 300);
+        }
+
+        function deleteProfile(slot) { localStorage.removeItem(`rr2_slot_${slot}`); playSound('crash'); renderProfiles(); }
+        function saveProfile() { localStorage.setItem(`rr2_slot_${currentSlot}`, JSON.stringify(profile)); }
+
+        function goToProfiles() {
+            ui.mainMenu.classList.add('opacity-0');
+            setTimeout(() => { ui.mainMenu.classList.add('hidden'); ui.saveMenu.classList.remove('hidden'); renderProfiles(); setTimeout(() => ui.saveMenu.classList.remove('opacity-0'), 50); }, 300);
+        }
+
+        function startGame() {
+            state = 'PLAYING'; ui.mainMenu.classList.add('opacity-0'); ui.gameOverMenu.classList.add('opacity-0');
+            setTimeout(() => { ui.mainMenu.classList.add('hidden'); ui.gameOverMenu.classList.add('hidden'); ui.hud.classList.remove('hidden'); resetGame(); gameLoop(); }, 300);
+        }
+
+        function gameOver() {
+            state = 'GAMEOVER'; cancelAnimationFrame(animationId); playSound('crash');
+            createParticles(player.worldX, player.worldY+player.height/2, '#ef4444', 50);
+            ctx.fillStyle = "rgba(255,0,0,0.5)"; ctx.fillRect(0,0,width,height);
+            
+            let finalScore = Math.floor(score);
+            if (finalScore > profile.highScore) profile.highScore = finalScore;
+            saveProfile(); 
+
+            document.getElementById('goScore').innerText = finalScore;
+            document.getElementById('goCoins').innerText = '+' + sessionCoins;
+            
+            ui.hud.classList.add('hidden'); ui.bossHud.classList.add('hidden'); ui.gameOverMenu.classList.remove('hidden');
+            setTimeout(() => ui.gameOverMenu.classList.remove('opacity-0'), 50);
+        }
+
+        function goToMenuFromGame() {
+            ui.gameOverMenu.classList.add('opacity-0');
+            setTimeout(() => { ui.gameOverMenu.classList.add('hidden'); ui.mainMenu.classList.remove('hidden'); setTimeout(() => ui.mainMenu.classList.remove('opacity-0'), 50); }, 300);
+        }
+
+        function updateHUD() {
+            ui.score.innerText = Math.floor(score); ui.highScore.innerText = 'Recorde: ' + profile.highScore;
+            ui.coin.innerText = profile.coins; ui.garageCoin.innerText = profile.coins; ui.upgradeCoin.innerText = profile.coins;
+        }
+
+        function openGarage() { ui.mainMenu.classList.add('opacity-0'); setTimeout(() => { ui.mainMenu.classList.add('hidden'); ui.garageMenu.classList.remove('hidden'); renderGarage(); setTimeout(() => ui.garageMenu.classList.remove('opacity-0'), 50); }, 300); }
+        function closeGarage() { ui.garageMenu.classList.add('opacity-0'); setTimeout(() => { ui.garageMenu.classList.add('hidden'); ui.mainMenu.classList.remove('hidden'); setTimeout(() => ui.mainMenu.classList.remove('opacity-0'), 50); }, 300); }
+        function renderGarage() {
+            updateHUD(); const grid = document.getElementById('bikeGrid'); grid.innerHTML = '';
+            bikeData.forEach(bike => {
+                const isUn = profile.unlockedBikes.includes(bike.id); const isSel = profile.currentBikeId === bike.id;
+                const card = document.createElement('div'); card.className = `p-4 rounded-xl flex flex-col items-center border-2 ${isSel ? 'border-cyan-400 bg-gray-800' : 'border-gray-700 bg-gray-900'}`;
+                
+                let btn = isSel ? `<button class="w-full py-2 bg-cyan-600 text-white font-bold rounded-lg cursor-default">Usando</button>` :
+                          isUn ? `<button onclick="selectBike(${bike.id})" class="w-full py-2 bg-gray-700 text-white font-bold rounded-lg hover:bg-gray-600">Equipar</button>` :
+                          `<button onclick="buyBike(${bike.id}, ${bike.cost})" class="w-full py-2 font-bold rounded-lg ${profile.coins >= bike.cost ? 'bg-pink-600 text-white' : 'bg-gray-800 text-gray-500'}">Comprar ${bike.cost}</button>`;
+
+                card.innerHTML = `<h3 class="font-bold text-gray-200 mb-2">${bike.name}</h3>
+                    <div class="w-16 h-12 mb-4 relative" style="${bike.neon ? 'filter: drop-shadow(0 0 8px '+bike.color+')' : ''}">
+                        <div class="absolute w-full h-full border-t-4 border-l-4 rounded-tl-lg" style="border-color:${bike.frameColor}; background: linear-gradient(135deg, ${bike.color} 50%, transparent 50%);"></div>
+                    </div>${btn}`; grid.appendChild(card);
+            });
+        }
+        function buyBike(id, cost) { if(profile.coins >= cost) { profile.coins -= cost; profile.unlockedBikes.push(id); saveProfile(); selectBike(id); playSound('coin'); } }
+        function selectBike(id) { profile.currentBikeId = id; saveProfile(); renderGarage(); }
+
+        function openUpgrades() { ui.mainMenu.classList.add('opacity-0'); setTimeout(() => { ui.mainMenu.classList.add('hidden'); ui.upgradeMenu.classList.remove('hidden'); renderUpgrades(); setTimeout(() => ui.upgradeMenu.classList.remove('opacity-0'), 50); }, 300); }
+        function closeUpgrades() { ui.upgradeMenu.classList.add('opacity-0'); setTimeout(() => { ui.upgradeMenu.classList.add('hidden'); ui.mainMenu.classList.remove('hidden'); setTimeout(() => ui.mainMenu.classList.remove('opacity-0'), 50); }, 300); }
+        function renderUpgrades() {
+            updateHUD(); const grid = document.getElementById('upgradeGrid'); grid.innerHTML = '';
+            for(let key in skillsData) {
+                let skill = skillsData[key]; let lvl = profile.skills[key]; let isMax = lvl >= skill.max; let cost = skill.baseCost * lvl;
+                const card = document.createElement('div'); card.className = 'p-5 rounded-xl border-2 border-green-700 bg-gray-900 flex justify-between items-center';
+                
+                let bars = ''; for(let i=1; i<=skill.max; i++) bars += `<div class="h-3 w-8 rounded-sm ${i<=lvl ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.8)]' : 'bg-gray-700'}"></div>`;
+                
+                let btn = isMax ? `<span class="text-green-400 font-bold uppercase">MÁXIMO</span>` : `<button onclick="buyUpgrade('${key}', ${cost})" class="px-4 py-2 font-bold rounded-lg ${profile.coins >= cost ? 'bg-green-600 hover:bg-green-500 text-white' : 'bg-gray-800 text-gray-500'}">UPAR (${cost})</button>`;
+                card.innerHTML = `<div><h3 class="font-black italic text-xl text-green-400">${skill.name} <span class="text-white text-sm">LVL ${lvl}</span></h3>
+                    <p class="text-xs text-gray-400 mb-2 uppercase">${skill.desc}</p><div class="flex space-x-1">${bars}</div></div>${btn}`; grid.appendChild(card);
+            }
+        }
+        function buyUpgrade(key, cost) { if(profile.coins >= cost && profile.skills[key] < skillsData[key].max) { profile.coins -= cost; profile.skills[key]++; saveProfile(); playSound('coin'); renderUpgrades(); } }
+
+        function handleJump() { if (state === 'PLAYING' && player) player.jump(); }
+        function handleDrop() { if (state === 'PLAYING' && player) player.dropDown(); }
+        function setWheelie(b) { if (state === 'PLAYING' && player) player.isWheelie = b; }
+        
+        window.addEventListener('keydown', (e) => { 
+            if(['ArrowUp','Space','KeyW'].includes(e.code)){handleJump(); e.preventDefault();} 
+            if(['ArrowDown','KeyS'].includes(e.code)){handleDrop(); e.preventDefault();} 
+            if(['ArrowRight','KeyD'].includes(e.code)){setWheelie(true); e.preventDefault();} 
+        });
+        window.addEventListener('keyup', (e) => { if(['ArrowRight','KeyD'].includes(e.code)){setWheelie(false); e.preventDefault();} });
+        
+        document.getElementById('btnJump').addEventListener('touchstart', (e)=>{e.preventDefault(); handleJump();});
+        document.getElementById('btnDrop').addEventListener('touchstart', (e)=>{e.preventDefault(); handleDrop();});
+        document.getElementById('btnWheelie').addEventListener('touchstart', (e)=>{e.preventDefault(); setWheelie(true);});
+        document.getElementById('btnWheelie').addEventListener('touchend', (e)=>{e.preventDefault(); setWheelie(false);});
+
+        renderProfiles();
+    </script>
+</body>
+</html>
