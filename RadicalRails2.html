@@ -244,7 +244,8 @@
 
         const biomes = ['TRILHOS', 'FAVELA', 'PERIFERIA', 'AEROPORTO', 'AGUA', 'CEU'];
         let currentBiomeIndex = 0;
-        let biomeLength = 3500;
+        let biomeLength = 2500;
+        let nextBossScore = 2500;
         let isBossFight = false;
         let currentBoss = null;
 
@@ -563,7 +564,7 @@
                 this.targetDist = 200; this.invulnerable = false;
                 
                 ui.bossHud.classList.remove('hidden');
-                document.getElementById('bossName').innerText = `CHEFÃO: ${this.type}`;
+                document.getElementById('bossName').innerText = `CHEFÃO VERMELHO: ${this.type}`;
                 this.updateHpBar();
             }
             updateHpBar() { document.getElementById('bossHpBar').style.width = `${(this.hp/this.maxHp)*100}%`; }
@@ -585,16 +586,49 @@
             }
             die() {
                 playSound('crash'); createParticles(this.worldX + this.width/2, this.worldY - this.height/2, '#f59e0b', 100);
-                let coinB = profile.skills.rodas; profile.coins += 100 * coinB; score += 5000; sessionCoins += 100;
-                isBossFight = false; currentBoss = null; ui.bossHud.classList.add('hidden');
+                let coinB = profile.skills.rodas; profile.coins += 100 * coinB; score += 2000; sessionCoins += 100;
+                isBossFight = false; ui.bossHud.classList.add('hidden');
                 showToast(`Chefão Destruído! +${100*coinB} Moedas`, 'border-yellow-400 text-yellow-400');
                 currentBiomeIndex = (currentBiomeIndex + 1) % biomes.length; ui.biome.innerText = getBiomeName();
+                
+                // Define o momento exato do próximo chefão
+                nextBossScore = score + biomeLength; 
+                
+                // Remove o chefão morto da pista para voltar o trânsito normal
+                let idx = platformsList.indexOf(this);
+                if (idx > -1) platformsList.splice(idx, 1);
+                currentBoss = null;
             }
             draw(ctx, sx, sy) {
                 if (this.invulnerable && Math.floor(Date.now() / 100) % 2 === 0) return;
-                ctx.fillStyle = '#b91c1c'; ctx.fillRect(sx, sy-this.height, this.width, this.height);
-                ctx.fillStyle = '#000'; ctx.fillRect(sx+20, sy-this.height+20, 50, 40); 
-                ctx.beginPath(); ctx.arc(sx+50, sy, 20, 0, Math.PI*2); ctx.arc(sx+this.width-50, sy, 20, 0, Math.PI*2); ctx.fill();
+                
+                // Carroceria principal (Chefão Vermelho!)
+                ctx.fillStyle = '#ef4444'; 
+                ctx.fillRect(sx, sy-this.height, this.width, this.height);
+                
+                // Detalhe blindado escuro
+                ctx.fillStyle = '#7f1d1d'; 
+                ctx.fillRect(sx, sy-this.height, this.width, 15);
+                ctx.fillRect(sx, sy-this.height/2, this.width, 10);
+                
+                // Espinhos nas costas
+                ctx.fillStyle = '#991b1b';
+                for(let i=30; i<this.width-30; i+=40) {
+                    ctx.beginPath(); ctx.moveTo(sx+i, sy-this.height); ctx.lineTo(sx+i+20, sy-this.height-30); ctx.lineTo(sx+i+40, sy-this.height); ctx.fill();
+                }
+
+                // Janelas blindadas
+                ctx.fillStyle = '#000'; 
+                ctx.fillRect(sx+40, sy-this.height+25, 40, 30); 
+                ctx.fillRect(sx+this.width-80, sy-this.height+25, 40, 30); 
+                
+                // Rodas pesadas
+                ctx.fillStyle = '#111';
+                ctx.beginPath(); ctx.arc(sx+60, sy, 25, 0, Math.PI*2); ctx.arc(sx+this.width-60, sy, 25, 0, Math.PI*2); ctx.fill();
+                
+                // Calotas Vermelhas e agressivas
+                ctx.fillStyle = '#ef4444';
+                ctx.beginPath(); ctx.arc(sx+60, sy, 10, 0, Math.PI*2); ctx.arc(sx+this.width-60, sy, 10, 0, Math.PI*2); ctx.fill();
             }
         }
 
@@ -753,6 +787,7 @@
             currentTerrainX = 1000; // COMEÇA LONGE PRA NÃO MATAR NO INÍCIO E NÃO NASCER NO ROSTO
             platformsList = []; entitiesList = []; particles = []; decorations = [];
             currentBiomeIndex = 0;
+            nextBossScore = biomeLength;
             ui.biome.innerText = getBiomeName();
             isBossFight = false; currentBoss = null;
             ui.bossHud.classList.add('hidden');
@@ -828,8 +863,9 @@
 
             if (currentTerrainX - cameraX < width * 3) generatePlatformChunk();
 
-            if (!isBossFight && score > 0 && score % biomeLength < 50 && (score / biomeLength) >= 1) {
+            if (!isBossFight && score > 0 && score >= nextBossScore) {
                 isBossFight = true;
+                nextBossScore = score + biomeLength; // Agenda o próximo boss com precisão absoluta
                 let bosses = ['Trem Blindado', 'Caveirão', 'Ônibus Ligeirinho', 'Jato VIP', 'Lancha Patrulha', 'Nave Mãe'];
                 currentBoss = new Boss(bosses[currentBiomeIndex]);
                 platformsList.push(currentBoss);
