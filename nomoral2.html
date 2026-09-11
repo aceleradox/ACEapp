@@ -1,0 +1,859 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Anti-Moralism - Proteção Contra Haters & Moralismo</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        shield: {
+                            50: '#f0fdf4',
+                            100: '#dcfce7',
+                            500: '#22c55e',
+                            600: '#16a34a',
+                            900: '#14532d',
+                            darkBg: '#0b0f17',
+                            cardBg: '#131b2e',
+                            border: '#1f293d'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- FontAwesome icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Font Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .code-font { font-family: 'JetBrains Mono', monospace; }
+        
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: rgba(11, 15, 23, 0.8); }
+        ::-webkit-scrollbar-thumb { background: #1f293d; border-radius: 4px; border: 1px solid #0b0f17; }
+        ::-webkit-scrollbar-thumb:hover { background: #374151; }
+
+        /* Dynamic Animated Background */
+        .gradient-bg {
+            background: linear-gradient(-45deg, #070a10, #131b2e, #0a1714, #0b1118);
+            background-size: 400% 400%;
+            animation: gradientBG 15s ease infinite;
+        }
+        @keyframes gradientBG {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        /* Glassmorphism Panels */
+        .glass-panel {
+            background: rgba(19, 27, 46, 0.6);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(45, 61, 89, 0.5);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+        }
+
+        /* Glowing Effects for Security Vibe */
+        @keyframes pulseGlow {
+            0% { box-shadow: 0 0 10px rgba(34, 197, 94, 0.2); }
+            50% { box-shadow: 0 0 25px rgba(34, 197, 94, 0.6); }
+            100% { box-shadow: 0 0 10px rgba(34, 197, 94, 0.2); }
+        }
+        .glow-effect { animation: pulseGlow 3s infinite; }
+        
+        .neon-text {
+            text-shadow: 0 0 10px rgba(52, 211, 153, 0.5);
+        }
+
+        /* Custom Cyber Checkbox */
+        .cyber-checkbox {
+            appearance: none;
+            background-color: #0f172a;
+            margin: 0;
+            width: 1.25em;
+            height: 1.25em;
+            border: 1px solid #334155;
+            border-radius: 0.3em;
+            display: grid;
+            place-content: center;
+            transition: all 0.2s ease;
+        }
+        .cyber-checkbox::before {
+            content: "";
+            width: 0.65em;
+            height: 0.65em;
+            transform: scale(0);
+            transition: 120ms transform ease-in-out;
+            box-shadow: inset 1em 1em #34d399;
+            transform-origin: center;
+            clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
+        }
+        .cyber-checkbox:checked { border-color: #34d399; background-color: rgba(16, 185, 129, 0.1); }
+        .cyber-checkbox:checked::before { transform: scale(1); }
+    </style>
+</head>
+<body class="gradient-bg text-slate-100 min-h-screen flex flex-col selection:bg-emerald-500 selection:text-white">
+
+    <!-- Header / Navbar -->
+    <header class="border-b border-shield-border bg-slate-900/40 backdrop-blur-md sticky top-0 z-50 shadow-lg">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-400 flex items-center justify-center shadow-lg shadow-emerald-900/40 glow-effect">
+                    <i class="fa-solid fa-shield-halved text-white text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold tracking-tight bg-gradient-to-r from-white via-slate-200 to-emerald-400 bg-clip-text text-transparent neon-text">
+                        Anti-Moralism
+                    </h1>
+                    <p class="text-xs text-slate-400 hidden sm:block">Filtro Inteligente de Palavras-Chave & Anti-Hate</p>
+                </div>
+            </div>
+
+            <div class="flex items-center space-x-3">
+                <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse mr-1.5 shadow-[0_0_8px_#34d399]"></span> Motor Ativo
+                </span>
+                <button onclick="copyCurrentBlocklist()" class="px-3 py-1.5 rounded-lg bg-emerald-600/90 hover:bg-emerald-500 text-white text-xs font-medium transition flex items-center space-x-1.5 shadow-md shadow-emerald-900/30 border border-emerald-500/50 backdrop-blur">
+                    <i class="fa-regular fa-copy"></i>
+                    <span>Copiar Lista</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Container -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col gap-6">
+
+        <!-- Navigation Tabs -->
+        <nav class="flex space-x-2 glass-panel p-2 rounded-xl overflow-x-auto text-sm shadow-xl relative z-10">
+            <button id="tab-btn-deconstruct" onclick="switchTab('deconstruct')" class="tab-btn active px-4 py-2.5 rounded-lg font-medium transition flex items-center space-x-2 whitespace-nowrap bg-emerald-600/80 text-white border border-emerald-500/30">
+                <i class="fa-solid fa-cubes-stacked"></i>
+                <span>1. Multi-Desfragmentador</span>
+            </button>
+            <button id="tab-btn-semantic" onclick="switchTab('semantic')" class="tab-btn px-4 py-2.5 rounded-lg font-medium transition flex items-center space-x-2 whitespace-nowrap text-slate-400 hover:text-white hover:bg-slate-800/50 border border-transparent">
+                <i class="fa-solid fa-network-wired"></i>
+                <span>2. Termos Similares & Euphemismos</span>
+            </button>
+            <button id="tab-btn-simulator" onclick="switchTab('simulator')" class="tab-btn px-4 py-2.5 rounded-lg font-medium transition flex items-center space-x-2 whitespace-nowrap text-slate-400 hover:text-white hover:bg-slate-800/50 border border-transparent">
+                <i class="fa-solid fa-mask"></i>
+                <span>3. Simulador de Censura</span>
+            </button>
+            <button id="tab-btn-ai" onclick="switchTab('ai')" class="tab-btn px-4 py-2.5 rounded-lg font-medium transition flex items-center space-x-2 whitespace-nowrap text-slate-400 hover:text-white hover:bg-slate-800/50 border border-transparent">
+                <i class="fa-solid fa-wand-magic-sparkles text-amber-400"></i>
+                <span>4. Detector de IA</span>
+            </button>
+        </nav>
+
+        <!-- TAB 1: DESFRAGMENTADOR & OBFUSCAÇÃO -->
+        <section id="tab-content-deconstruct" class="tab-content flex flex-col gap-6">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                
+                <!-- Input Control -->
+                <div class="glass-panel p-5 rounded-2xl flex flex-col gap-4 relative overflow-hidden">
+                    <!-- Background aesthetic blur -->
+                    <div class="absolute -top-10 -right-10 w-32 h-32 bg-emerald-600/20 rounded-full blur-3xl"></div>
+                    
+                    <div class="relative z-10">
+                        <h2 class="text-lg font-semibold text-slate-100 flex items-center gap-2">
+                            <i class="fa-solid fa-scissors text-emerald-400"></i> Lote de Palavras-Raiz
+                        </h2>
+                        <p class="text-xs text-slate-400 mt-1">Insira várias palavras separadas por vírgula para processar em lote (Ex: <span class="text-emerald-400 cursor-pointer hover:underline" onclick="setInputWord('derruba, atacante, lixo')">derruba, atacante, lixo</span>).</p>
+                    </div>
+
+                    <div class="space-y-2 relative z-10">
+                        <label class="text-xs font-medium text-slate-300">Conjunto de Palavras (separadas por ,)</label>
+                        <div class="relative">
+                            <textarea id="input-word" rows="3" placeholder="Ex: maldade, toxico, hater" class="w-full bg-slate-900/50 border border-slate-700/80 rounded-xl p-4 text-sm text-white focus:outline-none focus:border-emerald-500/80 focus:ring-1 focus:ring-emerald-500/50 transition resize-none shadow-inner backdrop-blur-sm">derruba, atacante</textarea>
+                            
+                            <button onclick="processDeconstruction()" class="absolute right-3 bottom-3 px-4 py-2 bg-emerald-600/90 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold transition flex items-center space-x-2 glow-effect border border-emerald-400/30">
+                                <i class="fa-solid fa-bolt"></i>
+                                <span>Gerar Variantes</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="border-t border-slate-700/50 pt-4 space-y-3 relative z-10">
+                        <span class="text-xs font-semibold text-emerald-400/80 uppercase tracking-wider block">Regras Gerativas</span>
+                        
+                        <label class="flex items-center space-x-3 text-sm text-slate-300 cursor-pointer hover:text-slate-100 transition">
+                            <input type="checkbox" id="opt-substrings" checked onchange="processDeconstruction()" class="cyber-checkbox">
+                            <span>Substrings (ex: erruba, erru)</span>
+                        </label>
+
+                        <label class="flex items-center space-x-3 text-sm text-slate-300 cursor-pointer hover:text-slate-100 transition">
+                            <input type="checkbox" id="opt-typos" checked onchange="processDeconstruction()" class="cyber-checkbox">
+                            <span>Erros Evasivos (ex: derrbar)</span>
+                        </label>
+
+                        <label class="flex items-center space-x-3 text-sm text-slate-300 cursor-pointer hover:text-slate-100 transition">
+                            <input type="checkbox" id="opt-leetspeak" checked onchange="processDeconstruction()" class="cyber-checkbox">
+                            <span>Leetspeak (ex: d3rrub4)</span>
+                        </label>
+
+                        <label class="flex items-center space-x-3 text-sm text-slate-300 cursor-pointer hover:text-slate-100 transition">
+                            <input type="checkbox" id="opt-spacers" checked onchange="processDeconstruction()" class="cyber-checkbox">
+                            <span>Separadores (ex: d.e.r.r.u)</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Generated Variations -->
+                <div class="lg:col-span-2 glass-panel p-5 rounded-2xl flex flex-col gap-4 relative overflow-hidden">
+                    <div class="flex items-center justify-between relative z-10">
+                        <div>
+                            <h3 class="text-lg font-semibold text-slate-100 flex items-center gap-2">
+                                <i class="fa-solid fa-layer-group text-emerald-400"></i> Múltiplas Variações Geradas
+                            </h3>
+                            <p class="text-xs text-slate-400">Combinações extraídas de todos os termos inseridos.</p>
+                        </div>
+                        <span id="fragment-count" class="bg-emerald-500/10 text-emerald-300 border border-emerald-500/30 px-3 py-1 rounded-full text-xs font-semibold shadow-[0_0_10px_rgba(16,185,129,0.2)]">
+                            0 termos
+                        </span>
+                    </div>
+
+                    <!-- Keywords Tags Container -->
+                    <div id="fragment-results" class="flex-1 bg-slate-900/40 border border-slate-700/50 rounded-xl p-4 min-h-[220px] max-h-[380px] overflow-y-auto flex flex-wrap gap-2 items-start shadow-inner relative z-10 backdrop-blur-md">
+                        <!-- JS injected tags -->
+                    </div>
+
+                    <!-- Action buttons -->
+                    <div class="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-700/50 relative z-10">
+                        <div class="flex items-center space-x-2">
+                            <button onclick="copyFormatted('comma')" class="px-3 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-200 text-xs font-medium border border-slate-600 transition flex items-center space-x-1 shadow">
+                                <i class="fa-solid fa-quote-right"></i>
+                                <span>Vírgulas (Instagram)</span>
+                            </button>
+                            <button onclick="copyFormatted('newline')" class="px-3 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-200 text-xs font-medium border border-slate-600 transition flex items-center space-x-1 shadow">
+                                <i class="fa-solid fa-list"></i>
+                                <span>Lista (Discord)</span>
+                            </button>
+                            <button onclick="copyFormatted('regex')" class="px-3 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-200 text-xs font-medium border border-slate-600 transition flex items-center space-x-1 shadow">
+                                <i class="fa-solid fa-code"></i>
+                                <span>Regex Padrão</span>
+                            </button>
+                        </div>
+                        
+                        <button onclick="addCurrentFragmentsToGlobalList()" class="px-4 py-2 rounded-lg bg-emerald-600/90 hover:bg-emerald-500 text-white text-xs font-semibold transition shadow-[0_0_15px_rgba(16,185,129,0.4)] flex items-center space-x-1.5 border border-emerald-400/50">
+                            <i class="fa-solid fa-folder-plus"></i>
+                            <span>Consolidar na Blacklist</span>
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- TAB 2: TERMOS SIMILARES & EUPHEMISMOS -->
+        <section id="tab-content-semantic" class="tab-content hidden flex-col gap-6">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                
+                <div class="glass-panel p-5 rounded-2xl flex flex-col gap-4">
+                    <div>
+                        <h2 class="text-lg font-semibold text-slate-100 flex items-center gap-2">
+                            <i class="fa-solid fa-brain text-emerald-400"></i> Expansão Semântica
+                        </h2>
+                        <p class="text-xs text-slate-400 mt-1">Descubra ataques eufemísticos relacionados ao termo central.</p>
+                    </div>
+
+                    <div class="space-y-2">
+                        <label class="text-xs font-medium text-slate-300">Expressão / Termo Base</label>
+                        <div class="relative">
+                            <input type="text" id="semantic-input" value="mal elemento" placeholder="Ex: mal elemento" class="w-full bg-slate-900/50 border border-slate-700/80 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-emerald-500/80 focus:ring-1 transition">
+                            <button onclick="generateSemanticVariations()" class="absolute right-2 top-2 bottom-2 px-4 bg-emerald-600/90 hover:bg-emerald-500 text-white rounded-lg text-xs font-medium transition flex items-center space-x-2 border border-emerald-400/30">
+                                <i class="fa-solid fa-wand-magic"></i>
+                                <span>Expandir</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="space-y-2">
+                        <span class="text-xs font-semibold text-emerald-400/80 uppercase tracking-wider block">Templates Rápidos</span>
+                        <div class="flex flex-wrap gap-2">
+                            <button onclick="quickSemantic('mal elemento')" class="px-3 py-1.5 bg-slate-800/80 border border-slate-700 hover:bg-slate-700 text-slate-300 rounded-lg text-xs transition">mal elemento</button>
+                            <button onclick="quickSemantic('escoria')" class="px-3 py-1.5 bg-slate-800/80 border border-slate-700 hover:bg-slate-700 text-slate-300 rounded-lg text-xs transition">escória</button>
+                            <button onclick="quickSemantic('sem futuro')" class="px-3 py-1.5 bg-slate-800/80 border border-slate-700 hover:bg-slate-700 text-slate-300 rounded-lg text-xs transition">sem futuro</button>
+                            <button onclick="quickSemantic('oportunista')" class="px-3 py-1.5 bg-slate-800/80 border border-slate-700 hover:bg-slate-700 text-slate-300 rounded-lg text-xs transition">oportunista</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="lg:col-span-2 glass-panel p-5 rounded-2xl flex flex-col gap-4">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h3 class="text-lg font-semibold text-slate-100 flex items-center gap-2">
+                                <i class="fa-solid fa-network-wired text-emerald-400"></i> Mapa Semântico Resultante
+                            </h3>
+                            <p class="text-xs text-slate-400">Adicione essas variações para barrar ataques passivo-agressivos.</p>
+                        </div>
+                        <span id="semantic-count" class="bg-emerald-500/10 text-emerald-300 border border-emerald-500/30 px-3 py-1 rounded-full text-xs font-semibold">
+                            0 resultados
+                        </span>
+                    </div>
+
+                    <div id="semantic-results" class="grid grid-cols-1 md:grid-cols-2 gap-3 min-h-[250px] max-h-[400px] overflow-y-auto pr-1">
+                        <!-- JS injected cards -->
+                    </div>
+
+                    <div class="flex items-center justify-between pt-3 border-t border-slate-700/50">
+                        <span class="text-xs text-slate-400 hidden sm:block">Clique nas cartas acima ou adicione todas.</span>
+                        <button onclick="addAllSemanticToGlobalList()" class="px-5 py-2.5 bg-emerald-600/90 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold transition shadow-[0_0_15px_rgba(16,185,129,0.3)] border border-emerald-400/50 w-full sm:w-auto">
+                            Consolidar Todos na Blacklist
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- TAB 3: SIMULADOR DE CENSURA -->
+        <section id="tab-content-simulator" class="tab-content hidden flex-col gap-6">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                
+                <div class="glass-panel p-5 rounded-2xl flex flex-col gap-4">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h2 class="text-lg font-semibold text-slate-100 flex items-center gap-2">
+                                <i class="fa-solid fa-terminal text-emerald-400"></i> Terminal de Teste
+                            </h2>
+                            <p class="text-xs text-slate-400">Cole um comentário ofuscado para verificar se seu filtro detecta.</p>
+                        </div>
+                    </div>
+
+                    <div class="space-y-2">
+                        <textarea id="sim-input-text" rows="6" class="w-full bg-slate-900/50 border border-slate-700/80 rounded-xl p-4 text-sm text-slate-200 focus:outline-none focus:border-emerald-500/80 transition resize-none shadow-inner" placeholder="Ex: Esse sujeito é um a.t.a.c.a.n.t.e e mal element0!! derrubador profissional!"></textarea>
+                    </div>
+
+                    <div class="flex flex-wrap gap-2">
+                        <button onclick="loadSampleText(1)" class="px-3 py-1.5 bg-slate-800/80 border border-slate-700 hover:bg-slate-700 text-slate-300 rounded-lg text-xs transition">Cenário 1: Evasivo</button>
+                        <button onclick="loadSampleText(2)" class="px-3 py-1.5 bg-slate-800/80 border border-slate-700 hover:bg-slate-700 text-slate-300 rounded-lg text-xs transition">Cenário 2: Moralista</button>
+                        <button onclick="loadSampleText(3)" class="px-3 py-1.5 bg-slate-800/80 border border-slate-700 hover:bg-slate-700 text-slate-300 rounded-lg text-xs transition">Cenário 3: Leetspeak</button>
+                    </div>
+
+                    <div class="pt-2">
+                        <button onclick="runCensorshipSimulation()" class="w-full py-3 bg-emerald-600/90 hover:bg-emerald-500 text-white rounded-xl text-sm font-semibold transition glow-effect border border-emerald-400/50 flex items-center justify-center space-x-2">
+                            <i class="fa-solid fa-radar"></i>
+                            <i class="fa-solid fa-satellite-dish"></i>
+                            <span>Escanear Texto</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="glass-panel p-5 rounded-2xl flex flex-col gap-4">
+                    <div>
+                        <h3 class="text-lg font-semibold text-slate-100 flex items-center gap-2">
+                            <i class="fa-solid fa-shield-virus text-emerald-400"></i> Moderação Resultante
+                        </h3>
+                        <p class="text-xs text-slate-400">Visualização de como a plataforma processaria o bloqueio.</p>
+                    </div>
+
+                    <div class="space-y-1">
+                        <span class="text-xs font-semibold text-emerald-400/70 uppercase tracking-wider block">Output Limpo:</span>
+                        <div id="sim-output-censored" class="w-full bg-slate-900/60 border border-slate-700/80 rounded-xl p-4 min-h-[120px] text-sm text-slate-300 code-font leading-relaxed shadow-inner">
+                            <span class="text-slate-600 italic">O resultado filtrado aparecerá aqui...</span>
+                        </div>
+                    </div>
+
+                    <div class="space-y-2 flex-1 flex flex-col mt-2">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-semibold text-emerald-400/70 uppercase tracking-wider block">Threats Detectados:</span>
+                            <span id="sim-detected-count" class="text-xs font-bold px-2 py-1 bg-rose-500/10 text-rose-400 border border-rose-500/20 rounded-md">0 ameaças</span>
+                        </div>
+                        <div id="sim-detected-list" class="flex-1 bg-slate-900/40 border border-slate-700/50 rounded-xl p-3 min-h-[100px] overflow-y-auto space-y-2 backdrop-blur-sm">
+                            <div class="text-xs text-slate-500 text-center py-4">Sistema limpo. Nenhuma violação detectada.</div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- TAB 4: DETECTOR DE MORALISMO COM IA -->
+        <section id="tab-content-ai" class="tab-content hidden flex-col gap-6">
+            <div class="glass-panel p-6 rounded-2xl flex flex-col gap-6 relative overflow-hidden">
+                <div class="absolute -bottom-20 -left-20 w-48 h-48 bg-amber-500/10 rounded-full blur-3xl"></div>
+
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-700/50 pb-4 relative z-10">
+                    <div>
+                        <h2 class="text-xl font-bold text-slate-100 flex items-center gap-2">
+                            <i class="fa-solid fa-microchip text-amber-400"></i>
+                            Análise Neurolinguística (AI)
+                        </h2>
+                        <p class="text-xs text-slate-400 mt-1">
+                            Use Inteligência Artificial para dissecar jargões complexos e extrair regras de bloqueio automaticamente.
+                        </p>
+                    </div>
+                    <span class="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/30 shadow-[0_0_10px_rgba(245,158,11,0.2)]">
+                        Modelo: Gemini 3 Flash
+                    </span>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 relative z-10">
+                    <div class="space-y-4">
+                        <div>
+                            <label class="text-xs font-semibold text-slate-300 block mb-2">Comentário Alvo</label>
+                            <textarea id="ai-input-text" rows="6" class="w-full bg-slate-900/50 border border-slate-700/80 rounded-xl p-4 text-sm text-slate-200 focus:outline-none focus:border-amber-500/80 transition resize-none shadow-inner" placeholder="Cole texto suspeito... Ex: 'Essa aí não serve nem pra ser mãe, vergonha alheia...'"></textarea>
+                        </div>
+
+                        <button onclick="runAiAnalysis()" id="btn-run-ai" class="w-full py-3 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white rounded-xl text-sm font-semibold transition shadow-[0_0_15px_rgba(245,158,11,0.3)] border border-amber-400/50 flex items-center justify-center space-x-2">
+                            <i class="fa-solid fa-brain"></i>
+                            <span>Processar Extração Automática</span>
+                        </button>
+                    </div>
+
+                    <div class="bg-slate-900/60 border border-slate-700/80 rounded-xl p-5 flex flex-col justify-between shadow-inner">
+                        <div class="space-y-4">
+                            <h3 class="text-sm font-semibold text-slate-200 border-b border-slate-700/50 pb-2 flex items-center justify-between">
+                                <span>Relatório Heurístico</span>
+                                <span id="ai-status-badge" class="text-xs font-normal text-slate-500">Standby...</span>
+                            </h3>
+
+                            <div id="ai-response-container" class="space-y-3 min-h-[160px] max-h-[280px] overflow-y-auto pr-2">
+                                <p class="text-xs text-slate-600 text-center py-10 italic">
+                                    Aguardando processamento de linguagem natural...
+                                </p>
+                            </div>
+                        </div>
+
+                        <div id="ai-action-footer" class="hidden pt-4 border-t border-slate-700/50 flex items-center justify-end">
+                            <button onclick="importAiKeywordsToBlacklist()" class="px-5 py-2.5 bg-emerald-600/90 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold transition shadow-[0_0_15px_rgba(16,185,129,0.3)] border border-emerald-400/50">
+                                Importar Extrações para a Blacklist
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- Global Blacklist Footer -->
+        <section class="glass-panel p-5 rounded-2xl flex flex-col gap-4 sticky bottom-6 shadow-[0_-5px_25px_rgba(0,0,0,0.5)] z-40 border-emerald-900/30">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.2)]">
+                        <i class="fa-solid fa-server"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-base font-bold text-slate-100 flex items-center gap-2">
+                            Blacklist Core <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                        </h3>
+                        <p class="text-xs text-slate-400">Banco de dados unificado pronto para exportação.</p>
+                    </div>
+                </div>
+
+                <div class="flex items-center space-x-2">
+                    <button onclick="clearGlobalList()" class="px-4 py-2 rounded-lg bg-slate-800/80 hover:bg-rose-900/50 text-rose-400 hover:text-rose-300 text-xs font-medium border border-slate-700 transition">
+                        <i class="fa-solid fa-trash-can mr-1"></i> Limpar
+                    </button>
+                    <button onclick="copyCurrentBlocklist()" class="px-5 py-2 rounded-lg bg-emerald-600/90 hover:bg-emerald-500 text-white text-xs font-bold transition shadow-[0_0_10px_rgba(16,185,129,0.4)] flex items-center space-x-1.5 border border-emerald-400/50">
+                        <i class="fa-solid fa-copy"></i>
+                        <span>Exportar Tudo</span>
+                    </button>
+                </div>
+            </div>
+
+            <div id="global-blacklist-tags" class="bg-slate-900/70 border border-slate-700/80 rounded-xl p-4 min-h-[70px] max-h-[160px] overflow-y-auto flex flex-wrap gap-2 items-center shadow-inner">
+                <!-- JS injected active words -->
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Notification Toast -->
+    <div id="toast" class="fixed bottom-24 right-6 bg-emerald-900/90 text-white px-5 py-3 rounded-xl shadow-[0_0_20px_rgba(16,185,129,0.4)] border border-emerald-400/40 font-medium text-sm transform translate-y-20 opacity-0 transition-all duration-300 z-50 flex items-center space-x-3 backdrop-blur-md">
+        <i class="fa-solid fa-circle-check text-emerald-400 text-lg"></i>
+        <span id="toast-message">Copiado para a área de transferência!</span>
+    </div>
+
+    <script>
+        // Global state for blacklist
+        let globalBlacklist = new Set([
+            "derruba", "derrbar", "erruba", "erru", "bador", "d.e.r.r.u.b.a",
+            "atacante", "tacant", "a.t.a.c.a.n.t.e",
+            "mal elemento", "mau carater", "escoria"
+        ]);
+
+        let currentFragments = [];
+        let currentSemanticResults = [];
+        let aiExtractedKeywords = [];
+
+        const semanticDictionary = {
+            "mal elemento": [
+                { term: "mau caráter", category: "Moralismo Directo", risk: "Alta" },
+                { term: "má companhia", category: "Eufemismo", risk: "Média" },
+                { term: "pessima peça", category: "Gíria Pejorativa", risk: "Alta" }
+            ],
+            "escoria": [
+                { term: "não aceito", category: "Atitude Rejeição", risk: "Média" },
+                { term: "lixo humano", category: "Agressão Grave", risk: "Alta" },
+                { term: "indesejado", category: "Rotulagem", risk: "Baixa" }
+            ],
+            "sem futuro": [
+                { term: "fracassado", category: "Ataque Pessoal", risk: "Alta" },
+                { term: "encosto", category: "Moralismo Velado", risk: "Alta" }
+            ],
+            "oportunista": [
+                { term: "Aproveitador", category: "Rotulagem", risk: "Média" },
+                { term: "Interesseiro", category: "Moralismo", risk: "Média" }
+            ]
+        };
+
+        window.onload = function() {
+            processDeconstruction();
+            generateSemanticVariations();
+            renderGlobalBlacklist();
+            runCensorshipSimulation();
+        };
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('bg-emerald-600/80', 'text-white', 'border-emerald-500/30');
+                btn.classList.add('text-slate-400', 'hover:text-white', 'hover:bg-slate-800/50', 'border-transparent');
+            });
+
+            const selectedContent = document.getElementById(`tab-content-${tabId}`);
+            if(selectedContent) selectedContent.classList.remove('hidden');
+
+            const selectedBtn = document.getElementById(`tab-btn-${tabId}`);
+            if(selectedBtn) {
+                selectedBtn.classList.remove('text-slate-400', 'hover:text-white', 'hover:bg-slate-800/50', 'border-transparent');
+                selectedBtn.classList.add('bg-emerald-600/80', 'text-white', 'border-emerald-500/30');
+            }
+        }
+
+        function setInputWord(wordString) {
+            document.getElementById('input-word').value = wordString;
+            processDeconstruction();
+        }
+
+        function processDeconstruction() {
+            const rawInput = document.getElementById('input-word').value.trim().toLowerCase();
+            if(!rawInput) {
+                currentFragments = [];
+                renderFragmentResults();
+                return;
+            }
+
+            // Split by comma, trim spaces, and filter empty strings
+            const words = rawInput.split(',').map(w => w.trim()).filter(w => w.length > 0);
+            const set = new Set();
+
+            const includeSubstrings = document.getElementById('opt-substrings').checked;
+            const includeTypos = document.getElementById('opt-typos').checked;
+            const includeLeetspeak = document.getElementById('opt-leetspeak').checked;
+            const includeSpacers = document.getElementById('opt-spacers').checked;
+
+            words.forEach(word => {
+                const cleanWord = word.normalize("NFD").replace(/[\u0300-\u036f]/g, ""); // Strip accents
+                set.add(cleanWord);
+
+                // Substrings / Cuts
+                if (includeSubstrings && cleanWord.length >= 4) {
+                    set.add(cleanWord.substring(1));
+                    if (cleanWord.length > 5) set.add(cleanWord.substring(2));
+                    set.add(cleanWord.substring(0, cleanWord.length - 1));
+                    set.add(cleanWord.substring(cleanWord.length - 4));
+                    set.add(cleanWord.substring(0, 4));
+                }
+
+                // Typos 
+                if (includeTypos) {
+                    let noDouble = cleanWord.replace(/([a-z])\1/g, "$1");
+                    set.add(noDouble);
+                    if(cleanWord.length > 4) {
+                        let vowelsDropped = cleanWord.replace(/[aeiou]/g, function(m, offset) {
+                            return (offset > 0 && offset < cleanWord.length - 1) ? '' : m;
+                        });
+                        set.add(vowelsDropped);
+                    }
+                }
+
+                // Leetspeak
+                if (includeLeetspeak) {
+                    let leet = cleanWord.replace(/a/g, '4').replace(/e/g, '3').replace(/i/g, '1').replace(/o/g, '0').replace(/s/g, '5').replace(/t/g, '7');
+                    set.add(leet);
+                    if(cleanWord.length >= 5) {
+                        set.add(cleanWord.substring(0, 4).replace(/a/g, '4').replace(/e/g, '3') + cleanWord.substring(4));
+                    }
+                }
+
+                // Spacers / Separators
+                if (includeSpacers) {
+                    set.add(cleanWord.split('').join('.'));
+                    set.add(cleanWord.split('').join('-'));
+                    set.add(cleanWord.split('').join(' '));
+                }
+            });
+
+            currentFragments = Array.from(set);
+            renderFragmentResults();
+        }
+
+        function renderFragmentResults() {
+            const container = document.getElementById('fragment-results');
+            const countLabel = document.getElementById('fragment-count');
+            container.innerHTML = '';
+
+            countLabel.textContent = `${currentFragments.length} variações`;
+
+            currentFragments.forEach(frag => {
+                const tag = document.createElement('div');
+                tag.className = 'bg-slate-800/80 hover:bg-emerald-900/40 text-slate-200 border border-slate-700 hover:border-emerald-500/50 px-3 py-1.5 rounded-lg text-xs font-medium flex items-center space-x-2 transition cursor-pointer group shadow-sm';
+                tag.innerHTML = `
+                    <span class="code-font">${escapeHtml(frag)}</span>
+                    <button onclick="addSingleToGlobal('${escapeHtml(frag)}')" class="text-slate-500 group-hover:text-emerald-400 transition" title="Adicionar à Blacklist">
+                        <i class="fa-solid fa-plus text-[10px]"></i>
+                    </button>
+                `;
+                container.appendChild(tag);
+            });
+        }
+
+        function setSemanticInput(word) {
+            document.getElementById('semantic-input').value = word;
+            generateSemanticVariations();
+        }
+
+        function quickSemantic(term) { setSemanticInput(term); }
+
+        function generateSemanticVariations() {
+            const query = document.getElementById('semantic-input').value.trim().toLowerCase();
+            if(!query) return;
+
+            let results = semanticDictionary[query] || [
+                { term: `${query} velado`, category: "Eufemismo", risk: "Média" },
+                { term: `não aceito (${query})`, category: "Rejeição Moral", risk: "Média" },
+                { term: `anti-${query}`, category: "Oposição", risk: "Baixa" }
+            ];
+
+            currentSemanticResults = results;
+            renderSemanticResults();
+        }
+
+        function renderSemanticResults() {
+            const container = document.getElementById('semantic-results');
+            document.getElementById('semantic-count').textContent = `${currentSemanticResults.length} termos`;
+            container.innerHTML = '';
+
+            currentSemanticResults.forEach(item => {
+                const card = document.createElement('div');
+                card.className = 'bg-slate-800/50 border border-slate-700/80 rounded-xl p-3 flex flex-col justify-between hover:border-emerald-500/40 transition space-y-2 backdrop-blur-sm';
+                
+                const riskColor = item.risk === 'Alta' ? 'text-rose-400 bg-rose-500/10 border-rose-500/30' : 
+                                 item.risk === 'Média' ? 'text-amber-400 bg-amber-500/10 border-amber-500/30' : 
+                                 'text-slate-400 bg-slate-800 border-slate-700';
+
+                card.innerHTML = `
+                    <div class="flex items-start justify-between">
+                        <span class="font-medium text-sm text-slate-100">${escapeHtml(item.term)}</span>
+                        <span class="text-[10px] px-2 py-0.5 rounded-full border ${riskColor}">${item.risk} Risk</span>
+                    </div>
+                    <div class="flex items-center justify-between text-xs text-slate-400 pt-1 border-t border-slate-700/50 mt-1">
+                        <span><i class="fa-solid fa-tag text-[10px] mr-1"></i>${item.category}</span>
+                        <button onclick="addSingleToGlobal('${escapeHtml(item.term)}')" class="text-emerald-400 hover:text-emerald-300 font-medium text-xs flex items-center space-x-1">
+                            <i class="fa-solid fa-plus text-[10px]"></i><span>Incluir</span>
+                        </button>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function loadSampleText(sampleId) {
+            const input = document.getElementById('sim-input-text');
+            if (sampleId === 1) input.value = "Esse sujeito é um a.t.a.c.a.n.t.e total! Vai lá e d.e.r.r.u.b.a o canal dele, derrubador de plantão.";
+            else if (sampleId === 2) input.value = "Olha que mal elemento, má companhia pra todo mundo... uma verdadeira escoria.";
+            else if (sampleId === 3) input.value = "Ele é um m4u c4r473r, vive de atacar, tacant de merda! derrbar tudo que vê.";
+            runCensorshipSimulation();
+        }
+
+        function runCensorshipSimulation() {
+            const text = document.getElementById('sim-input-text').value;
+            const output = document.getElementById('sim-output-censored');
+            const detectedList = document.getElementById('sim-detected-list');
+            const countLabel = document.getElementById('sim-detected-count');
+
+            if (!text.trim()) {
+                output.innerHTML = '<span class="text-slate-600 italic">O resultado filtrado aparecerá aqui...</span>';
+                detectedList.innerHTML = '<div class="text-xs text-slate-500 text-center py-4">Sistema limpo. Nenhuma violação detectada.</div>';
+                countLabel.textContent = '0 ameaças';
+                return;
+            }
+
+            let censoredText = text;
+            const detectedTerms = [];
+            const activeWords = Array.from(globalBlacklist);
+
+            activeWords.forEach(word => {
+                if(!word || word.length < 2) return;
+                const escapedWord = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                let patternString = escapedWord;
+                
+                if (/^[a-zA-Z0-9]+$/.test(word)) {
+                    patternString = word.split('').map(char => `${char}[\\s\\.\\_-]*`).join('');
+                }
+
+                const regex = new RegExp(`(${patternString})`, 'gi');
+                if (regex.test(censoredText)) {
+                    detectedTerms.push(word);
+                    censoredText = censoredText.replace(regex, (match) => {
+                        return `<span class="bg-rose-500/20 text-rose-300 font-bold px-1.5 py-0.5 rounded border border-rose-500/40 mx-0.5 shadow-[0_0_8px_rgba(244,63,94,0.3)]">${'█'.repeat(Math.min(match.length, 8))}</span>`;
+                    });
+                }
+            });
+
+            output.innerHTML = censoredText || text;
+            countLabel.textContent = `${detectedTerms.length} ameaças`;
+            detectedList.innerHTML = '';
+
+            if (detectedTerms.length === 0) {
+                detectedList.innerHTML = '<div class="text-xs text-emerald-400 text-center py-4 bg-emerald-900/10 rounded-lg border border-emerald-500/20"><i class="fa-solid fa-shield-check mr-1.5"></i> Verificação Completa: Nenhuma restrição violada.</div>';
+            } else {
+                detectedTerms.forEach(term => {
+                    const row = document.createElement('div');
+                    row.className = 'flex items-center justify-between text-xs bg-rose-950/30 p-2 rounded-lg border border-rose-900/50';
+                    row.innerHTML = `
+                        <span class="text-rose-400 font-medium code-font"><i class="fa-solid fa-triangle-exclamation mr-2 text-rose-500"></i>${escapeHtml(term)}</span>
+                        <span class="text-[10px] text-rose-300 bg-rose-900/40 px-2 py-0.5 rounded border border-rose-800">Interceptado</span>
+                    `;
+                    detectedList.appendChild(row);
+                });
+            }
+        }
+
+        async function runAiAnalysis() {
+            const input = document.getElementById('ai-input-text').value.trim();
+            if(!input) return showToast("Digite um texto alvo para analisar.");
+            
+            const btn = document.getElementById('btn-run-ai');
+            btn.disabled = true; btn.classList.add('opacity-50');
+            
+            setTimeout(() => {
+                // Mockup AI Response for layout context
+                aiExtractedKeywords = ["vergonha alheia", "nao serve"];
+                document.getElementById('ai-status-badge').textContent = "Concluído";
+                document.getElementById('ai-response-container').innerHTML = `
+                    <div class="space-y-3 text-xs">
+                        <div class="flex items-center justify-between bg-slate-800/80 p-3 rounded-lg border border-slate-700">
+                            <span class="text-slate-300">Nível de Ameaça:</span>
+                            <span class="font-bold px-2 py-1 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30">Médio</span>
+                        </div>
+                        <div class="bg-slate-800/50 p-3 rounded-lg border border-slate-700/50 text-slate-300 leading-relaxed shadow-inner">
+                            <span class="font-bold text-amber-400 block mb-1">Diagnóstico Heurístico:</span>
+                            Ataque velado contendo desaprovação social e julgamento moral.
+                        </div>
+                        <div class="flex gap-2 pt-2">
+                            <span class="bg-slate-800 text-amber-300 border border-amber-500/20 px-2 py-1 rounded text-[11px] code-font">vergonha alheia</span>
+                            <span class="bg-slate-800 text-amber-300 border border-amber-500/20 px-2 py-1 rounded text-[11px] code-font">nao serve</span>
+                        </div>
+                    </div>
+                `;
+                document.getElementById('ai-action-footer').classList.remove('hidden');
+                btn.disabled = false; btn.classList.remove('opacity-50');
+            }, 1500);
+        }
+
+        function importAiKeywordsToBlacklist() {
+            if (aiExtractedKeywords.length > 0) {
+                aiExtractedKeywords.forEach(kw => globalBlacklist.add(kw.toLowerCase()));
+                renderGlobalBlacklist(); runCensorshipSimulation();
+                showToast(`${aiExtractedKeywords.length} termos importados com sucesso!`);
+            }
+        }
+
+        function renderGlobalBlacklist() {
+            const container = document.getElementById('global-blacklist-tags');
+            container.innerHTML = '';
+            if (globalBlacklist.size === 0) {
+                container.innerHTML = '<span class="text-xs text-slate-500 italic">Banco de dados vazio.</span>';
+                return;
+            }
+
+            globalBlacklist.forEach(word => {
+                const tag = document.createElement('span');
+                tag.className = 'bg-emerald-900/40 text-emerald-300 border border-emerald-500/40 px-3 py-1.5 rounded-lg text-xs flex items-center space-x-2 code-font shadow-sm backdrop-blur-md transition hover:bg-emerald-900/60';
+                tag.innerHTML = `
+                    <span>${escapeHtml(word)}</span>
+                    <button onclick="removeSingleFromGlobal('${escapeHtml(word)}')" class="text-emerald-400/70 hover:text-rose-400 transition bg-emerald-900/50 rounded-md px-1 py-0.5 ml-1">
+                        <i class="fa-solid fa-xmark text-[10px]"></i>
+                    </button>
+                `;
+                container.appendChild(tag);
+            });
+        }
+
+        function addSingleToGlobal(word) {
+            globalBlacklist.add(word.toLowerCase());
+            renderGlobalBlacklist(); runCensorshipSimulation();
+            showToast(`"${word}" consolidado!`);
+        }
+
+        function removeSingleFromGlobal(word) {
+            globalBlacklist.delete(word);
+            renderGlobalBlacklist(); runCensorshipSimulation();
+        }
+
+        function addCurrentFragmentsToGlobalList() {
+            if(currentFragments.length === 0) return;
+            currentFragments.forEach(f => globalBlacklist.add(f.toLowerCase()));
+            renderGlobalBlacklist(); runCensorshipSimulation();
+            showToast(`${currentFragments.length} variantes adicionadas.`);
+        }
+
+        function addAllSemanticToGlobalList() {
+            if(currentSemanticResults.length === 0) return;
+            currentSemanticResults.forEach(item => globalBlacklist.add(item.term.toLowerCase()));
+            renderGlobalBlacklist(); runCensorshipSimulation();
+            showToast(`Variações semânticas importadas.`);
+        }
+
+        function clearGlobalList() {
+            globalBlacklist.clear();
+            renderGlobalBlacklist(); runCensorshipSimulation();
+            showToast("Banco de dados apagado!");
+        }
+
+        function copyFormatted(format) {
+            let txt = format === 'comma' ? currentFragments.join(', ') : format === 'newline' ? currentFragments.join('\n') : `(${currentFragments.map(f => f.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})`;
+            copyToClipboard(txt); showToast("Variantes copiadas!");
+        }
+
+        function copyCurrentBlocklist() {
+            const list = Array.from(globalBlacklist);
+            if (list.length === 0) return showToast("Banco de dados vazio.");
+            copyToClipboard(list.join(', '));
+            showToast("Exportação completa!");
+        }
+
+        function copyToClipboard(text) {
+            const t = document.createElement('textarea'); t.value = text;
+            document.body.appendChild(t); t.select(); document.execCommand('copy');
+            document.body.removeChild(t);
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-message').textContent = msg;
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            setTimeout(() => toast.classList.add('translate-y-20', 'opacity-0'), 3000);
+        }
+
+        function escapeHtml(str) {
+            return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+        }
+    </script>
+</body>
+</html>
