@@ -1,0 +1,1099 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visual Story Maker - Engine</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Fontes (Estilo RPG Maker) -->
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    
+    <!-- Bibliotecas para geração de ZIP e download de arquivos -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+
+    <style>
+        :root {
+            --dialog-bg: rgba(0, 0, 68, 1);
+        }
+
+        body {
+            font-family: 'Press Start 2P', cursive;
+            background-color: #1a1a24;
+            color: #ffffff;
+            margin: 0;
+            overflow: hidden;
+            font-size: 12px;
+        }
+
+        /* Estilo RPG Maker - Caixas de Diálogo */
+        .rpg-box {
+            background: var(--dialog-bg);
+            border: 4px solid #ffffff;
+            border-radius: 8px;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.8), 4px 4px 0 rgba(0,0,0,0.5);
+            padding: 16px;
+            color: white;
+            text-shadow: 2px 2px 0 #000;
+            transition: background 0.3s;
+        }
+
+        .rpg-input {
+            background: #000022;
+            border: 2px solid #aaa;
+            color: white;
+            padding: 8px;
+            font-family: 'Press Start 2P', cursive;
+            width: 100%;
+            outline: none;
+            font-size: 10px;
+        }
+        
+        .rpg-input:focus {
+            border-color: #ffff00;
+        }
+
+        .rpg-btn {
+            background: #222;
+            border: 2px solid #fff;
+            color: white;
+            padding: 10px 15px;
+            cursor: pointer;
+            font-family: 'Press Start 2P', cursive;
+            font-size: 10px;
+            text-shadow: 2px 2px 0 #000;
+            transition: all 0.2s;
+            display: inline-block;
+            text-align: center;
+        }
+
+        .rpg-btn:hover {
+            background: #444;
+            border-color: #ffff00;
+            color: #ffff00;
+        }
+
+        .rpg-btn:active {
+            transform: translateY(2px);
+        }
+
+        /* Scrollbar customizada */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #000022;
+            border-left: 2px solid #fff;
+            border-top: 2px solid #fff;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #fff;
+            border: 2px solid #000022;
+        }
+
+        /* Modais */
+        .overlay-modal {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.95);
+            z-index: 9999;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        #preview-overlay {
+            background: url('https://placehold.co/1920x1080/222/444?text=Background') no-repeat center center;
+            background-size: cover;
+            z-index: 5000;
+            justify-content: flex-end;
+            padding: 40px;
+            transition: background-image 0.5s ease-in-out;
+        }
+
+        .choice-btn {
+            display: block;
+            width: 100%;
+            text-align: left;
+            margin-top: 8px;
+            background: rgba(0, 0, 50, 0.8);
+            border: 2px solid #fff;
+            padding: 12px;
+            cursor: pointer;
+        }
+        .choice-btn:hover {
+            background: rgba(0, 0, 100, 0.9);
+            border-color: #ff0;
+            color: #ff0;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Anúncio da Engine (Para o Criador) -->
+    <div id="ad-overlay" class="overlay-modal" style="display: flex;">
+        <h2 class="mb-4 text-xl text-yellow-300">Visual Story Maker Engine</h2>
+        <p class="mb-4 text-sm max-w-md leading-relaxed text-green-400 text-center">
+            Crie uma nova conta no shrtfly e comece a ganhar com links encurtados!
+        </p>
+        
+        <a href="https://shrtfly.com/ref/acelerado" target="_blank" class="block mb-6 border-4 border-white hover:border-yellow-400 transition-colors">
+            <img src="https://shrtfly.com/referral/336x280.gif" alt="Shrtfly Referral" class="max-w-full h-auto" />
+        </a>
+        
+        <div class="mt-2 flex flex-col items-center">
+            <span id="ad-timer" class="mb-2 text-gray-300">Aguarde 5 segundos...</span>
+            <button id="skip-ad-btn" class="rpg-btn opacity-50 cursor-not-allowed" disabled>
+                Pular Anúncio
+            </button>
+        </div>
+    </div>
+
+    <!-- Modal de Configurações do Projeto -->
+    <div id="settings-overlay" class="overlay-modal">
+        <div class="rpg-box w-full max-w-2xl max-h-screen overflow-y-auto">
+            <h2 class="text-yellow-300 mb-6 text-center">Configurações do Projeto</h2>
+            
+            <div class="mb-4">
+                <label class="block text-gray-300 mb-2">Cor da Caixa de Diálogo (Fundo):</label>
+                <div class="flex items-center gap-4">
+                    <input type="color" id="setting-bg-color" class="w-12 h-12 cursor-pointer bg-transparent border-0 p-0" onchange="updateSettingsPreview()">
+                    <span class="text-xs text-gray-400">Escolha a cor base da caixa.</span>
+                </div>
+            </div>
+
+            <div class="mb-6">
+                <label class="block text-gray-300 mb-2">Opacidade da Caixa de Diálogo:</label>
+                <div class="flex items-center gap-4">
+                    <input type="range" id="setting-bg-opacity" min="0" max="1" step="0.1" class="w-full cursor-pointer" oninput="updateSettingsPreview()">
+                    <span id="setting-bg-opacity-val" class="text-xs text-white w-12">1.0</span>
+                </div>
+                <p class="text-[8px] text-gray-400 mt-1">0 = Transparente | 1 = Sólido</p>
+            </div>
+
+            <div class="mb-6 border-t border-gray-600 pt-4">
+                <label class="block text-yellow-300 mb-2">💰 Anúncio Inicial do Jogo (Monetização):</label>
+                <p class="text-[8px] text-gray-400 mb-2 leading-relaxed">Cole aqui o código HTML (iframe, embed, banner) do seu provedor de anúncios ou links curtos. Ele será exibido para os jogadores por 5 segundos antes do jogo iniciar.</p>
+                <textarea id="setting-ad-html" class="rpg-input h-24" placeholder="Ex: <iframe src='...'></iframe>"></textarea>
+            </div>
+
+            <div class="flex gap-4 justify-end mt-4">
+                <button onclick="closeSettings()" class="rpg-btn border-gray-500 text-gray-300">Cancelar</button>
+                <button onclick="saveSettings()" class="rpg-btn text-green-400 border-green-400">Salvar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Container responsivo -->
+    <div id="app-container" class="flex flex-col md:flex-row h-screen w-screen">
+        
+        <!-- Sidebar -->
+        <div class="w-full md:w-1/4 h-1/3 md:h-full border-b-4 md:border-b-0 md:border-r-4 border-white rpg-box rounded-none flex flex-col relative z-10">
+            <h2 class="text-center text-yellow-300 mb-4 text-xs md:text-sm leading-6">Explorador<br>de Caminhos</h2>
+            
+            <button onclick="createNewScene()" class="rpg-btn mb-4 w-full text-green-400 border-green-400 text-xs">
+                + Novo Caminho
+            </button>
+            
+            <div id="scene-list" class="flex-1 overflow-y-auto pr-2 space-y-2">
+                <!-- Cenas populadas aqui -->
+            </div>
+            
+            <div class="mt-2 md:mt-4 pt-2 md:pt-4 border-t-2 border-white flex gap-2 md:flex-col">
+                <button onclick="triggerLoadProject()" class="rpg-btn w-full text-[8px] md:text-[10px]">Abrir (.sub15)</button>
+                <input type="file" id="file-input" accept=".sub15" style="display: none;" onchange="loadProject(event)">
+                <button onclick="saveProjectFile()" class="rpg-btn w-full text-[8px] md:text-[10px]">Salvar (.sub15)</button>
+            </div>
+        </div>
+
+        <!-- Área Principal -->
+        <div class="w-full md:w-3/4 h-2/3 md:h-full flex flex-col bg-gray-900 relative">
+            
+            <!-- Barra Superior -->
+            <div class="h-auto md:h-16 rpg-box rounded-none border-t-0 border-l-0 border-r-0 flex flex-wrap items-center justify-between p-2 md:px-6 gap-2 z-10">
+                <div class="w-full md:w-auto flex items-center mb-2 md:mb-0">
+                    <span class="text-gray-400 mr-2 text-[10px] md:text-xs">Projeto:</span>
+                    <input type="text" id="project-name" value="Meu Jogo" class="rpg-input flex-1 md:w-48 text-[10px] md:text-xs" onchange="updateProjectName()">
+                </div>
+                <div class="flex space-x-2 w-full md:w-auto justify-end">
+                    <button onclick="openSettings()" class="rpg-btn text-gray-300 border-gray-400 text-[10px] flex-1 md:flex-none">⚙️ Configs</button>
+                    <button onclick="playPreview()" class="rpg-btn text-cyan-300 border-cyan-300 flex-1 md:flex-none">Jogar</button>
+                    <button onclick="exportGame()" class="rpg-btn text-purple-400 border-purple-400 flex-1 md:flex-none">Build (ZIP)</button>
+                </div>
+            </div>
+
+            <!-- Editor de Conteúdo -->
+            <div class="flex-1 overflow-y-auto p-4 md:p-8" id="editor-area">
+                <div id="no-scene-selected" class="h-full flex items-center justify-center text-gray-500 text-center px-4">
+                    Selecione ou crie um caminho no menu lateral para começar a editar.
+                </div>
+                
+                <div id="scene-editor" class="hidden max-w-3xl mx-auto pb-20">
+                    <div class="rpg-box mb-6 relative z-10">
+                        <div class="flex justify-between items-center mb-2">
+                            <label class="block text-yellow-300">ID do Caminho:</label>
+                            <button onclick="deleteCurrentScene()" class="rpg-btn !bg-red-900 !border-red-500 !text-white !p-2 !text-[8px] hover:!bg-red-700">🗑️ Excluir</button>
+                        </div>
+                        <input type="text" id="scene-id" class="rpg-input mb-6" placeholder="Ex: floresta_escura" onchange="updateSceneData()">
+                        
+                        <div class="flex justify-between items-end mb-2">
+                            <label class="block text-yellow-300">Textos (Falas):</label>
+                            <button onclick="addSceneText()" class="text-green-400 hover:text-green-300 text-[10px] underline">+ Adicionar Fala</button>
+                        </div>
+                        
+                        <!-- Lista de Textos -->
+                        <div id="scene-texts-list" class="space-y-2 mb-4">
+                            <!-- Textareas geradas via JS -->
+                        </div>
+
+                        <!-- Upload de Mídia -->
+                        <div class="flex flex-col md:flex-row gap-4 border-t-2 border-gray-600 pt-4 mt-2">
+                            <div class="flex-1 bg-black bg-opacity-30 p-2 rounded border border-gray-700">
+                                <label class="block mb-2 text-cyan-300 text-[10px]">🖼️ Imagem de Fundo:</label>
+                                <input type="file" accept="image/*" id="scene-image-input" class="rpg-input text-[8px] mb-2 cursor-pointer" onchange="uploadMedia(event, 'image')">
+                                <div id="image-preview-container" class="hidden flex-col items-start gap-2">
+                                    <img id="scene-image-preview" class="max-h-24 border border-white rounded">
+                                    <button class="text-red-400 text-[8px] underline hover:text-red-300" onclick="removeMedia('image')">Remover Imagem</button>
+                                </div>
+                            </div>
+                            
+                            <div class="flex-1 bg-black bg-opacity-30 p-2 rounded border border-gray-700">
+                                <label class="block mb-2 text-pink-300 text-[10px]">🎵 Efeito Sonoro/Música:</label>
+                                <input type="file" accept="audio/*" id="scene-audio-input" class="rpg-input text-[8px] mb-2 cursor-pointer" onchange="uploadMedia(event, 'audio')">
+                                <div id="audio-preview-container" class="hidden flex-col items-start gap-2 w-full">
+                                    <audio id="scene-audio-preview" controls class="w-full h-8"></audio>
+                                    <button class="text-red-400 text-[8px] underline hover:text-red-300" onclick="removeMedia('audio')">Remover Áudio</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-between items-end mb-4">
+                        <h3 class="text-yellow-300 text-xs md:text-sm">Escolhas do Jogador:</h3>
+                        <button onclick="addChoice()" class="rpg-btn py-2 px-4 text-[10px]">+ Adicionar Escolha</button>
+                    </div>
+
+                    <div id="choices-list" class="space-y-4">
+                        <!-- Escolhas populadas aqui -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal do Jogo (Preview) -->
+    <div id="preview-overlay" class="overlay-modal">
+        <button onclick="closePreview()" class="absolute top-4 right-4 rpg-btn bg-red-900 border-red-500 z-50">Fechar Preview</button>
+        
+        <div class="max-w-4xl mx-auto w-full mb-4 md:mb-8 z-10 relative">
+            <div id="preview-choices" class="w-full md:w-2/3 mx-auto mb-4 space-y-2 px-4 flex flex-col items-end">
+                <!-- Botões de escolha e 'continuar' -->
+            </div>
+            
+            <div class="rpg-box relative min-h-[120px] mx-4 md:mx-0">
+                <div id="preview-text" class="leading-relaxed text-xs md:text-sm">Texto da história...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- SISTEMA DE ANÚNCIO DA ENGINE ---
+        let engineTimeLeft = 5;
+        const engineTimerText = document.getElementById('ad-timer');
+        const engineSkipBtn = document.getElementById('skip-ad-btn');
+        const engineAdOverlay = document.getElementById('ad-overlay');
+
+        const engineAdInterval = setInterval(() => {
+            engineTimeLeft--;
+            if(engineTimeLeft > 0) {
+                engineTimerText.innerText = `Aguarde ${engineTimeLeft} segundos...`;
+            } else {
+                clearInterval(engineAdInterval);
+                engineTimerText.style.display = 'none';
+                engineSkipBtn.innerText = "Pular Anúncio >";
+                engineSkipBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                engineSkipBtn.disabled = false;
+                engineSkipBtn.onclick = () => {
+                    engineAdOverlay.style.display = 'none';
+                };
+            }
+        }, 1000);
+
+
+        // --- ESTADO DO PROJETO (.sub15 Data Structure) ---
+        let project = {
+            name: "Meu Jogo",
+            startScene: "inicio",
+            settings: {
+                dialogBgColor: "#000044",
+                dialogOpacity: 1,
+                adHtml: ""
+            },
+            scenes: {
+                "inicio": {
+                    id: "inicio",
+                    texts: ["Você acorda em uma encruzilhada.", "Para onde deseja ir agora?"],
+                    image: null,
+                    audio: null,
+                    choices: [
+                        { text: "Ir para a floresta", target: "floresta" },
+                        { text: "Ir para o bosque", target: "bosque" }
+                    ]
+                },
+                "floresta": {
+                    id: "floresta",
+                    texts: ["A floresta é clara e cheia de vida.", "Você encontra um baú brilhante no chão."],
+                    image: null,
+                    audio: null,
+                    choices: [
+                        { text: "Voltar", target: "inicio" }
+                    ]
+                },
+                "bosque": {
+                    id: "bosque",
+                    texts: ["O bosque é aterrorizante. Um lobo aparece!"],
+                    image: null,
+                    audio: null,
+                    choices: [
+                        { text: "Correr de volta", target: "inicio" }
+                    ]
+                }
+            }
+        };
+
+        let currentEditorSceneId = null;
+        let previewAudioPlayer = null;
+
+        // Utilitário de Cores
+        function hexToRgba(hex, alpha) {
+            let r = parseInt(hex.slice(1, 3), 16),
+                g = parseInt(hex.slice(3, 5), 16),
+                b = parseInt(hex.slice(5, 7), 16);
+            return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+        }
+
+        function applyGlobalStyles() {
+            const bg = project.settings?.dialogBgColor || "#000044";
+            const opacity = project.settings?.dialogOpacity !== undefined ? project.settings.dialogOpacity : 1;
+            const rgba = hexToRgba(bg, opacity);
+            document.documentElement.style.setProperty('--dialog-bg', rgba);
+        }
+
+        // --- FUNÇÕES DE MIGRAÇÃO E INICIALIZAÇÃO ---
+        function migrateLegacyProject() {
+            // Garante que o projeto tenha configurações
+            if (!project.settings) {
+                project.settings = { dialogBgColor: "#000044", dialogOpacity: 1, adHtml: "" };
+            }
+            // Transforma cenas antigas (text string) em array (texts)
+            for (let key in project.scenes) {
+                if (project.scenes[key].text !== undefined) {
+                    project.scenes[key].texts = [project.scenes[key].text];
+                    delete project.scenes[key].text;
+                }
+                if(!project.scenes[key].texts) project.scenes[key].texts = [""];
+            }
+        }
+
+        function initApp() {
+            migrateLegacyProject();
+            applyGlobalStyles();
+            document.getElementById('project-name').value = project.name;
+            renderSceneList();
+        }
+
+        function updateProjectName() {
+            project.name = document.getElementById('project-name').value;
+        }
+
+        // --- STREAMING_CHUNK:Editor Logic & Settings ---
+        function openSettings() {
+            document.getElementById('setting-bg-color').value = project.settings.dialogBgColor;
+            document.getElementById('setting-bg-opacity').value = project.settings.dialogOpacity;
+            document.getElementById('setting-bg-opacity-val').innerText = project.settings.dialogOpacity;
+            document.getElementById('setting-ad-html').value = project.settings.adHtml;
+            document.getElementById('settings-overlay').style.display = 'flex';
+        }
+
+        function closeSettings() {
+            document.getElementById('settings-overlay').style.display = 'none';
+            applyGlobalStyles(); // Reseta se cancelou
+        }
+
+        function updateSettingsPreview() {
+            const op = document.getElementById('setting-bg-opacity').value;
+            document.getElementById('setting-bg-opacity-val').innerText = op;
+            const bg = document.getElementById('setting-bg-color').value;
+            document.documentElement.style.setProperty('--dialog-bg', hexToRgba(bg, op));
+        }
+
+        function saveSettings() {
+            project.settings.dialogBgColor = document.getElementById('setting-bg-color').value;
+            project.settings.dialogOpacity = parseFloat(document.getElementById('setting-bg-opacity').value);
+            project.settings.adHtml = document.getElementById('setting-ad-html').value;
+            applyGlobalStyles();
+            closeSettings();
+        }
+
+
+        // --- LOGICA DE CENAS ---
+        function renderSceneList() {
+            const list = document.getElementById('scene-list');
+            list.innerHTML = '';
+            
+            for (let sceneId in project.scenes) {
+                const btn = document.createElement('button');
+                btn.className = `w-full text-left p-2 md:p-3 mb-2 border-2 text-[10px] md:text-xs truncate font-['Press_Start_2P'] transition-colors ${currentEditorSceneId === sceneId ? 'bg-[var(--dialog-bg)] border-yellow-400 text-yellow-200' : 'bg-[#000033] border-gray-600 hover:border-white'}`;
+                btn.innerText = sceneId;
+                btn.onclick = () => openScene(sceneId);
+                list.appendChild(btn);
+            }
+        }
+
+        function openScene(sceneId) {
+            updateSceneData(); // Salva estado atual antes de trocar
+            currentEditorSceneId = sceneId;
+            const scene = project.scenes[sceneId];
+            
+            document.getElementById('no-scene-selected').classList.add('hidden');
+            document.getElementById('scene-editor').classList.remove('hidden');
+            
+            document.getElementById('scene-id').value = scene.id;
+            
+            renderSceneTexts();
+
+            // Mídia UI
+            document.getElementById('scene-image-input').value = '';
+            document.getElementById('scene-audio-input').value = '';
+
+            const imgContainer = document.getElementById('image-preview-container');
+            const imgPreview = document.getElementById('scene-image-preview');
+            if(scene.image) {
+                imgPreview.src = scene.image;
+                imgContainer.classList.remove('hidden');
+                imgContainer.classList.add('flex');
+            } else {
+                imgContainer.classList.add('hidden');
+                imgContainer.classList.remove('flex');
+            }
+
+            const audioContainer = document.getElementById('audio-preview-container');
+            const audioPreview = document.getElementById('scene-audio-preview');
+            if(scene.audio) {
+                audioPreview.src = scene.audio;
+                audioContainer.classList.remove('hidden');
+                audioContainer.classList.add('flex');
+            } else {
+                audioContainer.classList.add('hidden');
+                audioContainer.classList.remove('flex');
+                audioPreview.pause();
+            }
+
+            renderChoices();
+            renderSceneList(); 
+        }
+
+        // --- STREAMING_CHUNK:Text & Media Handling ---
+        function renderSceneTexts() {
+            const scene = project.scenes[currentEditorSceneId];
+            const container = document.getElementById('scene-texts-list');
+            container.innerHTML = '';
+
+            scene.texts.forEach((txt, index) => {
+                const div = document.createElement('div');
+                div.className = 'flex gap-2 relative';
+                div.innerHTML = `
+                    <textarea class="rpg-input h-16 md:h-20 scene-text-item" onchange="updateSceneData()">${txt}</textarea>
+                    ${scene.texts.length > 1 ? `<button onclick="removeSceneText(${index})" class="text-red-500 hover:text-red-300 font-bold px-2 self-start bg-black bg-opacity-50 border border-red-500 rounded">X</button>` : ''}
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function addSceneText() {
+            if(!currentEditorSceneId) return;
+            project.scenes[currentEditorSceneId].texts.push("");
+            renderSceneTexts();
+        }
+
+        function removeSceneText(index) {
+            if(!currentEditorSceneId) return;
+            project.scenes[currentEditorSceneId].texts.splice(index, 1);
+            updateSceneData();
+            renderSceneTexts();
+        }
+
+        function uploadMedia(event, type) {
+            if(!currentEditorSceneId) return;
+            const file = event.target.files[0];
+            if(!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                project.scenes[currentEditorSceneId][type] = e.target.result;
+                openScene(currentEditorSceneId);
+            };
+            reader.readAsDataURL(file); 
+        }
+
+        function removeMedia(type) {
+            if(!currentEditorSceneId) return;
+            project.scenes[currentEditorSceneId][type] = null;
+            openScene(currentEditorSceneId);
+        }
+
+        function deleteCurrentScene() {
+            if(!currentEditorSceneId) return;
+            if(Object.keys(project.scenes).length <= 1) {
+                alert("Você não pode deletar o único caminho do jogo!");
+                return;
+            }
+            if(confirm(`Tem certeza que deseja deletar o caminho '${currentEditorSceneId}'?`)) {
+                delete project.scenes[currentEditorSceneId];
+                
+                for(let sId in project.scenes) {
+                    project.scenes[sId].choices.forEach(c => {
+                        if(c.target === currentEditorSceneId) c.target = Object.keys(project.scenes)[0]; 
+                    });
+                }
+                if(project.startScene === currentEditorSceneId) project.startScene = Object.keys(project.scenes)[0];
+
+                currentEditorSceneId = null;
+                document.getElementById('scene-editor').classList.add('hidden');
+                document.getElementById('no-scene-selected').classList.remove('hidden');
+                renderSceneList();
+            }
+        }
+
+        // --- STREAMING_CHUNK:Choices and Project Save ---
+        function renderChoices() {
+            const scene = project.scenes[currentEditorSceneId];
+            const container = document.getElementById('choices-list');
+            container.innerHTML = '';
+
+            scene.choices.forEach((choice, index) => {
+                const choiceDiv = document.createElement('div');
+                choiceDiv.className = 'rpg-box !p-3 relative border-gray-400';
+                
+                let optionsHtml = '';
+                for (let sId in project.scenes) {
+                    optionsHtml += `<option value="${sId}" ${choice.target === sId ? 'selected' : ''}>Caminho: ${sId}</option>`;
+                }
+                optionsHtml += `<option value="--new--">+ Criar Novo Caminho...</option>`;
+
+                choiceDiv.innerHTML = `
+                    <button onclick="removeChoice(${index})" class="absolute top-2 right-2 text-red-500 hover:text-red-300 font-bold bg-black bg-opacity-50 px-2 rounded">X</button>
+                    <div class="flex flex-col md:flex-row gap-2 mt-4 md:mt-0 items-end">
+                        <div class="flex-1 w-full">
+                            <label class="block text-[10px] mb-1 text-gray-300">Texto da Escolha:</label>
+                            <input type="text" class="rpg-input" value="${choice.text}" onchange="updateChoice(${index}, 'text', this.value)">
+                        </div>
+                        <div class="flex-1 w-full">
+                            <label class="block text-[10px] mb-1 text-gray-300">Leva para:</label>
+                            <select class="rpg-input cursor-pointer" onchange="handleTargetChange(${index}, this.value)">
+                                ${optionsHtml}
+                            </select>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(choiceDiv);
+            });
+        }
+
+        function updateSceneData() {
+            if (!currentEditorSceneId) return;
+            
+            const newIdInput = document.getElementById('scene-id');
+            if(!newIdInput) return;
+
+            const newId = newIdInput.value.trim().replace(/[^a-zA-Z0-9_]/g, '_');
+            
+            // Atualiza array de textos
+            const textareas = document.querySelectorAll('.scene-text-item');
+            const newTexts = Array.from(textareas).map(t => t.value);
+            
+            if (newId !== currentEditorSceneId && newId !== "") {
+                if (project.scenes[newId]) {
+                    alert("Já existe um caminho com este ID!");
+                    newIdInput.value = currentEditorSceneId;
+                    return;
+                }
+                
+                project.scenes[newId] = project.scenes[currentEditorSceneId];
+                project.scenes[newId].id = newId;
+                delete project.scenes[currentEditorSceneId];
+                
+                for(let sId in project.scenes) {
+                    project.scenes[sId].choices.forEach(c => {
+                        if(c.target === currentEditorSceneId) c.target = newId;
+                    });
+                }
+                if(project.startScene === currentEditorSceneId) project.startScene = newId;
+                currentEditorSceneId = newId;
+            }
+            
+            project.scenes[currentEditorSceneId].texts = newTexts;
+            renderSceneList();
+        }
+
+        function addChoice() {
+            if (!currentEditorSceneId) return;
+            project.scenes[currentEditorSceneId].choices.push({
+                text: "Nova Escolha",
+                target: currentEditorSceneId 
+            });
+            renderChoices();
+        }
+
+        function updateChoice(index, field, value) {
+            project.scenes[currentEditorSceneId].choices[index][field] = value;
+        }
+
+        function removeChoice(index) {
+            project.scenes[currentEditorSceneId].choices.splice(index, 1);
+            renderChoices();
+        }
+
+        function handleTargetChange(choiceIndex, value) {
+            if (value === '--new--') {
+                const newSceneName = prompt("Digite o ID do novo caminho (sem espaços):");
+                if (newSceneName) {
+                    const cleanName = newSceneName.trim().replace(/[^a-zA-Z0-9_]/g, '_');
+                    if (!project.scenes[cleanName]) {
+                        project.scenes[cleanName] = { id: cleanName, texts: ["Novo caminho..."], image: null, audio: null, choices: [] };
+                        updateChoice(choiceIndex, 'target', cleanName);
+                        renderSceneList();
+                        renderChoices(); 
+                        return;
+                    } else {
+                        alert("Caminho já existe!");
+                    }
+                }
+                updateChoice(choiceIndex, 'target', currentEditorSceneId);
+                renderChoices();
+            } else {
+                updateChoice(choiceIndex, 'target', value);
+            }
+        }
+
+        function createNewScene() {
+            let id = "nova_cena_" + Object.keys(project.scenes).length;
+            project.scenes[id] = { id: id, texts: ["Escreva a história aqui..."], image: null, audio: null, choices: [] };
+            renderSceneList();
+            openScene(id);
+        }
+
+        function saveProjectFile() {
+            updateSceneData();
+            const dataStr = JSON.stringify(project, null, 2);
+            const blob = new Blob([dataStr], { type: "application/json" });
+            saveAs(blob, "project.sub15");
+        }
+
+        function triggerLoadProject() { document.getElementById('file-input').click(); }
+
+        function loadProject(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const loadedData = JSON.parse(e.target.result);
+                    if(loadedData && loadedData.scenes) {
+                        project = loadedData;
+                        currentEditorSceneId = null;
+                        document.getElementById('scene-editor').classList.add('hidden');
+                        document.getElementById('no-scene-selected').classList.remove('hidden');
+                        initApp();
+                        alert("Projeto carregado com sucesso!");
+                    }
+                } catch (err) { alert("Erro ao ler o arquivo .sub15. Formato inválido."); }
+            };
+            reader.readAsText(file);
+            event.target.value = ''; 
+        }
+
+        // --- STREAMING_CHUNK:Preview & Play Logic ---
+        let currentPlayNode = "";
+        let currentTextIndex = 0;
+        let typingTimeout = null;
+
+        function playPreview() {
+            updateSceneData();
+            document.getElementById('preview-overlay').style.display = 'flex';
+            currentPlayNode = project.startScene || Object.keys(project.scenes)[0];
+            currentTextIndex = 0;
+            renderPreviewScene();
+        }
+
+        function closePreview() {
+            document.getElementById('preview-overlay').style.display = 'none';
+            if(previewAudioPlayer) {
+                previewAudioPlayer.pause();
+                previewAudioPlayer = null;
+            }
+            clearTimeout(typingTimeout);
+        }
+
+        function renderPreviewScene() {
+            const scene = project.scenes[currentPlayNode];
+            const textEl = document.getElementById('preview-text');
+            const choicesEl = document.getElementById('preview-choices');
+            const overlay = document.getElementById('preview-overlay');
+            
+            clearTimeout(typingTimeout);
+
+            if (!scene) {
+                textEl.innerText = "Fim de jogo ou caminho não encontrado.";
+                choicesEl.innerHTML = '';
+                return;
+            }
+
+            if(currentTextIndex === 0) {
+                if(scene.image) overlay.style.backgroundImage = `url('${scene.image}')`;
+                else overlay.style.backgroundImage = `url('https://placehold.co/1920x1080/222/444?text=Background')`;
+
+                if(previewAudioPlayer) previewAudioPlayer.pause();
+                if(scene.audio) {
+                    previewAudioPlayer = new Audio(scene.audio);
+                    previewAudioPlayer.play().catch(e => console.log("Áudio bloqueado", e));
+                }
+            }
+
+            textEl.innerHTML = '';
+            choicesEl.innerHTML = ''; 
+            
+            let i = 0;
+            const currentText = scene.texts[currentTextIndex] || "";
+            
+            function typeWriter() {
+                if (i < currentText.length) {
+                    textEl.innerHTML += currentText.charAt(i);
+                    i++;
+                    typingTimeout = setTimeout(typeWriter, 20); 
+                } else {
+                    // Terminou de digitar a fala atual
+                    if (currentTextIndex < scene.texts.length - 1) {
+                        const btn = document.createElement('button');
+                        btn.className = 'rpg-btn choice-btn border-green-400 text-green-300 w-auto self-end';
+                        btn.innerText = "Continuar >";
+                        btn.onclick = () => {
+                            currentTextIndex++;
+                            renderPreviewScene();
+                        };
+                        choicesEl.appendChild(btn);
+                    } else {
+                        // Última fala, mostra as escolhas
+                        scene.choices.forEach(choice => {
+                            const btn = document.createElement('button');
+                            btn.className = 'rpg-btn choice-btn';
+                            btn.innerText = "> " + choice.text;
+                            btn.onclick = () => {
+                                currentPlayNode = choice.target;
+                                currentTextIndex = 0;
+                                renderPreviewScene();
+                            };
+                            choicesEl.appendChild(btn);
+                        });
+                        
+                        if(scene.choices.length === 0) {
+                            const btn = document.createElement('button');
+                            btn.className = 'rpg-btn choice-btn text-gray-400';
+                            btn.innerText = "[ Fim da História ]";
+                            choicesEl.appendChild(btn);
+                        }
+                    }
+                }
+            }
+            typeWriter();
+        }
+
+        // --- STREAMING_CHUNK:ZIP Export Engine ---
+        function getMimeExtension(dataUri) {
+            try {
+                let mime = dataUri.split(';')[0].split(':')[1];
+                if (mime === 'image/jpeg') return '.jpg';
+                if (mime === 'image/png') return '.png';
+                if (mime === 'image/gif') return '.gif';
+                if (mime === 'audio/mpeg') return '.mp3';
+                if (mime === 'audio/wav') return '.wav';
+                if (mime === 'audio/ogg') return '.ogg';
+            } catch(e){}
+            return '.bin';
+        }
+
+        async function exportGame() {
+            updateSceneData();
+            const zip = new JSZip();
+            const publicFolder = zip.folder("public-source");
+            
+            publicFolder.file("readme.txt", "Pasta de assets (Imagens e Sons) extraídos pelo Visual Story Maker.");
+            
+            // Clonar projeto para não alterar o estado no editor
+            let exportProject = JSON.parse(JSON.stringify(project));
+
+            // Extrair Base64 para arquivos reais no ZIP
+            for (let sceneId in exportProject.scenes) {
+                let scene = exportProject.scenes[sceneId];
+                
+                if (scene.image && scene.image.startsWith('data:')) {
+                    let ext = getMimeExtension(scene.image);
+                    let filename = `img_${sceneId}${ext}`;
+                    let base64Data = scene.image.split(',')[1];
+                    publicFolder.file(filename, base64Data, {base64: true});
+                    scene.image = `public-source/${filename}`;
+                }
+                
+                if (scene.audio && scene.audio.startsWith('data:')) {
+                    let ext = getMimeExtension(scene.audio);
+                    let filename = `aud_${sceneId}${ext}`;
+                    let base64Data = scene.audio.split(',')[1];
+                    publicFolder.file(filename, base64Data, {base64: true});
+                    scene.audio = `public-source/${filename}`;
+                }
+            }
+
+            // Salvar o json sub15 com os dados originais (Base64 embutido) para a engine conseguir reabrir com as mídias!
+            zip.file("project.sub15", JSON.stringify(project, null, 2));
+            
+            const gameHtml = generateGameHTML(exportProject);
+            zip.file("index.html", gameHtml);
+            
+            try {
+                const content = await zip.generateAsync({type:"blob"});
+                saveAs(content, project.name.replace(/\s+/g, '_') + "_Build.zip");
+            } catch(e) {
+                alert("Erro ao gerar Build: " + e.message);
+            }
+        }
+
+        // --- STREAMING_CHUNK:HTML Game Generator ---
+        function generateGameHTML(projData) {
+            const bgHex = projData.settings?.dialogBgColor || "#000044";
+            const bgOp = projData.settings?.dialogOpacity !== undefined ? projData.settings.dialogOpacity : 1;
+            const rgba = hexToRgba(bgHex, bgOp);
+            const hasAds = projData.settings?.adHtml && projData.settings.adHtml.trim() !== "";
+
+            return `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${projData.name}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --dialog-bg: ${rgba};
+        }
+        body {
+            font-family: 'Press Start 2P', cursive;
+            background: #000;
+            color: #fff;
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            padding: 5%;
+            box-sizing: border-box;
+            background: url('https://placehold.co/1920x1080/1a1a24/444455?text=Cenario') no-repeat center center;
+            background-size: cover;
+            transition: background-image 0.5s ease-in-out;
+            overflow: hidden;
+        }
+        .rpg-box {
+            background: var(--dialog-bg);
+            border: 4px solid #ffffff;
+            border-radius: 8px;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.8), 4px 4px 0 rgba(0,0,0,0.5);
+            padding: 24px;
+            text-shadow: 2px 2px 0 #000;
+            line-height: 1.6;
+            min-height: 120px;
+            font-size: 12px;
+            transition: background 0.3s;
+        }
+        .choices-container {
+            width: 100%;
+            max-width: 800px;
+            margin: 0 auto 20px auto;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 10px;
+        }
+        button {
+            font-family: 'Press Start 2P', cursive;
+            background: rgba(0, 0, 50, 0.9);
+            border: 2px solid #fff;
+            color: white;
+            padding: 16px;
+            cursor: pointer;
+            text-align: left;
+            text-shadow: 2px 2px 0 #000;
+            font-size: 12px;
+            transition: 0.2s;
+            width: 100%;
+        }
+        button:hover { background: rgba(0, 0, 100, 1); border-color: #ff0; color: #ff0; }
+        button.btn-continue { border-color: #4ade80; color: #86efac; width: auto; }
+        
+        #ad-overlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: #000; z-index: 9999;
+            display: ${hasAds ? 'flex' : 'none'};
+            flex-direction: column; align-items: center; justify-content: center;
+        }
+        .ad-container { margin-bottom: 20px; max-width: 100%; overflow: hidden; }
+        .skip-btn {
+            background: #222; border: 2px solid #fff; color: white; padding: 15px 30px;
+            cursor: pointer; font-family: 'Press Start 2P'; margin-top: 20px; text-align:center;
+        }
+        .skip-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        @media (max-width: 768px) {
+            body { padding: 2%; }
+            .rpg-box { padding: 16px; font-size: 10px; }
+            button { padding: 12px; font-size: 10px; }
+        }
+    </style>
+</head>
+<body>
+    
+    <div id="ad-overlay">
+        <div class="ad-container">
+            ${hasAds ? projData.settings.adHtml : ''}
+        </div>
+        <div id="ad-timer" style="color:#aaa; font-size:10px;">Aguarde 5 segundos...</div>
+        <button id="skip-btn" class="skip-btn" disabled>Pular Anúncio</button>
+    </div>
+
+    <div class="choices-container" id="choices"></div>
+    <div class="rpg-box" id="dialogue"></div>
+
+    <script>
+        const GAME_DATA = ${JSON.stringify(projData)};
+        let currentNode = GAME_DATA.startScene;
+        let textIndex = 0;
+        let audioPlayer = null;
+        let typeTimeout = null;
+
+        const dialogueEl = document.getElementById('dialogue');
+        const choicesEl = document.getElementById('choices');
+
+        // Lógica de ADS Inicial
+        function initGameAds() {
+            const overlay = document.getElementById('ad-overlay');
+            if(overlay.style.display === 'none') {
+                startGame();
+                return;
+            }
+            let timeLeft = 5;
+            const timerEl = document.getElementById('ad-timer');
+            const skipBtn = document.getElementById('skip-btn');
+            
+            const interval = setInterval(() => {
+                timeLeft--;
+                if(timeLeft > 0) timerEl.innerText = 'Aguarde ' + timeLeft + ' segundos...';
+                else {
+                    clearInterval(interval);
+                    timerEl.style.display = 'none';
+                    skipBtn.innerText = 'Começar Jogo >';
+                    skipBtn.disabled = false;
+                    skipBtn.onclick = () => {
+                        overlay.style.display = 'none';
+                        startGame();
+                    };
+                }
+            }, 1000);
+        }
+
+        function startGame() {
+            showScene(currentNode);
+        }
+
+        function showScene(sceneId) {
+            const scene = GAME_DATA.scenes[sceneId];
+            choicesEl.innerHTML = '';
+            dialogueEl.innerHTML = '';
+            clearTimeout(typeTimeout);
+            
+            if(!scene) {
+                dialogueEl.innerHTML = "Fim da História.";
+                return;
+            }
+
+            if(textIndex === 0) {
+                if(scene.image) document.body.style.backgroundImage = "url('" + scene.image + "')";
+                else document.body.style.backgroundImage = "url('https://placehold.co/1920x1080/1a1a24/444455?text=Cenario')";
+
+                if(audioPlayer) audioPlayer.pause();
+                if(scene.audio) {
+                    audioPlayer = new Audio(scene.audio);
+                    audioPlayer.play().catch(e => console.log("Interação necessária para áudio."));
+                }
+            }
+
+            let i = 0;
+            const text = scene.texts[textIndex] || "";
+            
+            function type() {
+                if (i < text.length) {
+                    dialogueEl.innerHTML += text.charAt(i);
+                    i++;
+                    typeTimeout = setTimeout(type, 30);
+                } else {
+                    if(textIndex < scene.texts.length - 1) {
+                        const btn = document.createElement('button');
+                        btn.className = 'btn-continue';
+                        btn.innerText = "Continuar >";
+                        btn.onclick = () => { textIndex++; showScene(sceneId); };
+                        choicesEl.appendChild(btn);
+                    } else {
+                        renderChoices(scene.choices);
+                    }
+                }
+            }
+            type();
+        }
+
+        function renderChoices(choices) {
+            if(choices.length === 0) {
+                const btn = document.createElement('button');
+                btn.innerText = "[ Fim ]";
+                btn.style.textAlign = 'center';
+                btn.style.color = '#888';
+                choicesEl.appendChild(btn);
+                return;
+            }
+
+            choices.forEach(c => {
+                const btn = document.createElement('button');
+                btn.innerText = "> " + c.text;
+                btn.onclick = () => { textIndex = 0; currentNode = c.target; showScene(currentNode); };
+                choicesEl.appendChild(btn);
+            });
+        }
+
+        document.body.addEventListener('click', function initAudio() {
+            if(audioPlayer && audioPlayer.paused) audioPlayer.play();
+            document.body.removeEventListener('click', initAudio);
+        }, {once:true});
+
+        // Inicia o fluxo
+        initGameAds();
+    <\/script>
+</body>
+</html>`;
+        }
+
+        initApp();
+    </script>
+</body>
+</html>
