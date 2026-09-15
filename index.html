@@ -13,6 +13,8 @@
             --accent: #58a6ff;
             --accent-hover: #1f6feb;
             --border-color: #30363d;
+            --tiktok-color: #ff0050;
+            --tiktok-hover: #ee0047;
         }
 
         body {
@@ -42,9 +44,62 @@
 
         .subtitle {
             color: #8b949e;
-            margin-bottom: 40px;
+            margin-bottom: 25px;
             font-size: 1.1rem;
             font-weight: 500;
+        }
+
+        /* Estilo do Banner ShrtFly */
+        .banner-container {
+            margin-bottom: 25px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .banner-container img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        /* Estilo do Botão do TikTok com Contador */
+        .tiktok-box {
+            margin-bottom: 35px;
+            width: 100%;
+        }
+
+        .tiktok-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            width: 100%;
+            box-sizing: border-box;
+            padding: 16px 24px;
+            background-color: #484f58; /* Cor cinza desativada inicial */
+            color: #ffffff;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 1.1rem;
+            transition: all 0.3s ease;
+            cursor: not-allowed;
+            pointer-events: none; /* Bloqueia o clique inicial */
+            border: 1px solid transparent;
+        }
+
+        .tiktok-btn.active {
+            background-color: var(--tiktok-color);
+            cursor: pointer;
+            pointer-events: auto; /* Libera o clique */
+            box-shadow: 0 4px 15px rgba(255, 0, 80, 0.3);
+        }
+
+        .tiktok-btn.active:hover {
+            background-color: var(--tiktok-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255, 0, 80, 0.5);
         }
 
         .app-list {
@@ -92,6 +147,21 @@
         <h1>lista de app da acelerian DK</h1>
         <p class="subtitle">(by Vulgo Acelerado)</p>
 
+        <!-- Banner de Indicação ShrtFly -->
+        <div class="banner-container">
+            <a href="https://shrtfly.com/ref/acelerado" target="_blank" rel="noopener">
+                <img src="https://shrtfly.com/referral/336x280.gif" alt="Indicação ShrtFly" />
+            </a>
+        </div>
+
+        <!-- Área do Botão do TikTok com Contador -->
+        <div class="tiktok-box">
+            <a href="https://www.tiktok.com/@vulgo_acelerado_ofc" target="_blank" rel="noopener" id="tiktokButton" class="tiktok-btn">
+                📱 <span id="tiktokText">Acessar TikTok (5s)</span>
+            </a>
+        </div>
+
+        <!-- Lista de Aplicativos Principais -->
         <ul class="app-list">
             <li class="app-item">
                 <a href="QQadega.html" class="app-link"><span>🍷 QQ Adega</span> <span class="icon">➔</span></a>
@@ -125,6 +195,26 @@
             </li>
         </ul>
     </div>
+
+    <!-- Script para controlar a contagem regressiva de 5 segundos -->
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            let timeLeft = 5;
+            const btn = document.getElementById("tiktokButton");
+            const txt = document.getElementById("tiktokText");
+
+            const countdown = setInterval(function() {
+                timeLeft--;
+                if (timeLeft > 0) {
+                    txt.textContent = "Acessar TikTok (" + timeLeft + "s)";
+                } else {
+                    clearInterval(countdown);
+                    txt.textContent = "Acessar TikTok Oficial";
+                    btn.classList.add("active");
+                }
+            }, 1000);
+        });
+    </script>
 
 </body>
 </html>
