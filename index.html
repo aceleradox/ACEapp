@@ -48,7 +48,7 @@
             font-weight: 500;
         }
 
-        /* Lista de Links (Fica por baixo) */
+        /* Lista de Links do Site Principal */
         .app-list {
             list-style: none;
             padding: 0;
@@ -87,15 +87,15 @@
             font-size: 1.2rem;
         }
 
-        /* 🔴 TELA DE ANÚNCIO SOBREPOSTA (OVERLAY) */
+        /* 🔴 ESTRUTURA DO ANÚNCIO SOBREPOSTO (OVERLAY) */
         .overlay-ad {
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(10, 14, 20, 0.98); /* Escurece 98% da tela */
-            z-index: 9999; /* Garante que fica por cima de tudo */
+            background-color: rgba(10, 14, 20, 0.98); /* Escurece o site por baixo */
+            z-index: 9999; /* Mantém no topo absoluto da tela */
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -110,21 +110,24 @@
             border-radius: 12px;
             border: 1px solid var(--border-color);
             text-align: center;
-            max-width: 400px;
+            max-width: 380px;
             width: 100%;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.6);
         }
 
         .ad-title {
-            font-size: 0.9rem;
+            font-size: 0.85rem;
             color: #8b949e;
             text-transform: uppercase;
-            letter-spacing: 1px;
+            letter-spacing: 1.5px;
             margin-bottom: 20px;
+            font-weight: 600;
         }
 
         .banner-slot {
             margin-bottom: 25px;
+            display: flex;
+            justify-content: center;
         }
 
         .banner-slot img {
@@ -133,32 +136,32 @@
             border-radius: 6px;
         }
 
-        /* Botão do TikTok / Pular */
+        /* Botão Interativo de Pular / TikTok */
         .skip-btn {
             display: inline-flex;
             align-items: center;
             justify-content: center;
             width: 100%;
-            padding: 14px 20px;
-            background-color: #30363d;
+            padding: 15px 20px;
+            background-color: #21262d;
             color: #8b949e;
-            text-decoration: none;
+            border: 1px solid var(--border-color);
             border-radius: 8px;
             font-weight: 700;
             font-size: 1rem;
             transition: all 0.3s ease;
             cursor: not-allowed;
-            pointer-events: none;
-            border: none;
+            pointer-events: none; /* Desativa cliques durante a contagem */
         }
 
-        /* Quando o contador zera, o botão vira o do TikTok ativado */
+        /* Botão ativo após os 5 segundos */
         .skip-btn.active {
             background-color: var(--tiktok-color);
             color: #ffffff;
             cursor: pointer;
-            pointer-events: auto;
-            box-shadow: 0 4px 15px rgba(255, 0, 80, 0.4);
+            pointer-events: auto; /* Libera o clique */
+            border-color: transparent;
+            box-shadow: 0 4px 20px rgba(255, 0, 80, 0.4);
         }
 
         .skip-btn.active:hover {
@@ -169,26 +172,24 @@
 </head>
 <body>
 
-    <!-- 🔴 ANÚNCIO SOBREPOSTO (SOME APÓS O CLIQUE NO BOTÃO LIBERADO) -->
+    <!-- 🔴 ANÚNCIO EM TELA CHEIA -->
     <div id="overlayAd" class="overlay-ad">
         <div class="ad-box">
-            <div class="ad-title">Anúncio / Publicidade</div>
+            <div class="ad-title">Publicidade</div>
             
-            <!-- Banner ShrtFly -->
+            <!-- Banner Oficial do ShrtFly -->
             <div class="banner-slot">
-                <a href="https://shrtfly.com" target="_blank" rel="noopener">
-                    <img src="https://shrtfly.com" alt="Banner" />
-                </a>
+                <a href="https://shrtfly.com/ref/acelerado" target="_blank" rel="noopener"><img src="https://shrtfly.com/referral/336x280.gif" /></a>
             </div>
 
-            <!-- Botão TikTok com Contador que fecha a tela -->
+            <!-- Botão com Cronômetro Dinâmico -->
             <button id="skipButton" class="skip-btn">
                 Acessar TikTok (5s)
             </button>
         </div>
     </div>
 
-    <!-- PORTAL DE LINKS PRINCIPAL (FICA DISPONÍVEL POR BAIXO) -->
+    <!-- PORTAL DE APLICATIVOS (FICA LIBERADO DEPOIS DE FECHAR O ANÚNCIO) -->
     <div class="container">
         <h1>lista de app da acelerian DK</h1>
         <p class="subtitle">(by Vulgo Acelerado)</p>
@@ -227,32 +228,32 @@
         </ul>
     </div>
 
-    <!-- Script do Contador e Fechamento -->
+    <!-- LÓGICA JAVASCRIPT DO CONTADOR -->
     <script>
         document.addEventListener("DOMContentLoaded", function() {
             let timeLeft = 5;
             const skipBtn = document.getElementById("skipButton");
             const overlay = document.getElementById("overlayAd");
 
-            // Inicia o contador regressivo
+            // Executa a contagem regressiva a cada 1 segundo
             const countdown = setInterval(function() {
                 timeLeft--;
                 if (timeLeft > 0) {
                     skipBtn.textContent = "Acessar TikTok (" + timeLeft + "s)";
                 } else {
                     clearInterval(countdown);
-                    skipBtn.textContent = "🚀 Pular Anúncio e ir ao TikTok";
+                    skipBtn.textContent = "🚀 Pular e ir para o TikTok";
                     skipBtn.classList.add("active");
                 }
             }, 1000);
 
-            // Ação ao clicar no botão ativo
+            // Controla as ações disparadas pelo clique do usuário
             skipBtn.addEventListener("click", function() {
                 if (skipBtn.classList.contains("active")) {
-                    // 1. Abre o seu TikTok em uma nova aba do navegador
-                    window.open("https://tiktok.com", "_blank");
+                    // 1. Abre a aba externa com o link direto do perfil do TikTok
+                    window.open("https://www.tiktok.com/@vulgo_acelerado_ofc", "_blank");
                     
-                    // 2. Some com a tela de anúncio para revelar o site principal por baixo
+                    // 2. Remove o container de publicidade da interface, liberando os apps
                     overlay.style.display = "none";
                 }
             });
