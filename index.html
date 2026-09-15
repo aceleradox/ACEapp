@@ -11,7 +11,6 @@
             --text-main: #c9d1d9;
             --text-title: #f0f6fc;
             --accent: #58a6ff;
-            --accent-hover: #1f6feb;
             --border-color: #30363d;
             --tiktok-color: #ff0050;
             --tiktok-hover: #ee0047;
@@ -44,64 +43,12 @@
 
         .subtitle {
             color: #8b949e;
-            margin-bottom: 25px;
+            margin-bottom: 40px;
             font-size: 1.1rem;
             font-weight: 500;
         }
 
-        /* Estilo do Banner ShrtFly */
-        .banner-container {
-            margin-bottom: 25px;
-            display: flex;
-            justify-content: center;
-        }
-
-        .banner-container img {
-            max-width: 100%;
-            height: auto;
-            border-radius: 8px;
-            border: 1px solid var(--border-color);
-        }
-
-        /* Estilo do Botão do TikTok com Contador */
-        .tiktok-box {
-            margin-bottom: 35px;
-            width: 100%;
-        }
-
-        .tiktok-btn {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-            width: 100%;
-            box-sizing: border-box;
-            padding: 16px 24px;
-            background-color: #484f58; /* Cor cinza desativada inicial */
-            color: #ffffff;
-            text-decoration: none;
-            border-radius: 8px;
-            font-weight: 700;
-            font-size: 1.1rem;
-            transition: all 0.3s ease;
-            cursor: not-allowed;
-            pointer-events: none; /* Bloqueia o clique inicial */
-            border: 1px solid transparent;
-        }
-
-        .tiktok-btn.active {
-            background-color: var(--tiktok-color);
-            cursor: pointer;
-            pointer-events: auto; /* Libera o clique */
-            box-shadow: 0 4px 15px rgba(255, 0, 80, 0.3);
-        }
-
-        .tiktok-btn.active:hover {
-            background-color: var(--tiktok-hover);
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(255, 0, 80, 0.5);
-        }
-
+        /* Lista de Links (Fica por baixo) */
         .app-list {
             list-style: none;
             padding: 0;
@@ -139,29 +86,113 @@
         .icon {
             font-size: 1.2rem;
         }
+
+        /* 🔴 TELA DE ANÚNCIO SOBREPOSTA (OVERLAY) */
+        .overlay-ad {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(10, 14, 20, 0.98); /* Escurece 98% da tela */
+            z-index: 9999; /* Garante que fica por cima de tudo */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .ad-box {
+            background-color: #161b22;
+            padding: 30px;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            text-align: center;
+            max-width: 400px;
+            width: 100%;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        .ad-title {
+            font-size: 0.9rem;
+            color: #8b949e;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 20px;
+        }
+
+        .banner-slot {
+            margin-bottom: 25px;
+        }
+
+        .banner-slot img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 6px;
+        }
+
+        /* Botão do TikTok / Pular */
+        .skip-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            padding: 14px 20px;
+            background-color: #30363d;
+            color: #8b949e;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            cursor: not-allowed;
+            pointer-events: none;
+            border: none;
+        }
+
+        /* Quando o contador zera, o botão vira o do TikTok ativado */
+        .skip-btn.active {
+            background-color: var(--tiktok-color);
+            color: #ffffff;
+            cursor: pointer;
+            pointer-events: auto;
+            box-shadow: 0 4px 15px rgba(255, 0, 80, 0.4);
+        }
+
+        .skip-btn.active:hover {
+            background-color: var(--tiktok-hover);
+            transform: scale(1.02);
+        }
     </style>
 </head>
 <body>
 
+    <!-- 🔴 ANÚNCIO SOBREPOSTO (SOME APÓS O CLIQUE NO BOTÃO LIBERADO) -->
+    <div id="overlayAd" class="overlay-ad">
+        <div class="ad-box">
+            <div class="ad-title">Anúncio / Publicidade</div>
+            
+            <!-- Banner ShrtFly -->
+            <div class="banner-slot">
+                <a href="https://shrtfly.com" target="_blank" rel="noopener">
+                    <img src="https://shrtfly.com" alt="Banner" />
+                </a>
+            </div>
+
+            <!-- Botão TikTok com Contador que fecha a tela -->
+            <button id="skipButton" class="skip-btn">
+                Acessar TikTok (5s)
+            </button>
+        </div>
+    </div>
+
+    <!-- PORTAL DE LINKS PRINCIPAL (FICA DISPONÍVEL POR BAIXO) -->
     <div class="container">
         <h1>lista de app da acelerian DK</h1>
         <p class="subtitle">(by Vulgo Acelerado)</p>
 
-        <!-- Banner de Indicação ShrtFly -->
-        <div class="banner-container">
-            <a href="https://shrtfly.com/ref/acelerado" target="_blank" rel="noopener">
-                <img src="https://shrtfly.com/referral/336x280.gif" alt="Indicação ShrtFly" />
-            </a>
-        </div>
-
-        <!-- Área do Botão do TikTok com Contador -->
-        <div class="tiktok-box">
-            <a href="https://www.tiktok.com/@vulgo_acelerado_ofc" target="_blank" rel="noopener" id="tiktokButton" class="tiktok-btn">
-                📱 <span id="tiktokText">Acessar TikTok (5s)</span>
-            </a>
-        </div>
-
-        <!-- Lista de Aplicativos Principais -->
         <ul class="app-list">
             <li class="app-item">
                 <a href="QQadega.html" class="app-link"><span>🍷 QQ Adega</span> <span class="icon">➔</span></a>
@@ -196,23 +227,35 @@
         </ul>
     </div>
 
-    <!-- Script para controlar a contagem regressiva de 5 segundos -->
+    <!-- Script do Contador e Fechamento -->
     <script>
         document.addEventListener("DOMContentLoaded", function() {
             let timeLeft = 5;
-            const btn = document.getElementById("tiktokButton");
-            const txt = document.getElementById("tiktokText");
+            const skipBtn = document.getElementById("skipButton");
+            const overlay = document.getElementById("overlayAd");
 
+            // Inicia o contador regressivo
             const countdown = setInterval(function() {
                 timeLeft--;
                 if (timeLeft > 0) {
-                    txt.textContent = "Acessar TikTok (" + timeLeft + "s)";
+                    skipBtn.textContent = "Acessar TikTok (" + timeLeft + "s)";
                 } else {
                     clearInterval(countdown);
-                    txt.textContent = "Acessar TikTok Oficial";
-                    btn.classList.add("active");
+                    skipBtn.textContent = "🚀 Pular Anúncio e ir ao TikTok";
+                    skipBtn.classList.add("active");
                 }
             }, 1000);
+
+            // Ação ao clicar no botão ativo
+            skipBtn.addEventListener("click", function() {
+                if (skipBtn.classList.contains("active")) {
+                    // 1. Abre o seu TikTok em uma nova aba do navegador
+                    window.open("https://tiktok.com", "_blank");
+                    
+                    // 2. Some com a tela de anúncio para revelar o site principal por baixo
+                    overlay.style.display = "none";
+                }
+            });
         });
     </script>
 
