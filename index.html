@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lista de Apps - Acelerian DK</title>
+    <style>
+        :root {
+            --bg-color: #0d1117;
+            --card-bg: #161b22;
+            --text-main: #c9d1d9;
+            --text-title: #f0f6fc;
+            --accent: #58a6ff;
+            --accent-hover: #1f6feb;
+            --border-color: #30363d;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 40px 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 650px;
+            width: 100%;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 2.2rem;
+            color: var(--text-title);
+            margin-bottom: 5px;
+            letter-spacing: -0.5px;
+        }
+
+        .subtitle {
+            color: #8b949e;
+            margin-bottom: 40px;
+            font-size: 1.1rem;
+            font-weight: 500;
+        }
+
+        .app-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .app-item {
+            width: 100%;
+        }
+
+        .app-link {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background-color: var(--card-bg);
+            color: var(--text-title);
+            text-decoration: none;
+            padding: 16px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 1.05rem;
+            transition: all 0.2s ease-in-out;
+            border: 1px solid var(--border-color);
+        }
+
+        .app-link:hover {
+            transform: translateX(4px);
+            border-color: var(--accent);
+            background-color: #1f242c;
+        }
+
+        .icon {
+            font-size: 1.2rem;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>lista de app da acelerian DK</h1>
+        <p class="subtitle">(by Vulgo Acelerado)</p>
+
+        <ul class="app-list">
+            <li class="app-item">
+                <a href="QQadega.html" class="app-link"><span>🍷 QQ Adega</span> <span class="icon">➔</span></a>
+            </li>
+            <li class="app-item">
+                <a href="QQfrevo-Flyer-Maker.html" class="app-link"><span>🎨 QQ Frevo - Flyer Maker</span> <span class="icon">➔</span></a>
+            </li>
+            <li class="app-item">
+                <a href="QQfrevo-card.html" class="app-link"><span>🎴 QQ Frevo Card</span> <span class="icon">➔</span></a>
+            </li>
+            <li class="app-item">
+                <a href="RadicalRails.html" class="app-link"><span>🛤️ Radical Rails</span> <span class="icon">➔</span></a>
+            </li>
+            <li class="app-item">
+                <a href="RadicalRails2.html" class="app-link"><span>🕹️ Radical Rails 2</span> <span class="icon">➔</span></a>
+            </li>
+            <li class="app-item">
+                <a href="SEO-Engine.html" class="app-link"><span>🔍 SEO Engine</span> <span class="icon">➔</span></a>
+            </li>
+            <li class="app-item">
+                <a href="SEO-RZ.html" class="app-link"><span>⚡ SEO RZ</span> <span class="icon">➔</span></a>
+            </li>
+            <li class="app-item">
+                <a href="VisualStoryMaker.html" class="app-link"><span>📖 Visual Story Maker</span> <span class="icon">➔</span></a>
+            </li>
+            <li class="app-item">
+                <a href="VisualStoryMaker1x.html" class="app-link"><span>🎬 Visual Story Maker 1x</span> <span class="icon">➔</span></a>
+            </li>
+            <li class="app-item">
+                <a href="nomoral2.html" class="app-link"><span>✌️ No Moral 2</span> <span class="icon">➔</span></a>
+            </li>
+        </ul>
+    </div>
+
+</body>
+</html>
