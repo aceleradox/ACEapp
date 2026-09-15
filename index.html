@@ -183,9 +183,9 @@
                 <a href="https://shrinkme.io/ref/116633573127883922598"><img src="https://shrinkme.io/banners/ref/300x250.png" title="Make short links and earn the biggest money" /></a>
             </div>
               <p>
-                 tiktok@Vulgo_acelerado_ofc
-                 insta@vulgo_acelerado
-                 github:Aceleradox - github.com/aceleradox
+                 tiktok@Vulgo_acelerado_ofc <br>
+                 insta@vulgo_acelerado <br>
+                 github:Aceleradox - github.com/aceleradox <br>
               </p>
 
             <!-- Botão com Cronômetro Dinâmico -->
@@ -245,10 +245,10 @@
             const countdown = setInterval(function() {
                 timeLeft--;
                 if (timeLeft > 0) {
-                    skipBtn.textContent = "Acessar TikTok (" + timeLeft + "s)";
+                    skipBtn.textContent = "pular anuncio (" + timeLeft + "s)";
                 } else {
                     clearInterval(countdown);
-                    skipBtn.textContent = "🚀Abrir tiktok para o anuncio sumir";
+                    skipBtn.textContent = "🚀aguarde pra pular o anuncio";
                     skipBtn.classList.add("active");
                 }
             }, 1000);
@@ -257,7 +257,7 @@
             skipBtn.addEventListener("click", function() {
                 if (skipBtn.classList.contains("active")) {
                     // 1. Abre a aba externa com o link direto do perfil do TikTok
-                    window.open("https://www.tiktok.com/@vulgo_acelerado_ofc", "_blank");
+                   
                     
                     // 2. Remove o container de publicidade da interface, liberando os apps
                     overlay.style.display = "none";
