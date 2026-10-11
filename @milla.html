@@ -20,30 +20,7 @@
   ::-webkit-scrollbar{width:8px;height:8px}
   ::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
   ::-webkit-scrollbar-thumb:hover{background:var(--accent)}
-
-  /* ============================================================
-     LOG PANEL — flutuante no canto inferior DIREITO, slide-up
-     ============================================================ */
-  #log-panel{
-    position:fixed;
-    bottom:0;
-    right:16px;
-    width:440px;
-    max-width:calc(100vw - 32px);
-    height:220px;
-    background:#0a0a0a;
-    border:1px solid #333;
-    border-bottom:none;
-    border-radius:10px 10px 0 0;
-    z-index:10001;
-    display:flex;
-    flex-direction:column;
-    font-family:'Consolas','Monaco',monospace;
-    font-size:11px;
-    box-shadow:0 -4px 24px rgba(0,0,0,.6);
-    transition:transform .25s ease;
-    transform:translateY(100%);
-  }
+  #log-panel{position:fixed;bottom:0;right:16px;width:440px;max-width:calc(100vw - 32px);height:220px;background:#0a0a0a;border:1px solid #333;border-bottom:none;border-radius:10px 10px 0 0;z-index:10001;display:flex;flex-direction:column;font-family:'Consolas','Monaco',monospace;font-size:11px;box-shadow:0 -4px 24px rgba(0,0,0,.6);transition:transform .25s ease;transform:translateY(100%)}
   #log-panel.open{transform:translateY(0)}
   #log-header{height:28px;background:#151515;border-bottom:1px solid #333;display:flex;align-items:center;padding:0 10px;gap:8px;cursor:pointer;user-select:none;flex-shrink:0;border-radius:10px 10px 0 0}
   #log-header .dot{width:8px;height:8px;border-radius:50%;background:var(--yellow)}
@@ -60,10 +37,8 @@
   #log-body .lvl.INFO{color:#60a5fa}#log-body .lvl.OK{color:#4ade80}#log-body .lvl.WARN{color:#fbbf24}#log-body .lvl.ERR{color:#ef4444}#log-body .lvl.STEP{color:#c084fc}
   #log-body .msg{flex:1}
   @media (max-width:768px){#log-panel{right:8px;left:8px;width:auto}}
-
   #app{display:grid;grid-template-columns:260px 1fr;height:100vh}
   @media (max-width:768px){#app{grid-template-columns:0px 1fr}#app.sidebar-open{grid-template-columns:240px 1fr}#sidebar{position:fixed;left:0;top:0;bottom:0;width:240px;z-index:150;transform:translateX(-100%);transition:transform .2s}#app.sidebar-open #sidebar{transform:translateX(0)}#menu-toggle{display:flex !important}#workspace{width:100% !important}}
-
   #sidebar{background:var(--bg-2);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;box-shadow:2px 0 12px rgba(0,0,0,.5)}
   #sidebar-header{padding:14px 16px;border-bottom:1px solid var(--border)}
   #logo{font-size:1.1rem;font-weight:700;background:linear-gradient(135deg,var(--accent),var(--accent-2));-webkit-background-clip:text;background-clip:text;color:transparent}
@@ -89,7 +64,6 @@
   #model-badge.error .dot{background:var(--red);animation:none}
   #model-badge.busy .dot{background:var(--accent)}
   @keyframes pulse{50%{opacity:.4}}
-
   #chat-scroll{flex:1;overflow-y:auto;padding:20px 20px 0}
   #chat-container{max-width:900px;margin:0 auto;padding-bottom:20px}
   .message{margin-bottom:20px;display:flex;gap:12px;animation:fadeIn .25s}
@@ -109,31 +83,25 @@
   .bubble a{color:var(--accent-2)}
   .bubble table{border-collapse:collapse;margin:8px 0;font-size:.85rem}
   .bubble th,.bubble td{border:1px solid var(--border);padding:4px 8px}
-
   .code-header{display:flex;justify-content:space-between;align-items:center;background:#141420;border:1px solid var(--border);border-bottom:none;border-radius:8px 8px 0 0;padding:4px 10px;margin-top:8px;font-size:.75rem;color:var(--text-dim);font-family:ui-monospace,monospace}
   .code-header + pre{margin-top:0;border-radius:0 0 8px 8px}
   .code-header button{padding:2px 8px;border-radius:4px;background:var(--bg-3);color:var(--text-dim);font-size:.7rem}
   .code-header button:hover{background:var(--accent);color:white}
-
   .msg-actions{display:flex;gap:4px;margin-top:8px;opacity:0;transition:opacity .15s}
   .message:hover .msg-actions{opacity:1}
   .msg-actions button{padding:4px 8px;border-radius:6px;font-size:.75rem;background:var(--bg-3);color:var(--text-dim)}
   #typing{display:inline-block;width:6px;height:14px;background:var(--accent);animation:blink 1s infinite;margin-left:2px;vertical-align:text-bottom}
   @keyframes blink{50%{opacity:0}}
-
   #welcome{max-width:900px;margin:30px auto;text-align:center}
   #welcome h1{font-size:2rem;margin-bottom:8px;background:linear-gradient(135deg,var(--accent),var(--accent-2),var(--blue));-webkit-background-clip:text;background-clip:text;color:transparent}
   #welcome p{color:var(--text-dim);margin-bottom:24px}
   #suggestions{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;text-align:left}
-
   .suggestion{padding:12px 14px;border-radius:10px;background:var(--bg-2);border:1px solid var(--border);cursor:pointer;font-size:.82rem;transition:border-color .15s,transform .1s}
   .suggestion:hover{border-color:var(--accent);transform:translateY(-2px)}
   .suggestion strong{display:block;margin-bottom:3px;color:var(--text);font-size:.85rem}
   .suggestion span{color:var(--text-dim);font-size:.72rem;line-height:1.3;display:block}
-
   .suggestion-category{grid-column:1/-1;text-align:left;font-size:.72rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:.08em;margin-top:8px;padding-top:8px;border-top:1px solid var(--border)}
   .suggestion-category:first-child{margin-top:0;padding-top:0;border-top:none}
-
   #input-area{padding:12px 20px 16px;border-top:1px solid var(--border);background:var(--bg-2);position:relative;z-index:50}
   #input-wrap{max-width:900px;margin:0 auto;display:flex;gap:8px;align-items:flex-end;background:var(--bg-3);border-radius:14px;padding:8px;border:1px solid var(--border);transition:border-color .15s}
   #input-wrap:focus-within{border-color:var(--accent)}
@@ -148,7 +116,6 @@
   #send-btn:disabled{background:var(--border);cursor:not-allowed}
   #stop-btn{padding:8px 16px;border-radius:10px;background:#dc2626;color:white;font-weight:600;font-size:.9rem}
   #input-info{max-width:900px;margin:6px auto 0;display:flex;justify-content:space-between;font-size:.7rem;color:var(--text-dim)}
-
   #workspace{position:fixed;right:0;top:0;bottom:0;width:420px;background:var(--bg-2);border-left:1px solid var(--border);transform:translateX(100%);transition:transform .3s;display:flex;flex-direction:column;z-index:100;box-shadow:-4px 0 20px rgba(0,0,0,.3)}
   #workspace.open{transform:translateX(0)}
   #workspace-header{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px}
@@ -160,7 +127,6 @@
   #game-wrap{display:flex;flex-direction:column;align-items:center;gap:8px}
   #game-canvas{border-radius:8px;background:var(--bg);max-width:100%}
   #game-status{font-size:.8rem;color:var(--accent);text-align:center}
-
   .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:200;backdrop-filter:blur(4px)}
   .modal-backdrop.open{display:flex}
   .modal{background:var(--bg-2);border-radius:16px;border:1px solid var(--border);width:90%;max-width:560px;max-height:85vh;overflow-y:auto}
@@ -178,7 +144,6 @@
   .btn-primary{background:var(--accent);color:white;padding:10px 20px;border-radius:8px;font-weight:600}
   .btn-ghost{background:var(--bg-3);color:var(--text);padding:10px 20px;border-radius:8px}
   .btn-danger{background:#7f1d1d;color:white;padding:10px 20px;border-radius:8px}
-
   #loading-screen{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;z-index:9999;transition:opacity .5s}
   #loading-screen.hidden{opacity:0;pointer-events:none}
   .loader{width:60px;height:60px;border:4px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
@@ -188,10 +153,8 @@
   #load-progress-bar{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent-2));width:0%;transition:width .3s}
   #load-info{font-size:.8rem;color:var(--text-dim);text-align:center;max-width:400px}
   #load-actions{display:flex;gap:8px}
-
   #toast{position:fixed;bottom:100px;left:50%;transform:translateX(-50%) translateY(100px);background:var(--bg-3);color:var(--text);padding:12px 20px;border-radius:10px;border:1px solid var(--border);z-index:1000;transition:transform .3s;font-size:.9rem;box-shadow:0 4px 20px rgba(0,0,0,.4)}
   #toast.show{transform:translateX(-50%) translateY(0)}
-
   .model-list{display:flex;flex-direction:column;gap:8px}
   .model-card{padding:12px;border-radius:10px;background:var(--bg-3);border:2px solid transparent;cursor:pointer}
   .model-card:hover{border-color:var(--border)}
@@ -199,11 +162,9 @@
   .model-card .name{font-weight:600;margin-bottom:4px;font-size:.9rem}
   .model-card .desc{font-size:.75rem;color:var(--text-dim)}
   .model-card .size{font-size:.7rem;color:var(--text-dim);float:right}
-
   .poll{padding:12px;background:var(--bg-3);border-radius:10px;margin:8px 0}
   .poll-opt{display:block;width:100%;text-align:left;padding:10px 12px;margin:4px 0;border-radius:8px;background:var(--bg);border:1px solid var(--border)}
   .poll-opt:hover{border-color:var(--accent)}
-
   .tpl-tabs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px;border-bottom:1px solid var(--border);padding-bottom:12px}
   .tpl-tab{padding:6px 12px;border-radius:20px;background:var(--bg-3);font-size:.78rem;cursor:pointer;transition:background .15s}
   .tpl-tab:hover{background:var(--border)}
@@ -219,7 +180,6 @@
 </head>
 <body>
 
-<!-- LOG PANEL — canto inferior direito, escondido por padrão -->
 <div id="log-panel">
   <div id="log-header">
     <span class="dot" id="log-dot"></span>
@@ -597,7 +557,7 @@
     none:{name:'Sem API',url:null,model:null},
     deepseek:{name:'DeepSeek',url:'https://api.deepseek.com/v1/chat/completions',model:'deepseek-chat'},
     groq:{name:'Groq',url:'https://api.groq.com/openai/v1/chat/completions',model:'llama-3.3-70b-versatile'},
-    openrouter:{name:'OpenRouter',url:'https://openrouter.ai/api/v1/chat/completions',model:'meta-llama/llama-3.3-70b-instruct:free'},
+    openrouter:{name:'OpenRouter',url:'https://openrouter.ai/api/v1/chat/completions',model:'google/gemma-3-27b-it:free'},
     openai:{name:'OpenAI',url:'https://api.openai.com/v1/chat/completions',model:'gpt-4o-mini'},
     custom:{name:'Custom',url:null,model:null}
   };
@@ -608,7 +568,7 @@
     {id:'Xenova/TinyLlama-1.1B-Chat-v1.0',name:'TinyLlama 1.1B',desc:'Mais capaz (lento em CPU).',size:'~700 MB'}
   ];
 
-  var DEFAULT_PERSONA="Você é Milla, uma companheira brasileira, sarcástica mas carinhosa. Fala português informal, respostas diretas e úteis. Quando gerar código, use blocos markdown com a linguagem correta.";
+  var DEFAULT_PERSONA="Você é Milla, uma companheira brasileira, sarcástica mas carinhosa. Fala português informal, respostas diretas e úteis. Quando gerar código, use blocos markdown com a linguagem correta.\n\nREGRAS CRÍTICAS:\n1. Responda SEMPRE de forma direta ao ponto. NUNCA mostre seu processo de raciocínio, análise, pensamento interno ou 'thinking process'.\n2. Não use frases como 'Let me think', 'Here\\'s a thinking process', 'Analisando...', 'Vou verificar...'.\n3. Se estiver pensando, entregue APENAS a resposta final ao usuário.";
 
   var state={
     worker:null,workerReady:false,modelReady:false,modelId:null,device:'wasm',
@@ -625,82 +585,32 @@
   var uid=function(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6);};
 
   // ============================================================
-  // TEMPLATES — 8 categorias, 40+ templates
+  // FILTRO DE RACIOCÍNIO — remove "thinking process" dos modelos
   // ============================================================
-  var TEMPLATES={
-    'GTA SA / SA-MP':[
-      {icon:'🚗',name:'Comando /car (Pawno)',desc:'Spawn de veículo',prompt:'Escreva um comando /car em Pawno para SA-MP que spawna um veículo na frente do jogador. Inclua includes, defines e código completo com comentários.'},
-      {icon:'💰',name:'Sistema de dinheiro',desc:'Dar/ver dinheiro',prompt:'Escreva um sistema de dinheiro em Pawno para SA-MP com /dar_dinheiro [id] [valor] e /ver_dinheiro. Código completo.'},
-      {icon:'🏠',name:'Sistema de casa',desc:'Comprar/trancar',prompt:'Escreva um sistema de casa em Pawno para SA-MP com /comprarcasa, /trancar e salvamento em arquivo. Código completo.'},
-      {icon:'🔫',name:'Spawn de armas',desc:'/arma [id] [municao]',prompt:'Comando em Pawno /arma [id_arma] [municao]. Código completo.'},
-      {icon:'🚙',name:'CLEO script',desc:'Carro voador com F5',prompt:'Escreva um script CLEO em C++ para GTA San Andreas que ativa carro voador com F5. Código completo comentado.'},
-      {icon:'🌟',name:'HUD SA-MP',desc:'Textdraw vida/dinheiro',prompt:'Escreva um textdraw em Pawno mostrando vida, colete e dinheiro atualizando em tempo real. Código completo.'},
-      {icon:'⚔️',name:'Sistema DM',desc:'Deathmatch com /entrar',prompt:'Sistema de deathmatch em Pawno com /entrararena, /sairarena e respawn aleatório. Código completo.'},
-      {icon:'🚓',name:'Comando /kick',desc:'Kickar jogador',prompt:'Comando /kick [id] [motivo] em Pawno com validação de admin level 3+. Código completo.'},
-      {icon:'💬',name:'Chat com cores',desc:'Comandos /me /do',prompt:'Escreva os comandos /me e /do em Pawno com cores diferentes, estilo roleplay. Código completo.'},
-      {icon:'🎯',name:'Sistema de VIP',desc:'Dar/remover VIP',prompt:'Sistema VIP em Pawno para SA-MP com /darvip [id] [dias] e /removervip [id]. Salva em arquivo. Código completo.'}
-    ],
-    'FiveM / MTA':[
-      {icon:'🚓',name:'Comando /car FiveM',desc:'Spawn Lua',prompt:'Comando /car em Lua para FiveM que spawna carro e coloca o jogador. Código client+server completo.'},
-      {icon:'💼',name:'Sistema emprego',desc:'Trabalhar + dinheiro',prompt:'Sistema de emprego em Lua para FiveM com /trabalhar. Código client+server completo.'},
-      {icon:'🚨',name:'Painel policial',desc:'Multar/prender',prompt:'Painel policial em Lua para FiveM com menu F6 para multar, prender, revistar. Código completo.'},
-      {icon:'🎮',name:'MTA:SA Lua',desc:'/dado com resultado',prompt:'Script Lua para MTA:SA com /dado que joga um dado e mostra no chat. Código completo.'},
-      {icon:'🚗',name:'Sistema garagem',desc:'Salvar carros',prompt:'Sistema de garagem em Lua para MTA:SA salvando veículos em arquivo. Código completo.'},
-      {icon:'💰',name:'Economia FiveM',desc:'Salário + banco',prompt:'Sistema de economia em Lua para FiveM com salário automático e banco (/depositar, /sacar). Completo.'}
-    ],
-    'Minecraft':[
-      {icon:'⛏️',name:'Datapack 1.20',desc:'/curar /feed',prompt:'Datapack completo do Minecraft 1.20 (pack.mcmeta + functions) com /curar e /feed. Todos os arquivos.'},
-      {icon:'🧱',name:'Plugin Bukkit',desc:'Kit starter + /ping',prompt:'Plugin Bukkit em Java com /kit starter e /ping. Código completo com plugin.yml.'},
-      {icon:'🐷',name:'Mod Forge',desc:'Item personalizado',prompt:'Mod básico de Forge para Minecraft em Java com item "Espada Suprema". Código completo com registro.'},
-      {icon:'📜',name:'Plugin Spigot',desc:'/fly e /gm',prompt:'Plugin Spigot em Java com /fly e /gamemode [modo] só pra admins. Código completo.'},
-      {icon:'🌍',name:'Sistema de claims',desc:'Proteger terrenos',prompt:'Plugin Spigot em Java para proteger terrenos com /claim, /unclaim e persistência em arquivo. Código completo.'}
-    ],
-    'Python':[
-      {icon:'🐍',name:'Script CSV',desc:'Ler e analisar',prompt:'Script Python completo que lê CSV e mostra estatísticas (média, mediana, únicos) com pandas.'},
-      {icon:'🤖',name:'Bot Discord',desc:'/ping /dado',prompt:'Bot Discord em Python com discord.py com /ping, /dado, /memoria. Código completo.'},
-      {icon:'🌐',name:'Web Scraper',desc:'Requests + BS4',prompt:'Script Python com requests e BeautifulSoup que faz scraping de notícias e salva JSON. Completo.'},
-      {icon:'⚡',name:'API FastAPI',desc:'CRUD completo',prompt:'API REST em FastAPI com CRUD de usuários e validação Pydantic. Código completo.'},
-      {icon:'🎮',name:'Jogo Pygame',desc:'Pong completo',prompt:'Jogo Pong completo em Pygame com placar, velocidade crescente e IA. Código completo comentado.'},
-      {icon:'📊',name:'Análise de dados',desc:'Pandas + matplotlib',prompt:'Script Python com pandas e matplotlib que lê CSV e gera gráficos (histograma, pizza, linha). Completo.'},
-      {icon:'🤖',name:'Automação Selenium',desc:'Login + scraping',prompt:'Script Python com Selenium que faz login automático e scraping de dados. Código completo.'}
-    ],
-    'JS / Web':[
-      {icon:'🌐',name:'Portfólio',desc:'HTML+CSS+JS',prompt:'Site de portfólio responsivo em HTML+CSS+JS com dark mode e animações. Código completo.'},
-      {icon:'🎮',name:'Pong Canvas',desc:'HTML5 completo',prompt:'Jogo Pong completo em HTML5 Canvas com placar, 2 jogadores e sons. Arquivo único completo.'},
-      {icon:'⚛️',name:'React Tarefas',desc:'CRUD com hooks',prompt:'App React de lista de tarefas com adicionar, marcar, remover e filtrar. Hooks (useState/useEffect).'},
-      {icon:'🔌',name:'API Express',desc:'REST CRUD',prompt:'API REST em Node.js + Express com CRUD de produtos, validação e tratamento de erros. Completo.'},
-      {icon:'🛒',name:'Carrinho de compras',desc:'E-commerce básico',prompt:'Carrinho de compras em JS puro com adicionar, remover, calcular total e localStorage. Completo.'},
-      {icon:'📱',name:'Landing Page',desc:'Moderna responsiva',prompt:'Landing page moderna com hero, features, preços e footer em HTML+CSS. Completo.'}
-    ],
-    'C / C++':[
-      {icon:'📟',name:'Quicksort em C',desc:'Ordenação',prompt:'Programa completo em C que ordena vetor com quicksort. Mostra antes/depois.'},
-      {icon:'🎯',name:'Jogo da velha',desc:'Console em C',prompt:'Jogo da velha completo em C para console, jogador vs jogador. Código completo.'},
-      {icon:'🔧',name:'Lista encadeada',desc:'C++ completo',prompt:'Lista encadeada em C++ com inserir, remover e buscar. Código completo.'},
-      {icon:'📚',name:'Sistema CRUD C',desc:'Cadastro de alunos',prompt:'Sistema completo em C de cadastro de alunos com arquivo binário: cadastrar, listar, buscar, remover.'}
-    ],
-    'Web / Banco':[
-      {icon:'🎨',name:'Schema SQL',desc:'Blog completo',prompt:'Schema SQL completo para blog com usuários, posts, comentários, curtidas, tags. Inclua índices e FKs.'},
-      {icon:'🐘',name:'CRUD PHP+MySQL',desc:'Produtos',prompt:'CRUD completo em PHP puro com MySQL para produtos (criar/listar/editar/deletar). Código completo.'},
-      {icon:'📊',name:'Consulta SQL avançada',desc:'JOINs e agregações',prompt:'5 consultas SQL complexas com JOIN, GROUP BY, HAVING e subqueries sobre e-commerce. Código completo.'}
-    ],
-    'Outros':[
-      {icon:'💎',name:'Script Ruby',desc:'Contar palavras',prompt:'Script Ruby completo que baixa página web e conta palavras mais frequentes.'},
-      {icon:'🦀',name:'CLI Rust',desc:'Argumentos',prompt:'Programa completo em Rust que lê argumentos da linha de comando e imprime resumo. Completo.'},
-      {icon:'🐹',name:'Servidor Go',desc:'HTTP simples',prompt:'Servidor HTTP completo em Go com rotas GET/POST e JSON. Código completo.'},
-      {icon:'🎨',name:'Animações CSS',desc:'10 animações prontas',prompt:'CSS completo com 10 animações modernas (fade, slide, bounce, shake, pulse, etc.) prontas para usar.'}
-    ]
-  };
-
-  var currentTplCategory='GTA SA / SA-MP';
-
-  var TOOLS={
-    criar_mapa:{description:'Cria um mapa OpenStreetMap. Args: {local:"cidade"}'},
-    criar_jogo:{description:'Cria um jogo. Args: {tipo:"dama"|"velha"|"domino"}'},
-    contar_piada:{description:'Conta uma piada.'},
-    fazer_enquete:{description:'Enquete. Args: {pergunta:"...",opcoes:[...]}'},
-    calcular:{description:'Calcula expressão. Args: {expressao:"2+2"}'},
-    deep_search:{description:'Pesquisa na web (Wikipedia + DuckDuckGo). Args: {query:"termo"}'}
-  };
+  function stripThinking(text){
+    if(!text)return text;
+    var out=text;
+    // Bloco <thinking>...</thinking>
+    out=out.replace(/<thinking>[\s\S]*?<\/thinking>/gi,'');
+    // Bloco explícito "Here's a thinking process:"
+    var m=out.match(/here'?s (a |my )?thinking process/i);
+    if(m){
+      var idx=m.index;
+      var tail=out.slice(idx);
+      var nextPara=tail.match(/\n\n([\s\S]+)/);
+      if(nextPara)out=out.slice(0,idx)+nextPara[1];
+      else out=out.slice(0,idx);
+    }
+    // Remove "Let me think / Let me analyze / Pensando..." no começo
+    out=out.replace(/^(Let me (think|analyze|consider|understand)|Thinking|Pensando|Raciocinando|Vou (pensar|analisar|verificar)|Deixa eu pensar)[^\n]*\n+/i,'');
+    // Remove listas numeradas de análise (1. Analyze, 2. Identify, etc)
+    out=out.replace(/^\s*\d+\.\s+\**(Analyze|Identify|Consider|Plan|Understand|Determine|Check|Evaluate|Assess|Parse|Detect|Extract|Interpret|Assess|Process|Review|Examine)[^*\n]*\**[\s\S]*?(?=\n\n[A-ZÀ-Ú#*]|$)/gim,'');
+    // Remove linhas "User says:", "Language:", "Context:", "User wants:" comuns em thinking
+    out=out.replace(/^\s*(User (says|wants|is asking)|Language|Context|Task|Goal|Intent|The user|Assistant should|Response should)[^\n]*\n/gim,'');
+    // Remove "Based on the above..." que sobra
+    out=out.replace(/^Based on (the )?above[^\n]*\n+/i,'');
+    return out.trim();
+  }
 
   function toast(msg,ms){
     ms=ms||2200;
@@ -810,36 +720,28 @@
     saveConvs();renderChatList();renderMessages();
   }
 
-  // ============================================================
-  // WELCOME com 18 sugestões em 5 categorias
-  // ============================================================
   function renderWelcome(){
     return '<div id="welcome"><h1>Olá! Eu sou a Milla 👋</h1>'+
       '<p>Sua assistente de código, mods, mapas e conversas.</p>'+
       '<div id="suggestions">'+
-
       '<div class="suggestion-category">💬 Conversar</div>'+
       '<div class="suggestion" data-prompt="Oi Milla, tudo bem? Conta uma curiosidade sobre programação"><strong>👋 Bate-papo</strong><span>Conversar normalmente</span></div>'+
       '<div class="suggestion" data-prompt="Me explica o que é computação quântica de forma simples"><strong>🧠 Explicar algo</strong><span>Conceitos simples</span></div>'+
       '<div class="suggestion" data-prompt="Me conta uma piada bem ruim de programador"><strong>😂 Piada</strong><span>Só por diversão</span></div>'+
-
       '<div class="suggestion-category">🎮 Mods de jogos</div>'+
       '<div class="suggestion" data-prompt="Escreve um comando /car em Pawno para SA-MP completo"><strong>🚗 SA-MP (Pawno)</strong><span>Comando /car</span></div>'+
       '<div class="suggestion" data-prompt="Escreve um script Lua para FiveM com comando /car"><strong>🎮 FiveM (Lua)</strong><span>Spawn de veículo</span></div>'+
       '<div class="suggestion" data-prompt="Escreve um plugin Bukkit em Java para Minecraft com /kit starter"><strong>⛏️ Minecraft</strong><span>Plugin Bukkit</span></div>'+
       '<div class="suggestion" data-prompt="Escreve um script CLEO em C++ para GTA SA que ativa carro voador com F5"><strong>🚙 CLEO GTA SA</strong><span>Script C++</span></div>'+
-
       '<div class="suggestion-category">💻 Programação</div>'+
       '<div class="suggestion" data-prompt="Escreve um script Python que lê um CSV e mostra estatísticas com pandas"><strong>🐍 Python</strong><span>Análise de dados</span></div>'+
       '<div class="suggestion" data-prompt="Escreve um app React de lista de tarefas com hooks"><strong>⚛️ React</strong><span>App com hooks</span></div>'+
       '<div class="suggestion" data-prompt="Escreve um jogo Pong completo em HTML5 Canvas"><strong>🎯 Pong Canvas</strong><span>Jogo completo</span></div>'+
       '<div class="suggestion" data-prompt="Escreve um schema SQL completo para um blog com usuários, posts e comentários"><strong>🎨 Schema SQL</strong><span>Banco completo</span></div>'+
-
       '<div class="suggestion-category">🛠️ Ferramentas</div>'+
       '<div class="suggestion" data-prompt="Abre um mapa de Fortaleza"><strong>🗺️ Ver um mapa</strong><span>OpenStreetMap</span></div>'+
       '<div class="suggestion" data-prompt="Pesquisa sobre buracos negros"><strong>🔎 Deep Search</strong><span>Wikipedia + web</span></div>'+
       '<div class="suggestion" data-prompt="Joga dama comigo"><strong>♟️ Jogar dama</strong><span>Um jogo contra mim</span></div>'+
-
       '</div></div>';
   }
 
@@ -962,7 +864,7 @@
 
   function buildSystemPrompt(){
     var tools=Object.keys(TOOLS).map(function(k){return '- '+k+': '+TOOLS[k].description;}).join('\n');
-    return state.settings.persona+'\n\nVocê TEM acesso a ferramentas. Para usar, responda APENAS com JSON: {"tool":"nome","args":{...}}\n\nFerramentas:\n'+tools+'\n\nQuando gerar código, use blocos markdown com a linguagem correta. Senão, responda normalmente.';
+    return state.settings.persona+'\n\nVocê TEM acesso a ferramentas. Para usar, responda APENAS com JSON: {"tool":"nome","args":{...}}\n\nFerramentas:\n'+tools+'\n\nQuando gerar código, use blocos markdown com a linguagem correta. Senão, responda normalmente e DIRETO (sem mostrar raciocínio).';
   }
 
   async function executeTool(name,args){
@@ -1015,10 +917,11 @@
     var lat=geo.lat,lon=geo.lon,dn=geo.name;
     if(!state.mapReady){
       state.map=L.map('map').setView([lat,lon],12);
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',{
-        attribution:'© OpenStreetMap · © CARTO',
-        subdomains:'abcd',
-        maxZoom:20
+      // OSM France — gratuito, sem chave, sem 403
+      L.tileLayer('https://{s}.tile.openstreetmap.fr/osmfr/{z}/{x}/{y}.png',{
+        attribution:'© OpenStreetMap France',
+        subdomains:'abc',
+        maxZoom:19
       }).addTo(state.map);
       state.mapReady=true;
     }else state.map.setView([lat,lon],12);
@@ -1516,11 +1419,21 @@
     $('#input-wrap').classList.remove('busy');
     var sb=$('#stop-btn');
     if(sb){sb.textContent='Enviar';sb.id='send-btn';sb.onclick=sendMessage;}
-    saveConvs();
+    // Aplica filtro anti-thinking no conteúdo final salvo
     var conv=currentConv();
     if(conv&&conv.messages.length){
       var last=conv.messages[conv.messages.length-1];
-      if(last&&last.role==='assistant'&&state.settings.tts&&last.content)speak(last.content);
+      if(last&&last.role==='assistant'&&last.content){
+        var cleaned=stripThinking(last.content);
+        if(cleaned!==last.content){
+          last.content=cleaned;
+        }
+      }
+    }
+    saveConvs();
+    if(conv&&conv.messages.length){
+      var last2=conv.messages[conv.messages.length-1];
+      if(last2&&last2.role==='assistant'&&state.settings.tts&&last2.content)speak(last2.content);
     }
   }
 
@@ -1533,12 +1446,19 @@
     if(!model)throw new Error('modelo não definido');
 
     state.abortController=new AbortController();
+    var headers={
+      'Content-Type':'application/json',
+      'Authorization':'Bearer '+state.api.key
+    };
+    // OpenRouter exige Referer e Title (opcional mas recomendado)
+    if(state.api.provider==='openrouter'){
+      headers['HTTP-Referer']=location.origin||'https://milla.app';
+      headers['X-Title']='Milla IA 1.0';
+    }
+
     var resp=await fetch(url,{
       method:'POST',
-      headers:{
-        'Content-Type':'application/json',
-        'Authorization':'Bearer '+state.api.key
-      },
+      headers:headers,
       body:JSON.stringify({
         model:model,
         messages:messages,
@@ -1551,7 +1471,13 @@
 
     if(!resp.ok){
       var err=await resp.text();
-      throw new Error('HTTP '+resp.status+': '+err.slice(0,200));
+      var msg='HTTP '+resp.status;
+      try{
+        var parsed=JSON.parse(err);
+        if(parsed.error&&parsed.error.message)msg+=' — '+parsed.error.message;
+        else msg+=' — '+err.slice(0,200);
+      }catch(e){msg+=' — '+err.slice(0,200);}
+      throw new Error(msg);
     }
 
     var reader=resp.body.getReader();
@@ -1573,7 +1499,10 @@
         try{
           var j=JSON.parse(data);
           var delta=j.choices&&j.choices[0]&&j.choices[0].delta;
-          if(delta&&delta.content){
+          if(!delta)continue;
+          // ⚠️ IGNORA reasoning_content (raciocínio dos modelos tipo DeepSeek R1)
+          if(delta.reasoning_content)continue;
+          if(delta.content){
             fullText+=delta.content;
             onToken(delta.content);
           }
@@ -1604,6 +1533,37 @@
     sb.id='stop-btn';
     sb.onclick=sendMessage;
 
+    // ============ DETECÇÃO AUTOMÁTICA DE PESQUISA ============
+    // Se o usuário digitar "pesquise X" ou "pesquisa sobre X", faz deep search direto
+    var pesquisaMatch=userText.match(/^(pesquis[ae](r)?|busca(r)?|procur[ae])\s+(sobre\s+|por\s+)?(.+)$/i);
+    if(pesquisaMatch&&pesquisaMatch[4]){
+      var termoBusca=pesquisaMatch[4].trim();
+      LOG.step('🔎 Auto-search: '+termoBusca);
+      var last=conv.messages[conv.messages.length-1];
+      if(last)last.content='🔎 Pesquisando "'+termoBusca+'"...';
+      renderMessages();
+      try{
+        var res=await deepSearch(termoBusca);
+        var out='';
+        if(res.wikipedia){
+          out+='**📚 Wikipedia ('+res.wikipedia.lang.toUpperCase()+') — '+res.wikipedia.titulo+'**\n\n'+res.wikipedia.resumo;
+          if(res.wikipedia.url)out+='\n\n[Ler mais]('+res.wikipedia.url+')';
+        }
+        if(res.ddg){
+          if(out)out+='\n\n---\n\n';
+          out+='**🌐 '+res.ddg.fonte+'**\n\n'+res.ddg.texto;
+          if(res.ddg.url)out+='\n\n[Fonte]('+res.ddg.url+')';
+        }
+        if(!out)out='Não encontrei informações específicas sobre **"'+termoBusca+'"**.';
+        if(last)last.content=out;
+      }catch(e){
+        if(last)last.content='❌ Erro na pesquisa: '+e.message;
+      }
+      finishGeneration();
+      renderMessages();
+      return;
+    }
+
     if(state.useAPI){
       try{
         var messagesForAPI=[{role:'system',content:buildSystemPrompt()}];
@@ -1625,24 +1585,28 @@
             lastBubble=bubbles[bubbles.length-1];
           }
           if(lastBubble){
+            var cleaned=stripThinking(fullText);
             if(typeof marked!=='undefined'){
-              try{lastBubble.innerHTML=marked.parse(fullText);}
-              catch(e){lastBubble.textContent=fullText;}
-            }else lastBubble.textContent=fullText;
+              try{lastBubble.innerHTML=marked.parse(cleaned);}
+              catch(e){lastBubble.textContent=cleaned;}
+            }else lastBubble.textContent=cleaned;
             scrollToBottom();
           }
         });
 
-        var toolMatch=fullText.match(/\{[\s\S]*"tool"[\s\S]*\}/);
+        // Aplica filtro final
+        var lastMsg=conv.messages[conv.messages.length-1];
+        if(lastMsg)lastMsg.content=stripThinking(fullText);
+
+        // Detecta tool call
+        var toolMatch=lastMsg.content.match(/\{[\s\S]*"tool"[\s\S]*\}/);
         if(toolMatch){
           try{
             var call=JSON.parse(toolMatch[0]);
             if(call&&call.tool&&TOOLS[call.tool]){
               LOG.step('🛠️ Executando: '+call.tool);
               await executeTool(call.tool,call.args);
-              var conv2=currentConv();
-              var last2=conv2.messages[conv2.messages.length-1];
-              last2.content=fullText+'\n\n---\n\n✅ Ferramenta executada: `'+call.tool+'`';
+              lastMsg.content=lastMsg.content+'\n\n---\n\n✅ Ferramenta executada: `'+call.tool+'`';
               renderMessages();
             }
           }catch(e){}
@@ -1653,7 +1617,13 @@
       }catch(err){
         LOG.err('API erro: '+err.message);
         var last=conv.messages[conv.messages.length-1];
-        last.content='❌ **Erro na API**: '+err.message+'\n\nVerifique sua chave em 🔑';
+        var msgErro=err.message;
+        // Mensagens amigáveis para erros comuns
+        if(msgErro.indexOf('401')>=0)msgErro='Chave de API inválida ou expirada. Verifique em 🔑';
+        else if(msgErro.indexOf('402')>=0)msgErro='Sem créditos na conta. Adicione fundos ou troque de provider.';
+        else if(msgErro.indexOf('404')>=0)msgErro='Modelo não encontrado. Troque o modelo em 🔑';
+        else if(msgErro.indexOf('429')>=0)msgErro='Limite de requisições atingido. Aguarde ou troque de provider.';
+        if(last)last.content='❌ **Erro na API**: '+msgErro+'\n\n**Dicas:**\n- Groq: chave grátis em console.groq.com\n- DeepSeek: chave em platform.deepseek.com\n- OpenRouter exige $10 de crédito pra usar modelos grátis';
         finishGeneration();
         renderMessages();
       }
@@ -1736,7 +1706,7 @@
         text='Oi! 👋 Bem-vindo à Milla.\n\n⚠️ **Você está em modo offline** (o modelo local não carregou). Posso te ajudar com **templates de código** (Pawno, FiveM, Minecraft, Python, etc), **mapas** e **jogos**.\n\n💡 **Para conversar como ChatGPT/DeepSeek**, clique no botão 🔑 no menu lateral e cole uma **API Key** grátis do [Groq](https://console.groq.com/keys) ou do [DeepSeek](https://platform.deepseek.com/).';
       }
       else{
-        text='🤔 Não vou conseguir responder isso bem em **modo offline**.\n\n**O que você pode fazer:**\n\n1. 🔑 **Configurar uma API Key** (recomendado) — clique em 🔑 no menu e cole uma chave do Groq (grátis) ou DeepSeek. A Milla vira uma IA de verdade igual ChatGPT.\n\n2. 🧠 **Tentar carregar o modelo local** — feche e abra de novo, ou troque o modelo no menu 🧠\n\n3. 🚀 **Usar os templates** — clique em 🚀 no menu pra gerar código pronto\n\n4. 🔎 **Pesquisar na web** — digite "pesquisa sobre [termo]"';
+        text='🤔 Não vou conseguir responder isso bem em **modo offline**.\n\n**O que você pode fazer:**\n\n1. 🔑 **Configurar uma API Key** (recomendado) — clique em 🔑 no menu e cole uma chave do Groq (grátis) ou DeepSeek. A Milla vira uma IA de verdade igual ChatGPT.\n\n2. 🧠 **Tentar carregar o modelo local** — feche e abra de novo, ou troque o modelo no menu 🧠\n\n3. 🚀 **Usar os templates** — clique em 🚀 no menu pra gerar código pronto\n\n4. 🔎 **Pesquisar na web** — digite "pesquise sobre [termo]"';
       }
       var last=conv.messages[conv.messages.length-1];
       if(last)last.content=text;
@@ -1820,8 +1790,8 @@
     var prov=PROVIDERS[p];
     var hint='Padrão do provider é usado se vazio.';
     if(p==='deepseek')hint='Ex: deepseek-chat (padrão) ou deepseek-reasoner';
-    else if(p==='groq')hint='Ex: llama-3.3-70b-versatile (padrão), mixtral-8x7b-32768';
-    else if(p==='openrouter')hint='Ex: meta-llama/llama-3.3-70b-instruct:free';
+    else if(p==='groq')hint='Ex: llama-3.3-70b-versatile (padrão) ou mixtral-8x7b-32768';
+    else if(p==='openrouter')hint='Grátis (out/2025): google/gemma-3-27b-it:free · mistralai/mistral-nemo:free · qwen/qwen-2.5-72b-instruct:free';
     else if(p==='openai')hint='Ex: gpt-4o-mini (padrão), gpt-4o';
     $('#api-model-hint').textContent=hint;
     if(prov&&prov.model)$('#api-model').placeholder=prov.model;
@@ -1836,9 +1806,14 @@
     try{
       var url=$('#api-provider').value==='custom'?$('#api-custom-url').value.trim():prov.url;
       var model=$('#api-model').value.trim()||($('#api-provider').value==='custom'?$('#api-custom-model').value.trim():prov.model);
+      var headers={'Content-Type':'application/json','Authorization':'Bearer '+key};
+      if($('#api-provider').value==='openrouter'){
+        headers['HTTP-Referer']=location.origin||'https://milla.app';
+        headers['X-Title']='Milla IA 1.0';
+      }
       var r=await fetch(url,{
         method:'POST',
-        headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
+        headers:headers,
         body:JSON.stringify({
           model:model,
           messages:[{role:'user',content:'Diga apenas "ok"'}],
@@ -1847,7 +1822,13 @@
       });
       if(!r.ok){
         var t=await r.text();
-        toast('❌ Erro '+r.status+': '+t.slice(0,80),5000);
+        var msg='Erro '+r.status;
+        try{
+          var parsed=JSON.parse(t);
+          if(parsed.error&&parsed.error.message)msg+=': '+parsed.error.message;
+          else msg+=': '+t.slice(0,80);
+        }catch(e){msg+=': '+t.slice(0,80);}
+        toast('❌ '+msg,6000);
         return;
       }
       toast('✅ Conexão OK!');
@@ -1879,9 +1860,6 @@
     }
   }
 
-  // ============================================================
-  // LOG toggle
-  // ============================================================
   function toggleLog(){
     var lp=document.getElementById('log-panel');
     lp.classList.toggle('open');
@@ -1915,13 +1893,8 @@
       applyTheme();
     };
 
-    // Log toggle button
     $('#log-toggle-btn').onclick=toggleLog;
     $('#log-close-btn').onclick=function(e){e.stopPropagation();toggleLog();};
-    $('#log-header').addEventListener('click',function(e){
-      if(e.target.id==='log-close-btn')return;
-      // Não toggle aqui, apenas deixar clicar nos botões do header
-    });
 
     $('#api-btn').onclick=function(){loadAPIUI();openModal('api-modal');};
     $('#api-provider').onchange=updateAPIUI;
