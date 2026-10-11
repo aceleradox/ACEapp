@@ -1,0 +1,2042 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Milla IA 1.0</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked@12.0.0/marked.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/atom-one-dark.min.css" />
+<script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/highlight.min.js"></script>
+<style>
+  :root{--bg:#0a0a12;--bg-2:#13131f;--bg-3:#1c1c2e;--border:#262640;--text:#e8e8f0;--text-dim:#8a8aa0;--accent:#e94560;--accent-2:#ff6b88;--green:#4ade80;--yellow:#fbbf24;--blue:#60a5fa;--red:#ef4444}
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;overflow:hidden}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;background:var(--bg);color:var(--text);font-size:14px}
+  button{cursor:pointer;border:none;background:none;color:inherit;font-family:inherit}
+  input,textarea,select{font-family:inherit;color:inherit;outline:none;background:var(--bg-3);border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:14px}
+  input:focus,textarea:focus,select:focus{border-color:var(--accent)}
+  ::-webkit-scrollbar{width:8px;height:8px}
+  ::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
+  ::-webkit-scrollbar-thumb:hover{background:var(--accent)}
+
+  /* ============================================================
+     LOG PANEL — flutuante no canto inferior DIREITO, slide-up
+     ============================================================ */
+  #log-panel{
+    position:fixed;
+    bottom:0;
+    right:16px;
+    width:440px;
+    max-width:calc(100vw - 32px);
+    height:220px;
+    background:#0a0a0a;
+    border:1px solid #333;
+    border-bottom:none;
+    border-radius:10px 10px 0 0;
+    z-index:10001;
+    display:flex;
+    flex-direction:column;
+    font-family:'Consolas','Monaco',monospace;
+    font-size:11px;
+    box-shadow:0 -4px 24px rgba(0,0,0,.6);
+    transition:transform .25s ease;
+    transform:translateY(100%);
+  }
+  #log-panel.open{transform:translateY(0)}
+  #log-header{height:28px;background:#151515;border-bottom:1px solid #333;display:flex;align-items:center;padding:0 10px;gap:8px;cursor:pointer;user-select:none;flex-shrink:0;border-radius:10px 10px 0 0}
+  #log-header .dot{width:8px;height:8px;border-radius:50%;background:var(--yellow)}
+  #log-header .dot.ok{background:var(--green)}
+  #log-header .dot.err{background:var(--red)}
+  #log-header .title{flex:1;color:#ccc;font-weight:bold;font-size:11px}
+  #log-header .count{color:#666;font-size:10px}
+  #log-header button{padding:3px 8px;color:#999;background:#222;border-radius:4px;font-size:10px}
+  #log-header button:hover{background:#333;color:#fff}
+  #log-body{flex:1;overflow-y:auto;padding:6px 10px;color:#b0b0b0;line-height:1.5}
+  #log-body .line{display:flex;gap:8px;margin-bottom:2px;word-break:break-word}
+  #log-body .time{color:#555;flex-shrink:0}
+  #log-body .lvl{flex-shrink:0;font-weight:bold;width:42px}
+  #log-body .lvl.INFO{color:#60a5fa}#log-body .lvl.OK{color:#4ade80}#log-body .lvl.WARN{color:#fbbf24}#log-body .lvl.ERR{color:#ef4444}#log-body .lvl.STEP{color:#c084fc}
+  #log-body .msg{flex:1}
+  @media (max-width:768px){#log-panel{right:8px;left:8px;width:auto}}
+
+  #app{display:grid;grid-template-columns:260px 1fr;height:100vh}
+  @media (max-width:768px){#app{grid-template-columns:0px 1fr}#app.sidebar-open{grid-template-columns:240px 1fr}#sidebar{position:fixed;left:0;top:0;bottom:0;width:240px;z-index:150;transform:translateX(-100%);transition:transform .2s}#app.sidebar-open #sidebar{transform:translateX(0)}#menu-toggle{display:flex !important}#workspace{width:100% !important}}
+
+  #sidebar{background:var(--bg-2);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;box-shadow:2px 0 12px rgba(0,0,0,.5)}
+  #sidebar-header{padding:14px 16px;border-bottom:1px solid var(--border)}
+  #logo{font-size:1.1rem;font-weight:700;background:linear-gradient(135deg,var(--accent),var(--accent-2));-webkit-background-clip:text;background-clip:text;color:transparent}
+  #new-chat-btn{margin:12px;padding:10px;border-radius:8px;background:linear-gradient(135deg,var(--accent),var(--accent-2));color:white;font-weight:600}
+  #chat-list{flex:1;overflow-y:auto;padding:0 8px 8px}
+  .chat-item{padding:10px 12px;border-radius:8px;margin-bottom:4px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:.85rem}
+  .chat-item:hover{background:var(--bg-3)}
+  .chat-item.active{background:var(--bg-3);border-left:3px solid var(--accent)}
+  .chat-item .title{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .chat-item .del{opacity:0;color:var(--text-dim);padding:2px 6px}
+  .chat-item:hover .del{opacity:1}
+  #sidebar-footer{padding:10px;border-top:1px solid var(--border);display:flex;gap:6px;flex-wrap:wrap;background:var(--bg-2)}
+  .icon-btn{padding:8px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:1.1rem;background:var(--bg-3);flex:1;transition:background .15s}
+  .icon-btn:hover{background:var(--accent);color:white}
+  #main{display:flex;flex-direction:column;overflow:hidden}
+  #topbar{padding:10px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;background:var(--bg-2)}
+  #topbar .spacer{flex:1}
+  #menu-toggle{display:none;background:var(--bg-3);padding:6px 10px;border-radius:6px}
+  #model-badge{padding:4px 10px;border-radius:20px;background:var(--bg-3);font-size:.75rem;color:var(--text-dim);display:flex;align-items:center;gap:6px}
+  #model-badge .dot{width:6px;height:6px;border-radius:50%;background:var(--yellow);animation:pulse 1.5s infinite}
+  #model-badge.ready .dot{background:var(--green);animation:none}
+  #model-badge.api .dot{background:var(--blue);animation:none}
+  #model-badge.error .dot{background:var(--red);animation:none}
+  #model-badge.busy .dot{background:var(--accent)}
+  @keyframes pulse{50%{opacity:.4}}
+
+  #chat-scroll{flex:1;overflow-y:auto;padding:20px 20px 0}
+  #chat-container{max-width:900px;margin:0 auto;padding-bottom:20px}
+  .message{margin-bottom:20px;display:flex;gap:12px;animation:fadeIn .25s}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  .message.user{flex-direction:row-reverse}
+  .avatar{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:.9rem;flex-shrink:0}
+  .avatar.user{background:var(--blue);color:white}
+  .avatar.assistant{background:linear-gradient(135deg,var(--accent),var(--accent-2));color:white}
+  .bubble{padding:12px 16px;border-radius:14px;line-height:1.55;max-width:100%;word-wrap:break-word;font-size:.93rem}
+  .message.user .bubble{background:var(--bg-3);border-bottom-right-radius:4px}
+  .message.assistant .bubble{background:var(--bg-2);border-bottom-left-radius:4px;border:1px solid var(--border)}
+  .bubble p{margin:0 0 8px}.bubble p:last-child{margin-bottom:0}
+  .bubble pre{background:#1a1a24;border-radius:8px;padding:12px;overflow-x:auto;margin:8px 0;font-size:.85rem;border:1px solid var(--border);position:relative}
+  .bubble code:not(pre code){background:var(--bg-3);padding:2px 6px;border-radius:4px;font-size:.85em;font-family:ui-monospace,monospace}
+  .bubble ul,.bubble ol{margin:8px 0 8px 20px}
+  .bubble h1,.bubble h2,.bubble h3{margin:12px 0 8px}
+  .bubble a{color:var(--accent-2)}
+  .bubble table{border-collapse:collapse;margin:8px 0;font-size:.85rem}
+  .bubble th,.bubble td{border:1px solid var(--border);padding:4px 8px}
+
+  .code-header{display:flex;justify-content:space-between;align-items:center;background:#141420;border:1px solid var(--border);border-bottom:none;border-radius:8px 8px 0 0;padding:4px 10px;margin-top:8px;font-size:.75rem;color:var(--text-dim);font-family:ui-monospace,monospace}
+  .code-header + pre{margin-top:0;border-radius:0 0 8px 8px}
+  .code-header button{padding:2px 8px;border-radius:4px;background:var(--bg-3);color:var(--text-dim);font-size:.7rem}
+  .code-header button:hover{background:var(--accent);color:white}
+
+  .msg-actions{display:flex;gap:4px;margin-top:8px;opacity:0;transition:opacity .15s}
+  .message:hover .msg-actions{opacity:1}
+  .msg-actions button{padding:4px 8px;border-radius:6px;font-size:.75rem;background:var(--bg-3);color:var(--text-dim)}
+  #typing{display:inline-block;width:6px;height:14px;background:var(--accent);animation:blink 1s infinite;margin-left:2px;vertical-align:text-bottom}
+  @keyframes blink{50%{opacity:0}}
+
+  #welcome{max-width:900px;margin:30px auto;text-align:center}
+  #welcome h1{font-size:2rem;margin-bottom:8px;background:linear-gradient(135deg,var(--accent),var(--accent-2),var(--blue));-webkit-background-clip:text;background-clip:text;color:transparent}
+  #welcome p{color:var(--text-dim);margin-bottom:24px}
+  #suggestions{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;text-align:left}
+
+  .suggestion{padding:12px 14px;border-radius:10px;background:var(--bg-2);border:1px solid var(--border);cursor:pointer;font-size:.82rem;transition:border-color .15s,transform .1s}
+  .suggestion:hover{border-color:var(--accent);transform:translateY(-2px)}
+  .suggestion strong{display:block;margin-bottom:3px;color:var(--text);font-size:.85rem}
+  .suggestion span{color:var(--text-dim);font-size:.72rem;line-height:1.3;display:block}
+
+  .suggestion-category{grid-column:1/-1;text-align:left;font-size:.72rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:.08em;margin-top:8px;padding-top:8px;border-top:1px solid var(--border)}
+  .suggestion-category:first-child{margin-top:0;padding-top:0;border-top:none}
+
+  #input-area{padding:12px 20px 16px;border-top:1px solid var(--border);background:var(--bg-2);position:relative;z-index:50}
+  #input-wrap{max-width:900px;margin:0 auto;display:flex;gap:8px;align-items:flex-end;background:var(--bg-3);border-radius:14px;padding:8px;border:1px solid var(--border);transition:border-color .15s}
+  #input-wrap:focus-within{border-color:var(--accent)}
+  #input-wrap.busy{border-color:var(--accent);animation:pulse-border 1.5s infinite}
+  @keyframes pulse-border{50%{border-color:var(--accent-2)}}
+  #user-input{flex:1;border:none;background:transparent;resize:none;max-height:200px;min-height:24px;padding:8px;font-size:.95rem;line-height:1.4}
+  .input-btn{padding:8px 10px;border-radius:8px;color:var(--text-dim);font-size:1.1rem}
+  .input-btn:hover{color:var(--text);background:var(--border)}
+  .input-btn.active{color:var(--accent)}
+  #send-btn{padding:8px 16px;border-radius:10px;background:var(--accent);color:white;font-weight:600;font-size:.9rem}
+  #send-btn:hover{background:var(--accent-2)}
+  #send-btn:disabled{background:var(--border);cursor:not-allowed}
+  #stop-btn{padding:8px 16px;border-radius:10px;background:#dc2626;color:white;font-weight:600;font-size:.9rem}
+  #input-info{max-width:900px;margin:6px auto 0;display:flex;justify-content:space-between;font-size:.7rem;color:var(--text-dim)}
+
+  #workspace{position:fixed;right:0;top:0;bottom:0;width:420px;background:var(--bg-2);border-left:1px solid var(--border);transform:translateX(100%);transition:transform .3s;display:flex;flex-direction:column;z-index:100;box-shadow:-4px 0 20px rgba(0,0,0,.3)}
+  #workspace.open{transform:translateX(0)}
+  #workspace-header{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px}
+  #workspace-header h3{flex:1;font-size:.95rem}
+  #workspace-body{flex:1;overflow-y:auto;padding:12px}
+  .ws-panel{background:var(--bg-3);border-radius:10px;padding:12px;margin-bottom:12px}
+  .ws-panel h4{font-size:.85rem;margin-bottom:8px;color:var(--text-dim);text-transform:uppercase}
+  #map{height:260px;border-radius:8px;background:#222}
+  #game-wrap{display:flex;flex-direction:column;align-items:center;gap:8px}
+  #game-canvas{border-radius:8px;background:var(--bg);max-width:100%}
+  #game-status{font-size:.8rem;color:var(--accent);text-align:center}
+
+  .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:200;backdrop-filter:blur(4px)}
+  .modal-backdrop.open{display:flex}
+  .modal{background:var(--bg-2);border-radius:16px;border:1px solid var(--border);width:90%;max-width:560px;max-height:85vh;overflow-y:auto}
+  .modal-header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+  .modal-body{padding:20px}
+  .modal-footer{padding:16px 20px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end}
+  .form-row{margin-bottom:16px}
+  .form-row label{display:block;margin-bottom:6px;font-size:.85rem;color:var(--text-dim)}
+  .form-row input,.form-row textarea,.form-row select{width:100%}
+  .form-row textarea{min-height:80px;resize:vertical}
+  .form-row .hint{font-size:.72rem;color:var(--text-dim);margin-top:4px}
+  .slider-row{display:flex;align-items:center;gap:10px}
+  .slider-row input[type=range]{flex:1}
+  .slider-row .value{min-width:40px;text-align:right;font-family:monospace}
+  .btn-primary{background:var(--accent);color:white;padding:10px 20px;border-radius:8px;font-weight:600}
+  .btn-ghost{background:var(--bg-3);color:var(--text);padding:10px 20px;border-radius:8px}
+  .btn-danger{background:#7f1d1d;color:white;padding:10px 20px;border-radius:8px}
+
+  #loading-screen{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;z-index:9999;transition:opacity .5s}
+  #loading-screen.hidden{opacity:0;pointer-events:none}
+  .loader{width:60px;height:60px;border:4px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  #loading-screen h1{font-size:1.5rem;background:linear-gradient(135deg,var(--accent),var(--accent-2));-webkit-background-clip:text;background-clip:text;color:transparent}
+  #load-progress{width:300px;height:6px;background:var(--bg-3);border-radius:3px;overflow:hidden}
+  #load-progress-bar{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent-2));width:0%;transition:width .3s}
+  #load-info{font-size:.8rem;color:var(--text-dim);text-align:center;max-width:400px}
+  #load-actions{display:flex;gap:8px}
+
+  #toast{position:fixed;bottom:100px;left:50%;transform:translateX(-50%) translateY(100px);background:var(--bg-3);color:var(--text);padding:12px 20px;border-radius:10px;border:1px solid var(--border);z-index:1000;transition:transform .3s;font-size:.9rem;box-shadow:0 4px 20px rgba(0,0,0,.4)}
+  #toast.show{transform:translateX(-50%) translateY(0)}
+
+  .model-list{display:flex;flex-direction:column;gap:8px}
+  .model-card{padding:12px;border-radius:10px;background:var(--bg-3);border:2px solid transparent;cursor:pointer}
+  .model-card:hover{border-color:var(--border)}
+  .model-card.selected{border-color:var(--accent)}
+  .model-card .name{font-weight:600;margin-bottom:4px;font-size:.9rem}
+  .model-card .desc{font-size:.75rem;color:var(--text-dim)}
+  .model-card .size{font-size:.7rem;color:var(--text-dim);float:right}
+
+  .poll{padding:12px;background:var(--bg-3);border-radius:10px;margin:8px 0}
+  .poll-opt{display:block;width:100%;text-align:left;padding:10px 12px;margin:4px 0;border-radius:8px;background:var(--bg);border:1px solid var(--border)}
+  .poll-opt:hover{border-color:var(--accent)}
+
+  .tpl-tabs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px;border-bottom:1px solid var(--border);padding-bottom:12px}
+  .tpl-tab{padding:6px 12px;border-radius:20px;background:var(--bg-3);font-size:.78rem;cursor:pointer;transition:background .15s}
+  .tpl-tab:hover{background:var(--border)}
+  .tpl-tab.active{background:var(--accent);color:white}
+  .tpl-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px}
+  .tpl-item{padding:12px;border-radius:10px;background:var(--bg-3);border:1px solid var(--border);cursor:pointer;transition:border-color .15s,transform .1s}
+  .tpl-item:hover{border-color:var(--accent);transform:translateY(-2px)}
+  .tpl-item .icon{font-size:1.4rem;margin-bottom:6px}
+  .tpl-item .name{font-weight:600;font-size:.85rem;margin-bottom:2px}
+  .tpl-item .desc{font-size:.72rem;color:var(--text-dim);line-height:1.3}
+  .tpl-search{width:100%;margin-bottom:12px;padding:8px 12px;background:var(--bg-3);border:1px solid var(--border);border-radius:8px;color:var(--text)}
+</style>
+</head>
+<body>
+
+<!-- LOG PANEL — canto inferior direito, escondido por padrão -->
+<div id="log-panel">
+  <div id="log-header">
+    <span class="dot" id="log-dot"></span>
+    <span class="title">📋 Log de execução</span>
+    <span class="count" id="log-count">0 linhas</span>
+    <button id="log-close-btn">✕</button>
+  </div>
+  <div id="log-body"></div>
+</div>
+
+<div id="loading-screen">
+  <h1>Milla IA 1.0</h1>
+  <div class="loader"></div>
+  <div id="load-progress"><div id="load-progress-bar"></div></div>
+  <div id="load-info">Iniciando...</div>
+  <div id="load-actions">
+    <button class="btn-ghost" id="skip-load" style="padding:6px 14px;font-size:.8rem;">Usar sem IA local</button>
+  </div>
+</div>
+
+<div id="app">
+  <aside id="sidebar">
+    <div id="sidebar-header"><div id="logo">✨ Milla IA 1.0</div></div>
+    <button id="new-chat-btn">+ Nova conversa</button>
+    <div id="chat-list"></div>
+    <div id="sidebar-footer">
+      <button class="icon-btn" id="templates-btn" title="Gerador de código/mods">🚀</button>
+      <button class="icon-btn" id="settings-btn" title="Configurações">⚙️</button>
+      <button class="icon-btn" id="api-btn" title="API Key">🔑</button>
+      <button class="icon-btn" id="models-btn" title="Modelos locais">🧠</button>
+      <button class="icon-btn" id="workspace-btn" title="Ferramentas">🛠️</button>
+      <button class="icon-btn" id="theme-btn" title="Tema">🌙</button>
+    </div>
+  </aside>
+  <main id="main">
+    <div id="topbar">
+      <button class="icon-btn" id="menu-toggle">☰</button>
+      <div class="spacer"></div>
+      <div id="model-badge"><span class="dot"></span><span id="model-name">carregando...</span></div>
+      <button class="icon-btn" id="log-toggle-btn" title="Log">📋</button>
+      <button class="icon-btn" id="export-btn" title="Exportar">💾</button>
+      <button class="icon-btn" id="clear-btn" title="Limpar">🗑️</button>
+    </div>
+    <div id="chat-scroll"><div id="chat-container"></div></div>
+    <div id="input-area">
+      <div id="input-wrap">
+        <button class="input-btn" id="voice-btn" title="Voz">🎤</button>
+        <textarea id="user-input" rows="1" placeholder="Fala com a Milla..." disabled></textarea>
+        <button class="input-btn" id="tts-btn" title="Falar">🔊</button>
+        <button id="send-btn" disabled>Enviar</button>
+      </div>
+      <div id="input-info">
+        <span id="token-info">Carregando...</span>
+        <span id="shortcut-info">Enter envia · Shift+Enter nova linha</span>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div id="workspace">
+  <div id="workspace-header">
+    <h3>🛠️ Ferramentas</h3>
+    <button class="icon-btn" id="close-workspace" style="flex:none;padding:6px 10px;">✕</button>
+  </div>
+  <div id="workspace-body">
+    <div class="ws-panel"><h4>🗺️ Mapa</h4><div id="map"></div></div>
+    <div class="ws-panel">
+      <h4>♟️ Jogo</h4>
+      <div id="game-wrap">
+        <canvas id="game-canvas" width="400" height="400"></canvas>
+        <div id="game-status">Nenhum jogo ativo.</div>
+      </div>
+    </div>
+    <div class="ws-panel">
+      <h4>🚀 Atalhos rápidos</h4>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;">
+        <button class="btn-ghost" data-tool="dado" style="padding:6px 10px;font-size:.8rem;">🎲 Dado</button>
+        <button class="btn-ghost" data-tool="moeda" style="padding:6px 10px;font-size:.8rem;">🪙 Moeda</button>
+        <button class="btn-ghost" data-tool="calc" style="padding:6px 10px;font-size:.8rem;">🧮 Calc</button>
+        <button class="btn-ghost" data-tool="timer" style="padding:6px 10px;font-size:.8rem;">⏱️ Timer</button>
+        <button class="btn-ghost" data-tool="cor" style="padding:6px 10px;font-size:.8rem;">🎨 Cor</button>
+        <button class="btn-ghost" data-tool="uuid" style="padding:6px 10px;font-size:.8rem;">🆔 UUID</button>
+        <button class="btn-ghost" data-tool="senha" style="padding:6px 10px;font-size:.8rem;">🔐 Senha</button>
+      </div>
+    </div>
+    <div class="ws-panel">
+      <h4>🔎 Deep Search</h4>
+      <div style="display:flex;gap:6px;">
+        <input id="deep-search-input" type="text" placeholder="Pesquisar na web..." style="flex:1;font-size:.85rem;" />
+        <button class="btn-primary" id="deep-search-btn" style="padding:8px 14px;font-size:.85rem;">Ir</button>
+      </div>
+      <div style="font-size:.72rem;color:var(--text-dim);margin-top:6px;">Consulta Wikipedia (PT/EN) + DuckDuckGo</div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="api-modal">
+  <div class="modal">
+    <div class="modal-header"><h2>🔑 API Key (IA Real)</h2><button class="icon-btn" data-close="api-modal" style="flex:none;padding:4px 10px;">✕</button></div>
+    <div class="modal-body">
+      <div style="background:var(--bg-3);padding:10px;border-radius:8px;font-size:.8rem;color:var(--text-dim);margin-bottom:16px;line-height:1.5;">
+        💡 Cole uma chave de API para usar IA real (como ChatGPT/DeepSeek). Fica só no seu navegador. Sem chave, a Milla usa o modelo local fraco.
+      </div>
+      <div class="form-row">
+        <label>Provider</label>
+        <select id="api-provider">
+          <option value="none">❌ Sem API (usar modelo local)</option>
+          <option value="deepseek">🟢 DeepSeek (barato, ótimo em PT-BR)</option>
+          <option value="groq">⚡ Groq (grátis, ultra-rápido)</option>
+          <option value="openrouter">🌐 OpenRouter (vários grátis)</option>
+          <option value="openai">🔵 OpenAI (GPT-4o mini, pago)</option>
+          <option value="custom">🔧 Custom (OpenAI-compatible)</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label>API Key</label>
+        <input type="password" id="api-key" placeholder="sk-..." />
+        <div class="hint">Não é enviada pra nenhum servidor além do provider.</div>
+      </div>
+      <div class="form-row" id="custom-url-row" style="display:none;">
+        <label>Base URL (custom)</label>
+        <input type="text" id="api-custom-url" placeholder="https://api.exemplo.com/v1/chat/completions" />
+      </div>
+      <div class="form-row" id="custom-model-row" style="display:none;">
+        <label>Nome do modelo (custom)</label>
+        <input type="text" id="api-custom-model" placeholder="nome-do-modelo" />
+      </div>
+      <div class="form-row">
+        <label>Modelo</label>
+        <input type="text" id="api-model" placeholder="" />
+        <div class="hint" id="api-model-hint">Padrão do provider é usado se vazio.</div>
+      </div>
+      <div class="form-row" style="border-top:1px solid var(--border);padding-top:16px;">
+        <button class="btn-ghost" id="api-test-btn" style="width:100%;">🔍 Testar conexão</button>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-ghost" data-close="api-modal">Cancelar</button>
+      <button class="btn-primary" id="api-save-btn">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="settings-modal">
+  <div class="modal">
+    <div class="modal-header"><h2>⚙️ Configurações</h2><button class="icon-btn" data-close="settings-modal" style="flex:none;padding:4px 10px;">✕</button></div>
+    <div class="modal-body">
+      <div class="form-row"><label>Persona</label><textarea id="cfg-persona"></textarea></div>
+      <div class="form-row"><label>Temperatura</label><div class="slider-row"><input type="range" id="cfg-temp" min="0.1" max="1.5" step="0.1" value="0.7" /><span class="value" id="cfg-temp-val">0.7</span></div></div>
+      <div class="form-row"><label>Máx tokens</label><div class="slider-row"><input type="range" id="cfg-maxtok" min="30" max="4096" step="10" value="500" /><span class="value" id="cfg-maxtok-val">500</span></div></div>
+      <div class="form-row"><label>Repetition penalty (só modelo local)</label><div class="slider-row"><input type="range" id="cfg-rep" min="1.0" max="1.5" step="0.05" value="1.1" /><span class="value" id="cfg-rep-val">1.10</span></div></div>
+      <div class="form-row"><label><input type="checkbox" id="cfg-tts" /> Ler respostas automaticamente</label></div>
+      <div class="form-row"><label><input type="checkbox" id="cfg-autosearch" checked /> Buscar automaticamente na web quando a IA pedir</label></div>
+      <div class="form-row" style="border-top:1px solid var(--border);padding-top:16px;">
+        <button class="btn-danger" id="reset-all">🗑️ Apagar todos os dados</button>
+      </div>
+    </div>
+    <div class="modal-footer"><button class="btn-primary" data-close="settings-modal">OK</button></div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="models-modal">
+  <div class="modal">
+    <div class="modal-header"><h2>🧠 Modelo Local</h2><button class="icon-btn" data-close="models-modal" style="flex:none;padding:4px 10px;">✕</button></div>
+    <div class="modal-body">
+      <div style="background:var(--bg-3);padding:10px;border-radius:8px;font-size:.8rem;color:var(--text-dim);margin-bottom:16px;line-height:1.5;">
+        ⚠️ Modelos locais são <b>muito mais fracos</b> que IA real. Pra respostas boas, use API Key (botão 🔑).
+      </div>
+      <div class="model-list" id="model-list"></div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="templates-modal">
+  <div class="modal" style="max-width:760px;">
+    <div class="modal-header">
+      <h2>🚀 Gerador de código & mods</h2>
+      <button class="icon-btn" data-close="templates-modal" style="flex:none;padding:4px 10px;">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="text" class="tpl-search" id="tpl-search" placeholder="🔍 Filtrar templates..." />
+      <div class="tpl-tabs" id="tpl-tabs"></div>
+      <div class="tpl-grid" id="tpl-grid"></div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="custom-dialog-modal">
+  <div class="modal" style="max-width:420px;">
+    <div class="modal-header"><h2 id="dialog-title">Aviso</h2></div>
+    <div class="modal-body">
+      <p id="dialog-msg" style="margin-bottom:12px;color:var(--text);"></p>
+      <div id="dialog-input-wrap" style="display:none;margin-top:8px;">
+        <input type="text" id="dialog-input" style="width:100%;" />
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-ghost" id="dialog-cancel-btn">Cancelar</button>
+      <button class="btn-primary" id="dialog-ok-btn">OK</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+(function(){
+  var IN_SANDBOX=false;
+  try{window.localStorage.getItem('__t__');}catch(e){IN_SANDBOX=true;}
+  window.__IN_SANDBOX__=IN_SANDBOX;
+  try{window.localStorage.getItem('__t__');}catch(e){
+    var ms={};
+    try{Object.defineProperty(window,'localStorage',{value:{
+      getItem:function(k){return ms[k]!=null?ms[k]:null;},
+      setItem:function(k,v){ms[k]=String(v);},
+      removeItem:function(k){delete ms[k];},
+      clear:function(){ms={};},
+      key:function(i){return Object.keys(ms)[i]||null;},
+      get length(){return Object.keys(ms).length;}
+    },configurable:true});}catch(e2){}
+  }
+  (function(){
+    var needs=false;
+    try{if(typeof caches==='undefined')needs=true;else caches.keys();}catch(e){needs=true;}
+    if(needs){
+      try{Object.defineProperty(window,'caches',{value:{
+        open:function(){return Promise.reject(new Error('off'));},
+        keys:function(){return Promise.resolve([]);},
+        delete:function(){return Promise.resolve(false);},
+        has:function(){return Promise.resolve(false);},
+        match:function(){return Promise.resolve(undefined);}
+      },configurable:true});}catch(e){}
+    }
+  })();
+  var logBody=document.getElementById('log-body');
+  var logCount=document.getElementById('log-count');
+  var logDot=document.getElementById('log-dot');
+  var count=0;
+  function log(level,msg){
+    try{
+      count++;
+      var time=new Date().toLocaleTimeString('pt-BR',{hour12:false});
+      var line=document.createElement('div');
+      line.className='line';
+      var t=document.createElement('span');t.className='time';t.textContent=time;
+      var l=document.createElement('span');l.className='lvl '+level;l.textContent=level;
+      var m=document.createElement('span');m.className='msg';m.textContent=String(msg);
+      line.appendChild(t);line.appendChild(l);line.appendChild(m);
+      logBody.appendChild(line);
+      logBody.scrollTop=logBody.scrollHeight;
+      logCount.textContent=count+' linhas';
+      if(level==='ERR')logDot.className='dot err';
+      else if(level==='OK'&&!logDot.classList.contains('err'))logDot.className='dot ok';
+      var fn=level==='ERR'?'error':level==='WARN'?'warn':'log';
+      console[fn]('['+level+'] '+msg);
+    }catch(e){}
+  }
+  window.__log={
+    info:function(m){log('INFO',m);},
+    ok:function(m){log('OK',m);},
+    warn:function(m){log('WARN',m);},
+    err:function(m){log('ERR',m);},
+    step:function(m){log('STEP',m);}
+  };
+  window.addEventListener('error',function(e){log('ERR','Erro global: '+(e.message||'?'));});
+  window.addEventListener('unhandledrejection',function(e){
+    var r=e.reason;
+    log('ERR','Promise: '+(r&&r.message?r.message:String(r)));
+  });
+  window.__log.ok('✅ Página carregada');
+  window.__log.info('⚡ WebGPU: '+(navigator.gpu?'SIM':'NÃO'));
+  if(IN_SANDBOX)window.__log.warn('⚠️ Rodando em sandbox');
+})();
+</script>
+
+<script id="milla-worker" type="text/plain">
+(function(){
+  var loaded=false;
+  var pipelineFn=null,envObj=null,TextStreamerClass=null;
+  function send(type,data){self.postMessage(Object.assign({type:type},data||{}))}
+  function wlog(level,msg){send('log',{level:level,msg:msg});}
+  wlog('OK','🧵 Worker iniciado');
+
+  var CDNS=[
+    'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2/dist/transformers.min.js',
+    'https://unpkg.com/@xenova/transformers@2.17.2/dist/transformers.min.js'
+  ];
+  for(var i=0;i<CDNS.length;i++){
+    try{
+      wlog('STEP','📦 '+CDNS[i]);
+      importScripts(CDNS[i]);
+      pipelineFn=self.pipeline||(self.transformers&&self.transformers.pipeline);
+      envObj=self.env||(self.transformers&&self.transformers.env);
+      TextStreamerClass=self.TextStreamer||(self.transformers&&self.transformers.TextStreamer);
+      if(pipelineFn){loaded=true;wlog('OK','✅ transformers.js carregado');break;}
+    }catch(e){wlog('WARN','❌ '+e.message);}
+  }
+  if(!loaded){
+    wlog('WARN','⚠️ CDNs indisponíveis');
+    send('demo-fallback',{});
+    return;
+  }
+  try{
+    envObj.allowLocalModels=false;
+    envObj.useBrowserCache=false;
+    if(envObj.backends&&envObj.backends.onnx){
+      envObj.backends.onnx.wasm.wasmPaths='https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2/dist/';
+      if(envObj.backends.onnx.wasm)envObj.backends.onnx.wasm.numThreads=1;
+    }
+  }catch(e){}
+
+  var currentPipeline=null,stopFlag=false;
+  self.onmessage=async function(e){
+    var msg=e.data||{};
+    if(msg.type==='load'){
+      wlog('STEP','🎯 Carregando '+msg.modelId);
+      try{
+        var fp={};
+        currentPipeline=await pipelineFn('text-generation',msg.modelId,{
+          quantized:true,
+          progress_callback:function(p){
+            if(!p||p.status!=='progress')return;
+            fp[p.file]=p.progress||0;
+            var vals=Object.keys(fp).map(function(k){return fp[k];});
+            var tot=vals.reduce(function(a,b){return a+b;},0)/vals.length;
+            send('progress',{total:tot,files:vals.length,file:p.file||''});
+          }
+        });
+        wlog('OK','🎉 Modelo carregado!');
+        send('ready',{});
+      }catch(err){wlog('ERR','Erro: '+err.message);send('error',{error:err.message});}
+      return;
+    }
+    if(msg.type==='generate'){
+      if(!currentPipeline){send('error',{error:'modelo não carregado'});return;}
+      stopFlag=false;
+      try{
+        var opts={max_new_tokens:msg.maxtok,temperature:msg.temp,do_sample:true,repetition_penalty:msg.rep};
+        if(TextStreamerClass){
+          opts.streamer=new TextStreamerClass(currentPipeline.tokenizer,{
+            skip_prompt:true,skip_special_tokens:true,
+            callback_function:function(text){
+              if(stopFlag)throw new Error('__STOP__');
+              send('token',{text:text,id:msg.id});
+            }
+          });
+        }
+        var out=await currentPipeline(msg.messages,opts);
+        if(!TextStreamerClass){
+          var seq=out[0]&&out[0].generated_text;
+          var raw='';
+          if(Array.isArray(seq)){var last=seq[seq.length-1];raw=(last&&last.content)?last.content.trim():'';}
+          else if(typeof seq==='string')raw=seq.trim();
+          send('token',{text:raw,id:msg.id});
+        }
+        send('done',{id:msg.id});
+      }catch(err){
+        if(err.message==='__STOP__')send('stopped',{id:msg.id});
+        else send('error',{error:err.message});
+      }
+      return;
+    }
+    if(msg.type==='stop'){stopFlag=true;}
+  };
+  wlog('OK','✅ Worker pronto');
+  send('worker-ready',{});
+})();
+</script>
+
+<script>
+(function(){
+  var LOG=window.__log;
+
+  var PROVIDERS={
+    none:{name:'Sem API',url:null,model:null},
+    deepseek:{name:'DeepSeek',url:'https://api.deepseek.com/v1/chat/completions',model:'deepseek-chat'},
+    groq:{name:'Groq',url:'https://api.groq.com/openai/v1/chat/completions',model:'llama-3.3-70b-versatile'},
+    openrouter:{name:'OpenRouter',url:'https://openrouter.ai/api/v1/chat/completions',model:'meta-llama/llama-3.3-70b-instruct:free'},
+    openai:{name:'OpenAI',url:'https://api.openai.com/v1/chat/completions',model:'gpt-4o-mini'},
+    custom:{name:'Custom',url:null,model:null}
+  };
+
+  var MODELS=[
+    {id:'Xenova/SmolLM2-360M-Instruct',name:'SmolLM2 360M',desc:'Leve, rápido. Fraca em PT.',size:'~250 MB'},
+    {id:'Xenova/Qwen1.5-0.5B-Chat',name:'Qwen1.5 0.5B',desc:'Conversa ok.',size:'~350 MB'},
+    {id:'Xenova/TinyLlama-1.1B-Chat-v1.0',name:'TinyLlama 1.1B',desc:'Mais capaz (lento em CPU).',size:'~700 MB'}
+  ];
+
+  var DEFAULT_PERSONA="Você é Milla, uma companheira brasileira, sarcástica mas carinhosa. Fala português informal, respostas diretas e úteis. Quando gerar código, use blocos markdown com a linguagem correta.";
+
+  var state={
+    worker:null,workerReady:false,modelReady:false,modelId:null,device:'wasm',
+    conversations:[],currentConvId:null,
+    settings:{persona:DEFAULT_PERSONA,temp:0.7,maxtok:500,rep:1.1,tts:false,autosearch:true},
+    api:{provider:'none',key:'',model:'',customUrl:'',customModel:''},
+    theme:'dark',isGenerating:false,currentGenId:0,genStartTime:0,genTimer:null,
+    map:null,mapReady:false,demoMode:false,game:null,
+    readyTimeout:null,useAPI:false,abortController:null
+  };
+
+  var $=function(s){return document.querySelector(s);};
+  var $$=function(s){return document.querySelectorAll(s);};
+  var uid=function(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6);};
+
+  // ============================================================
+  // TEMPLATES — 8 categorias, 40+ templates
+  // ============================================================
+  var TEMPLATES={
+    'GTA SA / SA-MP':[
+      {icon:'🚗',name:'Comando /car (Pawno)',desc:'Spawn de veículo',prompt:'Escreva um comando /car em Pawno para SA-MP que spawna um veículo na frente do jogador. Inclua includes, defines e código completo com comentários.'},
+      {icon:'💰',name:'Sistema de dinheiro',desc:'Dar/ver dinheiro',prompt:'Escreva um sistema de dinheiro em Pawno para SA-MP com /dar_dinheiro [id] [valor] e /ver_dinheiro. Código completo.'},
+      {icon:'🏠',name:'Sistema de casa',desc:'Comprar/trancar',prompt:'Escreva um sistema de casa em Pawno para SA-MP com /comprarcasa, /trancar e salvamento em arquivo. Código completo.'},
+      {icon:'🔫',name:'Spawn de armas',desc:'/arma [id] [municao]',prompt:'Comando em Pawno /arma [id_arma] [municao]. Código completo.'},
+      {icon:'🚙',name:'CLEO script',desc:'Carro voador com F5',prompt:'Escreva um script CLEO em C++ para GTA San Andreas que ativa carro voador com F5. Código completo comentado.'},
+      {icon:'🌟',name:'HUD SA-MP',desc:'Textdraw vida/dinheiro',prompt:'Escreva um textdraw em Pawno mostrando vida, colete e dinheiro atualizando em tempo real. Código completo.'},
+      {icon:'⚔️',name:'Sistema DM',desc:'Deathmatch com /entrar',prompt:'Sistema de deathmatch em Pawno com /entrararena, /sairarena e respawn aleatório. Código completo.'},
+      {icon:'🚓',name:'Comando /kick',desc:'Kickar jogador',prompt:'Comando /kick [id] [motivo] em Pawno com validação de admin level 3+. Código completo.'},
+      {icon:'💬',name:'Chat com cores',desc:'Comandos /me /do',prompt:'Escreva os comandos /me e /do em Pawno com cores diferentes, estilo roleplay. Código completo.'},
+      {icon:'🎯',name:'Sistema de VIP',desc:'Dar/remover VIP',prompt:'Sistema VIP em Pawno para SA-MP com /darvip [id] [dias] e /removervip [id]. Salva em arquivo. Código completo.'}
+    ],
+    'FiveM / MTA':[
+      {icon:'🚓',name:'Comando /car FiveM',desc:'Spawn Lua',prompt:'Comando /car em Lua para FiveM que spawna carro e coloca o jogador. Código client+server completo.'},
+      {icon:'💼',name:'Sistema emprego',desc:'Trabalhar + dinheiro',prompt:'Sistema de emprego em Lua para FiveM com /trabalhar. Código client+server completo.'},
+      {icon:'🚨',name:'Painel policial',desc:'Multar/prender',prompt:'Painel policial em Lua para FiveM com menu F6 para multar, prender, revistar. Código completo.'},
+      {icon:'🎮',name:'MTA:SA Lua',desc:'/dado com resultado',prompt:'Script Lua para MTA:SA com /dado que joga um dado e mostra no chat. Código completo.'},
+      {icon:'🚗',name:'Sistema garagem',desc:'Salvar carros',prompt:'Sistema de garagem em Lua para MTA:SA salvando veículos em arquivo. Código completo.'},
+      {icon:'💰',name:'Economia FiveM',desc:'Salário + banco',prompt:'Sistema de economia em Lua para FiveM com salário automático e banco (/depositar, /sacar). Completo.'}
+    ],
+    'Minecraft':[
+      {icon:'⛏️',name:'Datapack 1.20',desc:'/curar /feed',prompt:'Datapack completo do Minecraft 1.20 (pack.mcmeta + functions) com /curar e /feed. Todos os arquivos.'},
+      {icon:'🧱',name:'Plugin Bukkit',desc:'Kit starter + /ping',prompt:'Plugin Bukkit em Java com /kit starter e /ping. Código completo com plugin.yml.'},
+      {icon:'🐷',name:'Mod Forge',desc:'Item personalizado',prompt:'Mod básico de Forge para Minecraft em Java com item "Espada Suprema". Código completo com registro.'},
+      {icon:'📜',name:'Plugin Spigot',desc:'/fly e /gm',prompt:'Plugin Spigot em Java com /fly e /gamemode [modo] só pra admins. Código completo.'},
+      {icon:'🌍',name:'Sistema de claims',desc:'Proteger terrenos',prompt:'Plugin Spigot em Java para proteger terrenos com /claim, /unclaim e persistência em arquivo. Código completo.'}
+    ],
+    'Python':[
+      {icon:'🐍',name:'Script CSV',desc:'Ler e analisar',prompt:'Script Python completo que lê CSV e mostra estatísticas (média, mediana, únicos) com pandas.'},
+      {icon:'🤖',name:'Bot Discord',desc:'/ping /dado',prompt:'Bot Discord em Python com discord.py com /ping, /dado, /memoria. Código completo.'},
+      {icon:'🌐',name:'Web Scraper',desc:'Requests + BS4',prompt:'Script Python com requests e BeautifulSoup que faz scraping de notícias e salva JSON. Completo.'},
+      {icon:'⚡',name:'API FastAPI',desc:'CRUD completo',prompt:'API REST em FastAPI com CRUD de usuários e validação Pydantic. Código completo.'},
+      {icon:'🎮',name:'Jogo Pygame',desc:'Pong completo',prompt:'Jogo Pong completo em Pygame com placar, velocidade crescente e IA. Código completo comentado.'},
+      {icon:'📊',name:'Análise de dados',desc:'Pandas + matplotlib',prompt:'Script Python com pandas e matplotlib que lê CSV e gera gráficos (histograma, pizza, linha). Completo.'},
+      {icon:'🤖',name:'Automação Selenium',desc:'Login + scraping',prompt:'Script Python com Selenium que faz login automático e scraping de dados. Código completo.'}
+    ],
+    'JS / Web':[
+      {icon:'🌐',name:'Portfólio',desc:'HTML+CSS+JS',prompt:'Site de portfólio responsivo em HTML+CSS+JS com dark mode e animações. Código completo.'},
+      {icon:'🎮',name:'Pong Canvas',desc:'HTML5 completo',prompt:'Jogo Pong completo em HTML5 Canvas com placar, 2 jogadores e sons. Arquivo único completo.'},
+      {icon:'⚛️',name:'React Tarefas',desc:'CRUD com hooks',prompt:'App React de lista de tarefas com adicionar, marcar, remover e filtrar. Hooks (useState/useEffect).'},
+      {icon:'🔌',name:'API Express',desc:'REST CRUD',prompt:'API REST em Node.js + Express com CRUD de produtos, validação e tratamento de erros. Completo.'},
+      {icon:'🛒',name:'Carrinho de compras',desc:'E-commerce básico',prompt:'Carrinho de compras em JS puro com adicionar, remover, calcular total e localStorage. Completo.'},
+      {icon:'📱',name:'Landing Page',desc:'Moderna responsiva',prompt:'Landing page moderna com hero, features, preços e footer em HTML+CSS. Completo.'}
+    ],
+    'C / C++':[
+      {icon:'📟',name:'Quicksort em C',desc:'Ordenação',prompt:'Programa completo em C que ordena vetor com quicksort. Mostra antes/depois.'},
+      {icon:'🎯',name:'Jogo da velha',desc:'Console em C',prompt:'Jogo da velha completo em C para console, jogador vs jogador. Código completo.'},
+      {icon:'🔧',name:'Lista encadeada',desc:'C++ completo',prompt:'Lista encadeada em C++ com inserir, remover e buscar. Código completo.'},
+      {icon:'📚',name:'Sistema CRUD C',desc:'Cadastro de alunos',prompt:'Sistema completo em C de cadastro de alunos com arquivo binário: cadastrar, listar, buscar, remover.'}
+    ],
+    'Web / Banco':[
+      {icon:'🎨',name:'Schema SQL',desc:'Blog completo',prompt:'Schema SQL completo para blog com usuários, posts, comentários, curtidas, tags. Inclua índices e FKs.'},
+      {icon:'🐘',name:'CRUD PHP+MySQL',desc:'Produtos',prompt:'CRUD completo em PHP puro com MySQL para produtos (criar/listar/editar/deletar). Código completo.'},
+      {icon:'📊',name:'Consulta SQL avançada',desc:'JOINs e agregações',prompt:'5 consultas SQL complexas com JOIN, GROUP BY, HAVING e subqueries sobre e-commerce. Código completo.'}
+    ],
+    'Outros':[
+      {icon:'💎',name:'Script Ruby',desc:'Contar palavras',prompt:'Script Ruby completo que baixa página web e conta palavras mais frequentes.'},
+      {icon:'🦀',name:'CLI Rust',desc:'Argumentos',prompt:'Programa completo em Rust que lê argumentos da linha de comando e imprime resumo. Completo.'},
+      {icon:'🐹',name:'Servidor Go',desc:'HTTP simples',prompt:'Servidor HTTP completo em Go com rotas GET/POST e JSON. Código completo.'},
+      {icon:'🎨',name:'Animações CSS',desc:'10 animações prontas',prompt:'CSS completo com 10 animações modernas (fade, slide, bounce, shake, pulse, etc.) prontas para usar.'}
+    ]
+  };
+
+  var currentTplCategory='GTA SA / SA-MP';
+
+  var TOOLS={
+    criar_mapa:{description:'Cria um mapa OpenStreetMap. Args: {local:"cidade"}'},
+    criar_jogo:{description:'Cria um jogo. Args: {tipo:"dama"|"velha"|"domino"}'},
+    contar_piada:{description:'Conta uma piada.'},
+    fazer_enquete:{description:'Enquete. Args: {pergunta:"...",opcoes:[...]}'},
+    calcular:{description:'Calcula expressão. Args: {expressao:"2+2"}'},
+    deep_search:{description:'Pesquisa na web (Wikipedia + DuckDuckGo). Args: {query:"termo"}'}
+  };
+
+  function toast(msg,ms){
+    ms=ms||2200;
+    var t=$('#toast');
+    t.textContent=msg;t.classList.add('show');
+    clearTimeout(t._t);t._t=setTimeout(function(){t.classList.remove('show');},ms);
+  }
+
+  function showCustomDialog(title,message,isPrompt,defVal,callback){
+    $('#dialog-title').textContent=title;
+    $('#dialog-msg').textContent=message;
+    var iw=$('#dialog-input-wrap'),ie=$('#dialog-input');
+    if(isPrompt){iw.style.display='block';ie.value=defVal||'';setTimeout(function(){ie.focus();},100);}
+    else{iw.style.display='none';ie.value='';}
+    openModal('custom-dialog-modal');
+    var okBtn=$('#dialog-ok-btn'),cancelBtn=$('#dialog-cancel-btn');
+    var nOk=okBtn.cloneNode(true),nCanc=cancelBtn.cloneNode(true);
+    okBtn.parentNode.replaceChild(nOk,okBtn);
+    cancelBtn.parentNode.replaceChild(nCanc,cancelBtn);
+    $('#dialog-ok-btn').onclick=function(){closeModal('custom-dialog-modal');if(isPrompt)callback(ie.value);else callback(true);};
+    $('#dialog-cancel-btn').onclick=function(){closeModal('custom-dialog-modal');callback(isPrompt?null:false);};
+  }
+
+  function escapeHtml(s){
+    return String(s==null?'':s).replace(/[&<>"']/g,function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+
+  function scrollToBottom(){var el=$('#chat-scroll');if(el)el.scrollTop=el.scrollHeight;}
+  function applyTheme(){document.documentElement.setAttribute('data-theme',state.theme);var b=$('#theme-btn');if(b)b.textContent=state.theme==='dark'?'☀️':'🌙';}
+  function closeModal(id){$('#'+id).classList.remove('open');}
+  function openModal(id){$('#'+id).classList.add('open');}
+  function autoResize(){var el=$('#user-input');el.style.height='auto';el.style.height=Math.min(el.scrollHeight,200)+'px';}
+
+  function speak(text){
+    if(!window.speechSynthesis)return;
+    speechSynthesis.cancel();
+    var u=new SpeechSynthesisUtterance(String(text).replace(/[*_`#>\[\]()]/g,''));
+    u.lang='pt-BR';u.rate=1.05;
+    speechSynthesis.speak(u);
+  }
+
+  function saveConvs(){try{localStorage.setItem('milla.convs',JSON.stringify(state.conversations));}catch(e){}}
+  function loadConvs(){
+    try{var raw=localStorage.getItem('milla.convs');state.conversations=raw?JSON.parse(raw):[];}
+    catch(e){state.conversations=[];}
+    if(!Array.isArray(state.conversations)||!state.conversations.length)createConversation(true);
+    else state.currentConvId=state.conversations[0].id;
+  }
+  function currentConv(){return state.conversations.find(function(c){return c.id===state.currentConvId;});}
+
+  function loadSettings(){
+    try{if(localStorage.getItem('milla.persona'))state.settings.persona=localStorage.getItem('milla.persona');}catch(e){}
+    try{if(localStorage.getItem('milla.temp'))state.settings.temp=parseFloat(localStorage.getItem('milla.temp'));}catch(e){}
+    try{if(localStorage.getItem('milla.maxtok'))state.settings.maxtok=parseInt(localStorage.getItem('milla.maxtok'));}catch(e){}
+    try{if(localStorage.getItem('milla.rep'))state.settings.rep=parseFloat(localStorage.getItem('milla.rep'));}catch(e){}
+    try{if(localStorage.getItem('milla.tts'))state.settings.tts=localStorage.getItem('milla.tts')==='true';}catch(e){}
+    try{if(localStorage.getItem('milla.autosearch'))state.settings.autosearch=localStorage.getItem('milla.autosearch')!=='false';}catch(e){}
+    try{if(localStorage.getItem('milla.theme'))state.theme=localStorage.getItem('milla.theme');}catch(e){}
+    try{if(localStorage.getItem('milla.model'))state.modelId=localStorage.getItem('milla.model');}catch(e){}
+    if(!state.modelId)state.modelId=MODELS[0].id;
+    try{
+      var apiRaw=localStorage.getItem('milla.api');
+      if(apiRaw)state.api=JSON.parse(apiRaw);
+    }catch(e){}
+    state.useAPI=state.api.provider!=='none'&&state.api.key;
+  }
+
+  function saveAPI(){
+    try{localStorage.setItem('milla.api',JSON.stringify(state.api));}catch(e){}
+    state.useAPI=state.api.provider!=='none'&&state.api.key;
+    updateBadge();
+  }
+
+  function updateBadge(){
+    var badge=$('#model-badge');
+    var name=$('#model-name');
+    if(state.useAPI){
+      badge.className='api';
+      var p=PROVIDERS[state.api.provider];
+      name.textContent=(p?p.name:'API')+' · '+(state.api.model||(p&&p.model)||'');
+    }else if(state.modelReady){
+      badge.className='ready';
+      name.textContent=state.modelId.split('/')[1]||state.modelId;
+    }else if(state.demoMode){
+      badge.className='ready';
+      name.textContent='Modo Demo';
+    }else{
+      badge.className='busy';
+      name.textContent='Carregando...';
+    }
+  }
+
+  function createConversation(silent){
+    var conv={id:uid(),title:'Nova conversa',messages:[],createdAt:Date.now()};
+    state.conversations.unshift(conv);
+    state.currentConvId=conv.id;
+    saveConvs();
+    if(!silent){renderChatList();renderMessages();}
+  }
+
+  function deleteConversation(id){
+    state.conversations=state.conversations.filter(function(c){return c.id!==id;});
+    if(!state.conversations.length)createConversation(true);
+    else if(state.currentConvId===id)state.currentConvId=state.conversations[0].id;
+    saveConvs();renderChatList();renderMessages();
+  }
+
+  // ============================================================
+  // WELCOME com 18 sugestões em 5 categorias
+  // ============================================================
+  function renderWelcome(){
+    return '<div id="welcome"><h1>Olá! Eu sou a Milla 👋</h1>'+
+      '<p>Sua assistente de código, mods, mapas e conversas.</p>'+
+      '<div id="suggestions">'+
+
+      '<div class="suggestion-category">💬 Conversar</div>'+
+      '<div class="suggestion" data-prompt="Oi Milla, tudo bem? Conta uma curiosidade sobre programação"><strong>👋 Bate-papo</strong><span>Conversar normalmente</span></div>'+
+      '<div class="suggestion" data-prompt="Me explica o que é computação quântica de forma simples"><strong>🧠 Explicar algo</strong><span>Conceitos simples</span></div>'+
+      '<div class="suggestion" data-prompt="Me conta uma piada bem ruim de programador"><strong>😂 Piada</strong><span>Só por diversão</span></div>'+
+
+      '<div class="suggestion-category">🎮 Mods de jogos</div>'+
+      '<div class="suggestion" data-prompt="Escreve um comando /car em Pawno para SA-MP completo"><strong>🚗 SA-MP (Pawno)</strong><span>Comando /car</span></div>'+
+      '<div class="suggestion" data-prompt="Escreve um script Lua para FiveM com comando /car"><strong>🎮 FiveM (Lua)</strong><span>Spawn de veículo</span></div>'+
+      '<div class="suggestion" data-prompt="Escreve um plugin Bukkit em Java para Minecraft com /kit starter"><strong>⛏️ Minecraft</strong><span>Plugin Bukkit</span></div>'+
+      '<div class="suggestion" data-prompt="Escreve um script CLEO em C++ para GTA SA que ativa carro voador com F5"><strong>🚙 CLEO GTA SA</strong><span>Script C++</span></div>'+
+
+      '<div class="suggestion-category">💻 Programação</div>'+
+      '<div class="suggestion" data-prompt="Escreve um script Python que lê um CSV e mostra estatísticas com pandas"><strong>🐍 Python</strong><span>Análise de dados</span></div>'+
+      '<div class="suggestion" data-prompt="Escreve um app React de lista de tarefas com hooks"><strong>⚛️ React</strong><span>App com hooks</span></div>'+
+      '<div class="suggestion" data-prompt="Escreve um jogo Pong completo em HTML5 Canvas"><strong>🎯 Pong Canvas</strong><span>Jogo completo</span></div>'+
+      '<div class="suggestion" data-prompt="Escreve um schema SQL completo para um blog com usuários, posts e comentários"><strong>🎨 Schema SQL</strong><span>Banco completo</span></div>'+
+
+      '<div class="suggestion-category">🛠️ Ferramentas</div>'+
+      '<div class="suggestion" data-prompt="Abre um mapa de Fortaleza"><strong>🗺️ Ver um mapa</strong><span>OpenStreetMap</span></div>'+
+      '<div class="suggestion" data-prompt="Pesquisa sobre buracos negros"><strong>🔎 Deep Search</strong><span>Wikipedia + web</span></div>'+
+      '<div class="suggestion" data-prompt="Joga dama comigo"><strong>♟️ Jogar dama</strong><span>Um jogo contra mim</span></div>'+
+
+      '</div></div>';
+  }
+
+  function renderChatList(){
+    var list=$('#chat-list');
+    if(!list)return;
+    list.innerHTML=state.conversations.map(function(c){
+      return '<div class="chat-item '+(c.id===state.currentConvId?'active':'')+'" data-id="'+c.id+'">'+
+        '<span class="title">'+escapeHtml(c.title||'Nova conversa')+'</span>'+
+        '<span class="del" data-del="'+c.id+'">✕</span></div>';
+    }).join('');
+    list.querySelectorAll('.chat-item').forEach(function(el){
+      el.onclick=function(e){
+        if(e.target.dataset.del)return;
+        state.currentConvId=el.dataset.id;
+        renderChatList();renderMessages();
+        $('#app').classList.remove('sidebar-open');
+      };
+    });
+    list.querySelectorAll('[data-del]').forEach(function(el){
+      el.onclick=function(e){e.stopPropagation();deleteConversation(el.dataset.del);};
+    });
+  }
+
+  function renderMessages(){
+    var conv=currentConv();
+    var container=$('#chat-container');
+    if(!container)return;
+    container.innerHTML='';
+    if(!conv||!conv.messages.length){container.innerHTML=renderWelcome();bindSuggestions();return;}
+    conv.messages.forEach(function(m,i){container.appendChild(renderMessage(m,i));});
+    enhanceCodeBlocks(container);
+    scrollToBottom();
+  }
+
+  function renderMessage(m,idx){
+    if(m.role==='system'){
+      var div=document.createElement('div');
+      div.style.cssText='text-align:center;color:var(--text-dim);font-size:.8rem;margin:12px 0;font-style:italic;';
+      div.textContent=m.content;
+      return div;
+    }
+    var div=document.createElement('div');
+    div.className='message '+m.role;
+    var avatar=m.role==='user'?'🧑':'✨';
+    var content;
+    if(m.role==='assistant'&&typeof marked!=='undefined'&&marked.parse){
+      try{content=marked.parse(m.content||'');}catch(e){content=escapeHtml(m.content);}
+    }else content=escapeHtml(m.content).replace(/\n/g,'<br>');
+    div.innerHTML='<div class="avatar '+m.role+'">'+avatar+'</div>'+
+      '<div style="min-width:0;flex:1;"><div class="bubble">'+content+'</div>'+
+      '<div class="msg-actions">'+
+      '<button data-act="copy" data-idx="'+idx+'">📋 Copiar</button>'+
+      '<button data-act="regen" data-idx="'+idx+'">🔄 Regerar</button>'+
+      '<button data-act="del" data-idx="'+idx+'">🗑️ Apagar</button>'+
+      '</div></div>';
+    div.querySelectorAll('[data-act]').forEach(function(btn){
+      btn.onclick=function(){handleMsgAction(btn.dataset.act,parseInt(btn.dataset.idx));};
+    });
+    if(typeof hljs!=='undefined'){
+      div.querySelectorAll('pre code').forEach(function(el){try{hljs.highlightElement(el);}catch(e){}});
+    }
+    return div;
+  }
+
+  function enhanceCodeBlocks(container){
+    container.querySelectorAll('pre').forEach(function(pre){
+      if(pre.previousElementSibling&&pre.previousElementSibling.classList.contains('code-header'))return;
+      var code=pre.querySelector('code');
+      if(!code)return;
+      var lang='',cls=code.className||'';
+      var match=cls.match(/language-(\w+)/);
+      if(match)lang=match[1];else if(cls.includes('hljs'))lang='código';
+      var header=document.createElement('div');
+      header.className='code-header';
+      header.innerHTML='<span>'+lang+'</span>';
+      var actions=document.createElement('div');
+      actions.style.cssText='display:flex;gap:4px;';
+      var copyBtn=document.createElement('button');
+      copyBtn.textContent='📋 Copiar';
+      copyBtn.onclick=function(){navigator.clipboard.writeText(code.textContent).then(function(){toast('Copiado!');});};
+      actions.appendChild(copyBtn);
+      var dlBtn=document.createElement('button');
+      dlBtn.textContent='💾 Baixar';
+      dlBtn.onclick=function(){
+        var ext={python:'py',javascript:'js',js:'js',html:'html',css:'css',java:'java',c:'c',cpp:'cpp',pawn:'pwn',pawno:'pwn',lua:'lua',sql:'sql',php:'php',ruby:'rb',rust:'rs',go:'go',json:'json',bash:'sh',shell:'sh'}[lang]||'txt';
+        var blob=new Blob([code.textContent],{type:'text/plain'});
+        var a=document.createElement('a');
+        a.href=URL.createObjectURL(blob);
+        a.download='milla-code.'+ext;
+        a.click();
+      };
+      actions.appendChild(dlBtn);
+      header.appendChild(actions);
+      pre.parentNode.insertBefore(header,pre);
+    });
+  }
+
+  function handleMsgAction(act,idx){
+    var conv=currentConv();if(!conv)return;
+    var msg=conv.messages[idx];if(!msg)return;
+    if(act==='copy'){try{navigator.clipboard.writeText(msg.content);toast('Copiado!');}catch(e){}}
+    else if(act==='del'){conv.messages.splice(idx,1);saveConvs();renderMessages();}
+    else if(act==='regen'){
+      conv.messages.splice(idx);saveConvs();renderMessages();
+      var lastUser=conv.messages.slice().reverse().find(function(m){return m.role==='user';});
+      if(lastUser)runAssistant(lastUser.content,true);
+    }
+  }
+
+  function bindSuggestions(){
+    $$('#suggestions .suggestion').forEach(function(el){
+      el.onclick=function(){
+        $('#user-input').value=el.dataset.prompt;
+        autoResize();
+        sendMessage();
+      };
+    });
+  }
+
+  function buildSystemPrompt(){
+    var tools=Object.keys(TOOLS).map(function(k){return '- '+k+': '+TOOLS[k].description;}).join('\n');
+    return state.settings.persona+'\n\nVocê TEM acesso a ferramentas. Para usar, responda APENAS com JSON: {"tool":"nome","args":{...}}\n\nFerramentas:\n'+tools+'\n\nQuando gerar código, use blocos markdown com a linguagem correta. Senão, responda normalmente.';
+  }
+
+  async function executeTool(name,args){
+    args=args||{};
+    openWorkspace();
+    try{
+      if(name==='criar_mapa')return await toolMapa(args.local);
+      if(name==='criar_jogo')return toolJogo(args.tipo);
+      if(name==='contar_piada')return toolPiada();
+      if(name==='fazer_enquete')return toolEnquete(args.pergunta,args.opcoes);
+      if(name==='calcular')return toolCalc(args.expressao);
+      if(name==='deep_search')return await deepSearch(args.query);
+      return {error:'ferramenta desconhecida: '+name};
+    }catch(e){LOG.err('Erro tool '+name+': '+e.message);return {error:e.message};}
+  }
+
+  async function geocode(local){
+    try{
+      LOG.info('🗺️ Photon: '+local);
+      var r=await fetch('https://photon.komoot.io/api/?q='+encodeURIComponent(local)+'&limit=1&lang=pt');
+      if(r.ok){
+        var j=await r.json();
+        if(j.features&&j.features.length){
+          var f=j.features[0];
+          var parts=[];
+          if(f.properties.name)parts.push(f.properties.name);
+          if(f.properties.city&&f.properties.city!==f.properties.name)parts.push(f.properties.city);
+          if(f.properties.state)parts.push(f.properties.state);
+          if(f.properties.country)parts.push(f.properties.country);
+          return {lat:f.geometry.coordinates[1],lon:f.geometry.coordinates[0],name:parts.join(', ')||local};
+        }
+      }
+    }catch(e){LOG.warn('Photon: '+e.message);}
+    try{
+      LOG.info('🗺️ Nominatim: '+local);
+      var r2=await fetch('https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q='+encodeURIComponent(local));
+      if(r2.ok){
+        var j2=await r2.json();
+        if(j2.length)return {lat:parseFloat(j2[0].lat),lon:parseFloat(j2[0].lon),name:j2[0].display_name||local};
+      }
+    }catch(e){LOG.warn('Nominatim: '+e.message);}
+    return null;
+  }
+
+  async function toolMapa(local){
+    if(!local)return {error:'local vazio'};
+    LOG.info('🗺️ Buscando: '+local);
+    var geo=await geocode(local);
+    if(!geo){LOG.warn('Não encontrado');return {error:'não encontrado'};}
+    var lat=geo.lat,lon=geo.lon,dn=geo.name;
+    if(!state.mapReady){
+      state.map=L.map('map').setView([lat,lon],12);
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',{
+        attribution:'© OpenStreetMap · © CARTO',
+        subdomains:'abcd',
+        maxZoom:20
+      }).addTo(state.map);
+      state.mapReady=true;
+    }else state.map.setView([lat,lon],12);
+    state.map.eachLayer(function(layer){
+      if(layer instanceof L.Marker)state.map.removeLayer(layer);
+    });
+    L.marker([lat,lon]).addTo(state.map).bindPopup(dn).openPopup();
+    setTimeout(function(){if(state.map)state.map.invalidateSize();},200);
+    LOG.ok('✅ Mapa: '+dn);
+    return {ok:true,local:dn};
+  }
+
+  async function deepSearch(query){
+    if(!query)return {error:'query vazia'};
+    LOG.info('🔎 Deep Search: '+query);
+    var results={query:query,wikipedia:null,ddg:null,related:[]};
+    var q=query.replace(/\s+/g,'_');
+
+    try{
+      var wr=await fetch('https://pt.wikipedia.org/api/rest_v1/page/summary/'+encodeURIComponent(q));
+      if(wr.ok){
+        var wj=await wr.json();
+        if(wj.extract&&!wj.extract.includes('pode referir-se')){
+          results.wikipedia={titulo:wj.title,resumo:wj.extract,url:wj.content_urls&&wj.content_urls.desktop&&wj.content_urls.desktop.page,lang:'pt'};
+          LOG.ok('✅ Wiki PT: '+wj.title);
+        }
+      }
+    }catch(e){}
+
+    if(!results.wikipedia){
+      try{
+        var sr=await fetch('https://pt.wikipedia.org/w/api.php?action=query&list=search&srsearch='+encodeURIComponent(query)+'&format=json&origin=*&srlimit=1');
+        if(sr.ok){
+          var sj=await sr.json();
+          if(sj.query&&sj.query.search&&sj.query.search.length){
+            var titulo=sj.query.search[0].title;
+            var wr2=await fetch('https://pt.wikipedia.org/api/rest_v1/page/summary/'+encodeURIComponent(titulo.replace(/\s+/g,'_')));
+            if(wr2.ok){
+              var wj2=await wr2.json();
+              if(wj2.extract){
+                results.wikipedia={titulo:wj2.title,resumo:wj2.extract,url:wj2.content_urls&&wj2.content_urls.desktop&&wj2.content_urls.desktop.page,lang:'pt'};
+                LOG.ok('✅ Wiki PT (busca): '+wj2.title);
+              }
+            }
+          }
+        }
+      }catch(e){}
+    }
+
+    if(!results.wikipedia){
+      try{
+        var er=await fetch('https://en.wikipedia.org/api/rest_v1/page/summary/'+encodeURIComponent(q));
+        if(er.ok){
+          var ej=await er.json();
+          if(ej.extract&&!ej.extract.includes('may refer to')){
+            results.wikipedia={titulo:ej.title,resumo:ej.extract,url:ej.content_urls&&ej.content_urls.desktop&&ej.content_urls.desktop.page,lang:'en'};
+            LOG.ok('✅ Wiki EN: '+ej.title);
+          }
+        }
+      }catch(e){}
+    }
+
+    try{
+      var dr=await fetch('https://api.duckduckgo.com/?q='+encodeURIComponent(query)+'&format=json&no_html=1&skip_disambig=1');
+      if(dr.ok){
+        var dj=await dr.json();
+        if(dj.AbstractText){
+          results.ddg={texto:dj.AbstractText,fonte:dj.AbstractSource,url:dj.AbstractURL};
+          LOG.ok('✅ DDG: '+dj.AbstractSource);
+        }
+        if(dj.RelatedTopics&&dj.RelatedTopics.length){
+          results.related=dj.RelatedTopics.slice(0,5).map(function(t){
+            return {texto:t.Text||'',url:t.FirstURL||''};
+          }).filter(function(t){return t.texto;});
+        }
+      }
+    }catch(e){}
+
+    return results;
+  }
+
+  function toolJogo(tipo){
+    LOG.info('🎮 '+tipo);
+    if(tipo==='dama')state.game=createCheckers();
+    else if(tipo==='velha')state.game=createTicTacToe();
+    else if(tipo==='domino')state.game=createDomino();
+    else return {error:'tipo desconhecido'};
+    state.game.render();
+    return {ok:true,tipo:tipo};
+  }
+
+  function toolPiada(){
+    var p=['Por que o programador foi ao médico? Estava com bug no sistema. 😂',
+      'O zero disse pro oito: "Belo cinto!"','Como um PC se despede? "Bye, byte!"',
+      'Por que o livro de matemática se matou? Tinha muitos problemas. 📘💀'];
+    var e=p[Math.floor(Math.random()*p.length)];
+    toast('😂 '+e,4000);
+    return {piada:e};
+  }
+
+  function toolEnquete(pergunta,opcoes){
+    if(!pergunta||!opcoes||!opcoes.length)return {error:'vazio'};
+    var conv=currentConv();
+    var wrap=document.createElement('div');
+    wrap.className='poll';
+    wrap.innerHTML='<b>'+escapeHtml(pergunta)+'</b>'+opcoes.map(function(o,i){return '<button class="poll-opt" data-i="'+i+'">'+escapeHtml(o)+'</button>';}).join('');
+    $('#chat-container').appendChild(wrap);
+    wrap.querySelectorAll('.poll-opt').forEach(function(btn){
+      btn.onclick=function(){
+        var e=opcoes[parseInt(btn.dataset.i)];
+        wrap.querySelectorAll('.poll-opt').forEach(function(b){b.disabled=true;});
+        if(conv){conv.messages.push({role:'user',content:'Escolhi: '+e});saveConvs();renderMessages();}
+      };
+    });
+    scrollToBottom();
+    return {ok:true};
+  }
+
+  function toolCalc(expr){
+    if(!expr)return {error:'vazio'};
+    try{return {resultado:Function('"use strict";return('+expr+')')()};}
+    catch(e){return {error:'inválido'};}
+  }
+
+  function createCheckers(){
+    var canvas=$('#game-canvas');canvas.width=400;canvas.height=400;
+    var ctx=canvas.getContext('2d');
+    var SIZE=8,CELL=canvas.width/SIZE;
+    var board=[],selected=null,turn='red',gameOver=false;
+    for(var r=0;r<SIZE;r++){board[r]=[];for(var c=0;c<SIZE;c++){board[r][c]=(r+c)%2===1?(r<3?'black':(r>4?'red':null)):null;}}
+    function render(){
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      for(var r=0;r<SIZE;r++)for(var c=0;c<SIZE;c++){
+        ctx.fillStyle=(r+c)%2===0?'#f0d9b5':'#b58863';
+        ctx.fillRect(c*CELL,r*CELL,CELL,CELL);
+        if(selected&&selected.r===r&&selected.c===c){
+          ctx.strokeStyle='#e94560';ctx.lineWidth=3;
+          ctx.strokeRect(c*CELL+2,r*CELL+2,CELL-4,CELL-4);
+        }
+        var p=board[r][c];
+        if(p){var cx=c*CELL+CELL/2,cy=r*CELL+CELL/2;
+          ctx.beginPath();ctx.arc(cx,cy,CELL*.35,0,Math.PI*2);
+          ctx.fillStyle=p==='red'?'#c0392b':'#2c3e50';ctx.fill();
+          ctx.strokeStyle='#000';ctx.lineWidth=2;ctx.stroke();}
+      }
+    }
+    function isValid(f,t){
+      var p=board[f.r][f.c];if(!p)return false;
+      var isRed=p==='red';
+      if(isRed&&turn!=='red')return false;
+      if(!isRed&&turn!=='black')return false;
+      var dr=t.r-f.r,dc=t.c-f.c;
+      if(Math.abs(dr)===1&&Math.abs(dc)===1&&!board[t.r][t.c])return true;
+      if(Math.abs(dr)===2&&Math.abs(dc)===2){
+        var mid=board[(f.r+t.r)/2][(f.c+t.c)/2];
+        if(mid&&!board[t.r][t.c]){var mr=mid==='red';
+          if(isRed&&!mr)return true;if(!isRed&&mr)return true;}
+      }
+      return false;
+    }
+    function apply(f,t){
+      board[t.r][t.c]=board[f.r][f.c];board[f.r][f.c]=null;
+      if(Math.abs(t.r-f.r)===2)board[(f.r+t.r)/2][(f.c+t.c)/2]=null;
+    }
+    function count(){var red=0,black=0;for(var r=0;r<SIZE;r++)for(var c=0;c<SIZE;c++){if(board[r][c]==='red')red++;if(board[r][c]==='black')black++;}return {red:red,black:black};}
+    function check(){var n=count();
+      if(n.red===0){gameOver=true;$('#game-status').textContent='😢 Milla venceu!';return true;}
+      if(n.black===0){gameOver=true;$('#game-status').textContent='🎉 Você venceu!';return true;}
+      return false;}
+    function aiMove(){
+      if(gameOver)return;
+      var moves=[];
+      for(var r=0;r<SIZE;r++)for(var c=0;c<SIZE;c++){
+        if(board[r][c]==='black'){
+          var dirs=[[-1,-1],[-1,1],[1,-1],[1,1],[-2,-2],[-2,2],[2,-2],[2,2]];
+          for(var i=0;i<dirs.length;i++){
+            var nr=r+dirs[i][0],nc=c+dirs[i][1];
+            if(nr>=0&&nr<SIZE&&nc>=0&&nc<SIZE&&isValid({r:r,c:c},{r:nr,c:nc}))
+              moves.push({from:{r:r,c:c},to:{r:nr,c:nc}});
+          }
+        }
+      }
+      if(!moves.length){gameOver=true;$('#game-status').textContent='🎉 Você venceu!';return;}
+      var m=moves[Math.floor(Math.random()*moves.length)];
+      apply(m.from,m.to);turn='red';render();check();
+    }
+    canvas.onclick=function(e){
+      if(gameOver||turn!=='red')return;
+      var r=canvas.getBoundingClientRect();
+      var c=Math.floor((e.clientX-r.left)/CELL);
+      var row=Math.floor((e.clientY-r.top)/CELL);
+      if(row<0||row>=SIZE||c<0||c>=SIZE)return;
+      if(selected){
+        if(isValid(selected,{r:row,c:c})){
+          apply(selected,{r:row,c:c});selected=null;turn='black';render();
+          if(!check())setTimeout(aiMove,500);
+        }else{selected=null;render();}
+      }else if(board[row][c]==='red'){selected={r:row,c:c};render();}
+    };
+    $('#game-status').textContent='Você é vermelho.';
+    return {render:render};
+  }
+
+  function createTicTacToe(){
+    var canvas=$('#game-canvas');canvas.width=400;canvas.height=400;
+    var ctx=canvas.getContext('2d');
+    var CELL=canvas.width/3;
+    var board=[null,null,null,null,null,null,null,null,null];
+    var turn='X',gameOver=false;
+    function render(){
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      ctx.strokeStyle='#444';ctx.lineWidth=4;
+      for(var i=1;i<3;i++){
+        ctx.beginPath();ctx.moveTo(i*CELL,0);ctx.lineTo(i*CELL,canvas.height);ctx.stroke();
+        ctx.beginPath();ctx.moveTo(0,i*CELL);ctx.lineTo(canvas.width,i*CELL);ctx.stroke();
+      }
+      ctx.font=(CELL*.6)+'px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
+      for(var j=0;j<9;j++){
+        if(!board[j])continue;
+        var c=j%3,r=Math.floor(j/3);
+        ctx.fillStyle=board[j]==='X'?'#e94560':'#60a5fa';
+        ctx.fillText(board[j],c*CELL+CELL/2,r*CELL+CELL/2);
+      }
+    }
+    function winner(){
+      var L1=[[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+      for(var i=0;i<L1.length;i++){
+        var a=board[L1[i][0]],b=board[L1[i][1]],c=board[L1[i][2]];
+        if(a&&a===b&&a===c)return a;
+      }
+      return board.every(function(x){return x;})?'empate':null;
+    }
+    function ai(){
+      var empty=[];for(var i=0;i<9;i++)if(!board[i])empty.push(i);
+      if(!empty.length)return;
+      board[empty[Math.floor(Math.random()*empty.length)]]='O';
+      var w=winner();
+      if(w){gameOver=true;$('#game-status').textContent=w==='empate'?'🤝 Empate!':(w==='O'?'😢 Milla venceu!':'🎉 Você venceu!');}
+      turn='X';render();
+    }
+    canvas.onclick=function(e){
+      if(gameOver||turn!=='X')return;
+      var r=canvas.getBoundingClientRect();
+      var c=Math.floor((e.clientX-r.left)/CELL);
+      var row=Math.floor((e.clientY-r.top)/CELL);
+      var i=row*3+c;
+      if(i<0||i>8||board[i])return;
+      board[i]='X';
+      var w=winner();
+      if(w){gameOver=true;$('#game-status').textContent=w==='empate'?'🤝 Empate!':'🎉 Você venceu!';}
+      else{turn='O';setTimeout(ai,400);}
+      render();
+    };
+    $('#game-status').textContent='Você é X.';
+    return {render:render};
+  }
+
+  function createDomino(){
+    var canvas=$('#game-canvas');canvas.width=500;canvas.height=400;
+    var ctx=canvas.getContext('2d');
+    var pieces=[];
+    for(var i=0;i<=6;i++)for(var j=i;j<=6;j++)pieces.push([i,j]);
+    for(var k=pieces.length-1;k>0;k--){var jj=Math.floor(Math.random()*(k+1));var tmp=pieces[k];pieces[k]=pieces[jj];pieces[jj]=tmp;}
+    var myHand=pieces.slice(0,7),aiHand=pieces.slice(7,14);
+    var table=[],turn='me',sel=null,over=false;
+    function drawPiece(x,y,w,h,a,b,hi){
+      ctx.fillStyle='#f5f5dc';ctx.strokeStyle=hi?'#e94560':'#333';ctx.lineWidth=hi?3:2;
+      ctx.beginPath();if(ctx.roundRect)ctx.roundRect(x,y,w,h,6);else ctx.rect(x,y,w,h);
+      ctx.fill();ctx.stroke();
+      ctx.strokeStyle='#333';ctx.lineWidth=1;
+      ctx.beginPath();ctx.moveTo(x+w/2,y+4);ctx.lineTo(x+w/2,y+h-4);ctx.stroke();
+      var pips={0:[],1:[[0,0]],2:[[-1,-1],[1,1]],3:[[-1,-1],[0,0],[1,1]],4:[[-1,-1],[1,-1],[-1,1],[1,1]],5:[[-1,-1],[1,-1],[0,0],[-1,1],[1,1]],6:[[-1,-1],[1,-1],[-1,0],[1,0],[-1,1],[1,1]]};
+      ctx.fillStyle='#222';
+      [a,b].forEach(function(n,idx){
+        var cx=x+w/4+idx*w/2,cy=y+h/2;
+        pips[n].forEach(function(p){ctx.beginPath();ctx.arc(cx+p[0]*w*.18,cy+p[1]*h*.18,3,0,Math.PI*2);ctx.fill();});
+      });
+    }
+    function render(){
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      ctx.fillStyle='#2a2a4a';ctx.fillRect(0,0,canvas.width,250);
+      ctx.fillStyle='#aaa';ctx.font='14px sans-serif';
+      ctx.fillText('Mesa ('+table.length+'):',10,20);
+      var pw=70,ph=34;
+      table.forEach(function(p,i){var x=10+i*(pw+6);if(x+pw<=canvas.width)drawPiece(x,30,pw,ph,p[0],p[1],false);});
+      ctx.fillStyle='#0f0f1a';ctx.fillRect(0,250,canvas.width,150);
+      ctx.fillStyle='#aaa';ctx.fillText('Sua mão:',10,270);
+      myHand.forEach(function(p,i){drawPiece(10+i*(pw+6),290,pw,ph,p[0],p[1],sel===i);});
+      ctx.fillStyle='#e94560';ctx.font='bold 13px sans-serif';
+      ctx.fillText('Milla: '+aiHand.length+' | Mesa: '+table.length,10,canvas.height-10);
+    }
+    function canPlay(p){
+      if(!table.length)return true;
+      var left=table[0][0],right=table[table.length-1][1];
+      return p[0]===left||p[1]===left||p[0]===right||p[1]===right;
+    }
+    function play(p){
+      if(!table.length){table.push(p);return;}
+      var left=table[0][0],right=table[table.length-1][1];
+      if(p[0]===left)table.unshift([p[1],p[0]]);
+      else if(p[1]===left)table.unshift(p);
+      else if(p[0]===right)table.push(p);
+      else if(p[1]===right)table.push([p[1],p[0]]);
+    }
+    function ai(){
+      if(over)return;
+      var valid=aiHand.map(function(p,i){return {p:p,i:i};}).filter(function(x){return canPlay(x.p);});
+      if(!valid.length){over=true;$('#game-status').textContent='🤝 Milla passou. Você venceu!';return;}
+      var pick=valid[Math.floor(Math.random()*valid.length)];
+      play(pick.p);aiHand.splice(pick.i,1);turn='me';render();
+      if(!aiHand.length){over=true;$('#game-status').textContent='😢 Milla bateu!';}
+    }
+    canvas.onclick=function(e){
+      if(over||turn!=='me')return;
+      var r=canvas.getBoundingClientRect();
+      var x=e.clientX-r.left,y=e.clientY-r.top;
+      if(y<250||y>400)return;
+      var idx=Math.floor((x-10)/76);
+      if(idx<0||idx>=myHand.length)return;
+      if(sel===idx){
+        if(canPlay(myHand[idx])){
+          play(myHand[idx]);myHand.splice(idx,1);sel=null;turn='ai';render();
+          if(!myHand.length){over=true;$('#game-status').textContent='🎉 Você venceu!';return;}
+          setTimeout(ai,700);
+        }else{sel=null;$('#game-status').textContent='❌ Não encaixa.';render();}
+      }else{sel=idx;render();}
+    };
+    $('#game-status').textContent='Clique na peça 2x.';
+    return {render:render};
+  }
+
+  function quickTool(kind){
+    if(kind==='dado')toast('🎲 '+(Math.floor(Math.random()*6)+1));
+    else if(kind==='moeda')toast(Math.random()<.5?'🪙 Cara':'🪙 Coroa');
+    else if(kind==='calc'){
+      showCustomDialog('Calculadora','Expressão:',true,'2 + 2',function(expr){
+        if(expr){try{toast('= '+Function('"use strict";return('+expr+')')());}catch(err){toast('Inválido');}}
+      });
+    }
+    else if(kind==='timer'){
+      showCustomDialog('Timer','Segundos:',true,'60',function(val){
+        var s=parseInt(val);
+        if(s){toast('⏱️ '+s+'s');setTimeout(function(){toast('⏰ Tempo!');speak('Tempo esgotado!');},s*1000);}
+      });
+    }
+    else if(kind==='cor'){
+      var c='#'+Math.floor(Math.random()*16777215).toString(16).padStart(6,'0');
+      toast('🎨 '+c);try{navigator.clipboard.writeText(c);}catch(e){}
+    }
+    else if(kind==='uuid'){
+      var u='xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,function(c){
+        var r=Math.random()*16|0;
+        return (c==='x'?r:(r&0x3|0x8)).toString(16);
+      });
+      toast('🆔 '+u,4000);try{navigator.clipboard.writeText(u);}catch(e){}
+    }
+    else if(kind==='senha'){
+      var chars='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';
+      var pw='';
+      for(var i=0;i<20;i++)pw+=chars[Math.floor(Math.random()*chars.length)];
+      toast('🔐 '+pw,5000);try{navigator.clipboard.writeText(pw);}catch(e){}
+    }
+  }
+
+  function openWorkspace(){$('#workspace').classList.add('open');setTimeout(function(){if(state.map)state.map.invalidateSize();},300);}
+  function closeWorkspace(){$('#workspace').classList.remove('open');}
+
+  function setupWorker(){
+    var code=document.getElementById('milla-worker').textContent;
+    var blob=new Blob([code],{type:'application/javascript'});
+    var url=URL.createObjectURL(blob);
+    var worker;
+    try{worker=new Worker(url);}
+    catch(e){LOG.err('Worker falhou: '+e.message);return null;}
+    worker.onmessage=function(e){handleWorkerMessage(e.data||{});};
+    worker.onerror=function(e){
+      var msg=e.message||(e.error&&e.error.message)||'desconhecido';
+      LOG.err('❌ Worker: '+msg);
+    };
+    state.worker=worker;
+    LOG.ok('✅ Worker criado');
+    state.readyTimeout=setTimeout(function(){
+      if(!state.workerReady)LOG.warn('⏰ Worker não respondeu');
+    },15000);
+    return worker;
+  }
+
+  function handleWorkerMessage(msg){
+    if(msg.type==='log'){
+      if(msg.level==='OK')LOG.ok('[worker] '+msg.msg);
+      else if(msg.level==='WARN')LOG.warn('[worker] '+msg.msg);
+      else if(msg.level==='ERR')LOG.err('[worker] '+msg.msg);
+      else if(msg.level==='STEP')LOG.step('[worker] '+msg.msg);
+      else LOG.info('[worker] '+msg.msg);
+      return;
+    }
+    if(msg.type==='fatal'||msg.type==='demo-fallback'){
+      LOG.warn('⚠️ Modelo local indisponível');
+      finishLoading(true);
+      return;
+    }
+    if(msg.type==='worker-ready'){
+      state.workerReady=true;
+      clearTimeout(state.readyTimeout);
+      LOG.ok('🧵 Worker pronto');
+      if(!state.useAPI)loadModel(state.modelId);
+      else{
+        $('#loading-screen').classList.add('hidden');
+        updateBadge();
+      }
+      return;
+    }
+    if(msg.type==='progress'){
+      var pct=Math.round((msg.total||0)*100);
+      $('#load-progress-bar').style.width=pct+'%';
+      $('#load-info').textContent='Baixando ('+pct+'%)... '+(msg.file||'').split('/').pop();
+      return;
+    }
+    if(msg.type==='ready'){
+      state.modelReady=true;
+      $('#user-input').disabled=false;
+      $('#send-btn').disabled=false;
+      updateBadge();
+      $('#loading-screen').classList.add('hidden');
+      LOG.ok('🎉 Modelo local pronto!');
+      return;
+    }
+    if(msg.type==='token'){
+      if(msg.id!==state.currentGenId)return;
+      var conv=currentConv();
+      if(conv&&conv.messages.length){
+        var last=conv.messages[conv.messages.length-1];
+        if(last.role==='assistant'){
+          last.content+=msg.text;
+          var container=$('#chat-container');
+          var bubbles=container.querySelectorAll('.message.assistant .bubble');
+          var lastBubble=bubbles[bubbles.length-1];
+          if(lastBubble){
+            if(typeof marked!=='undefined'){
+              try{lastBubble.innerHTML=marked.parse(last.content);}
+              catch(e){lastBubble.textContent=last.content;}
+            }else lastBubble.textContent=last.content;
+            if(typeof hljs!=='undefined'){
+              lastBubble.querySelectorAll('pre code').forEach(function(el){try{hljs.highlightElement(el);}catch(e){}});
+            }
+            scrollToBottom();
+          }
+        }
+      }
+      return;
+    }
+    if(msg.type==='done'||msg.type==='stopped'){
+      if(msg.id!==state.currentGenId)return;
+      finishGeneration();
+      enhanceCodeBlocks($('#chat-container'));
+      return;
+    }
+    if(msg.type==='error'){
+      LOG.err('Worker erro: '+msg.error);
+      toast('Erro: '+msg.error);
+      finishGeneration();
+      return;
+    }
+  }
+
+  function finishLoading(failed){
+    state.demoMode=true;
+    state.modelReady=false;
+    $('#loading-screen').classList.add('hidden');
+    $('#user-input').disabled=false;
+    $('#send-btn').disabled=false;
+    $('#token-info').textContent='Pronto';
+    updateBadge();
+    if(failed){
+      LOG.warn('💡 Modelo local falhou. Configure uma API Key (🔑) para IA real.');
+      toast('💡 Cole uma API Key (🔑) para IA de verdade!',5000);
+    }
+  }
+
+  function loadModel(modelId){
+    state.modelId=modelId;
+    try{localStorage.setItem('milla.model',modelId);}catch(e){}
+    state.modelReady=false;
+    $('#model-badge').className='busy';
+    $('#model-name').textContent='Carregando modelo local...';
+    $('#loading-screen').classList.remove('hidden');
+    $('#load-info').textContent='Baixando modelo...';
+    LOG.step('Carregando modelo: '+modelId);
+    if(state.worker)state.worker.postMessage({type:'load',modelId:modelId});
+  }
+
+  function finishGeneration(){
+    state.isGenerating=false;
+    if(state.genTimer)clearInterval(state.genTimer);
+    $('#input-wrap').classList.remove('busy');
+    var sb=$('#stop-btn');
+    if(sb){sb.textContent='Enviar';sb.id='send-btn';sb.onclick=sendMessage;}
+    saveConvs();
+    var conv=currentConv();
+    if(conv&&conv.messages.length){
+      var last=conv.messages[conv.messages.length-1];
+      if(last&&last.role==='assistant'&&state.settings.tts&&last.content)speak(last.content);
+    }
+  }
+
+  async function callAPI(messages,onToken){
+    var provider=PROVIDERS[state.api.provider];
+    if(!provider||provider.name==='Sem API')throw new Error('provider inválido');
+    var url=state.api.provider==='custom'?state.api.customUrl:provider.url;
+    var model=state.api.model||(state.api.provider==='custom'?state.api.customModel:provider.model);
+    if(!url)throw new Error('URL não definida');
+    if(!model)throw new Error('modelo não definido');
+
+    state.abortController=new AbortController();
+    var resp=await fetch(url,{
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'Authorization':'Bearer '+state.api.key
+      },
+      body:JSON.stringify({
+        model:model,
+        messages:messages,
+        temperature:state.settings.temp,
+        max_tokens:state.settings.maxtok,
+        stream:true
+      }),
+      signal:state.abortController.signal
+    });
+
+    if(!resp.ok){
+      var err=await resp.text();
+      throw new Error('HTTP '+resp.status+': '+err.slice(0,200));
+    }
+
+    var reader=resp.body.getReader();
+    var decoder=new TextDecoder();
+    var buffer='';
+    var fullText='';
+
+    while(true){
+      var result=await reader.read();
+      if(result.done)break;
+      buffer+=decoder.decode(result.value,{stream:true});
+      var lines=buffer.split('\n');
+      buffer=lines.pop();
+      for(var i=0;i<lines.length;i++){
+        var line=lines[i].trim();
+        if(!line.startsWith('data:'))continue;
+        var data=line.slice(5).trim();
+        if(data==='[DONE]')continue;
+        try{
+          var j=JSON.parse(data);
+          var delta=j.choices&&j.choices[0]&&j.choices[0].delta;
+          if(delta&&delta.content){
+            fullText+=delta.content;
+            onToken(delta.content);
+          }
+        }catch(e){}
+      }
+    }
+    return fullText;
+  }
+
+  async function runAssistant(userText,isRegen){
+    var conv=currentConv();
+    if(!conv)return;
+    if(!isRegen)conv.messages.push({role:'user',content:userText});
+    if(conv.messages.filter(function(m){return m.role==='user';}).length===1){
+      conv.title=userText.slice(0,30)+(userText.length>30?'...':'');
+      renderChatList();
+    }
+    conv.messages.push({role:'assistant',content:''});
+    renderMessages();
+    saveConvs();
+
+    state.isGenerating=true;
+    state.currentGenId++;
+    var genId=state.currentGenId;
+    $('#input-wrap').classList.add('busy');
+    var sb=$('#send-btn');
+    sb.textContent='Parar';
+    sb.id='stop-btn';
+    sb.onclick=sendMessage;
+
+    if(state.useAPI){
+      try{
+        var messagesForAPI=[{role:'system',content:buildSystemPrompt()}];
+        conv.messages.slice(0,-1).slice(-10).forEach(function(m){
+          messagesForAPI.push({role:m.role,content:m.content});
+        });
+
+        var container=$('#chat-container');
+        var lastBubble=null;
+        var fullText='';
+
+        await callAPI(messagesForAPI,function(token){
+          if(genId!==state.currentGenId)return;
+          fullText+=token;
+          var last=conv.messages[conv.messages.length-1];
+          last.content=fullText;
+          if(!lastBubble){
+            var bubbles=container.querySelectorAll('.message.assistant .bubble');
+            lastBubble=bubbles[bubbles.length-1];
+          }
+          if(lastBubble){
+            if(typeof marked!=='undefined'){
+              try{lastBubble.innerHTML=marked.parse(fullText);}
+              catch(e){lastBubble.textContent=fullText;}
+            }else lastBubble.textContent=fullText;
+            scrollToBottom();
+          }
+        });
+
+        var toolMatch=fullText.match(/\{[\s\S]*"tool"[\s\S]*\}/);
+        if(toolMatch){
+          try{
+            var call=JSON.parse(toolMatch[0]);
+            if(call&&call.tool&&TOOLS[call.tool]){
+              LOG.step('🛠️ Executando: '+call.tool);
+              await executeTool(call.tool,call.args);
+              var conv2=currentConv();
+              var last2=conv2.messages[conv2.messages.length-1];
+              last2.content=fullText+'\n\n---\n\n✅ Ferramenta executada: `'+call.tool+'`';
+              renderMessages();
+            }
+          }catch(e){}
+        }
+
+        finishGeneration();
+        enhanceCodeBlocks(container);
+      }catch(err){
+        LOG.err('API erro: '+err.message);
+        var last=conv.messages[conv.messages.length-1];
+        last.content='❌ **Erro na API**: '+err.message+'\n\nVerifique sua chave em 🔑';
+        finishGeneration();
+        renderMessages();
+      }
+      return;
+    }
+
+    if(state.modelReady&&state.worker){
+      var messagesForModel=[{role:'system',content:buildSystemPrompt()}];
+      conv.messages.slice(0,-1).slice(-6).forEach(function(m){
+        messagesForModel.push({role:m.role,content:m.content});
+      });
+      state.worker.postMessage({
+        type:'generate',
+        messages:messagesForModel,
+        maxtok:state.settings.maxtok,
+        temp:state.settings.temp,
+        rep:state.settings.rep,
+        id:genId
+      });
+      return;
+    }
+
+    setTimeout(async function(){
+      if(genId!==state.currentGenId)return;
+      var text='';
+      var low=userText.toLowerCase();
+
+      if(low.startsWith('pesquisa ')||low.startsWith('pesquisar ')||low.includes('o que é')||low.includes('quem foi')){
+        var termo=userText.replace(/^(pesquisa|pesquisar)\s+(sobre\s+)?/i,'').replace(/^(o que é|quem foi)\s+/i,'').trim();
+        var last=conv.messages[conv.messages.length-1];
+        if(last)last.content='🔎 Pesquisando "'+termo+'"...';
+        renderMessages();
+        var res=await deepSearch(termo);
+        var out='';
+        if(res.wikipedia){
+          out+='**📚 Wikipedia ('+res.wikipedia.lang.toUpperCase()+') — '+res.wikipedia.titulo+'**\n\n'+res.wikipedia.resumo;
+          if(res.wikipedia.url)out+='\n\n[Ler mais]('+res.wikipedia.url+')';
+        }
+        if(res.ddg){
+          if(out)out+='\n\n---\n\n';
+          out+='**🌐 '+res.ddg.fonte+'**\n\n'+res.ddg.texto;
+          if(res.ddg.url)out+='\n\n[Fonte]('+res.ddg.url+')';
+        }
+        if(!out)out='Não encontrei informações específicas sobre **"'+termo+'"**.\n\n💡 **Dica:** configure uma API Key (🔑) para ter IA de verdade.';
+        if(last)last.content=out;
+        finishGeneration();
+        renderMessages();
+        return;
+      }
+
+      if(low.includes('pawno')||low.includes('sa-mp')||low.includes('samp')){
+        text='Aqui vai um exemplo de **/car em Pawno**:\n\n```pawno\n#include <a_samp>\n\nCMD:car(playerid, params[])\n{\n    new Float:x, Float:y, Float:z, Float:a;\n    GetPlayerPos(playerid, x, y, z);\n    GetPlayerFacingAngle(playerid, a);\n    \n    x += floatsin(-a, degrees) * 3.0;\n    y += floatcos(-a, degrees) * 3.0;\n    \n    new vid = CreateVehicle(411, x, y, z, a, -1, -1, -1);\n    PutPlayerInVehicle(playerid, vid, 0);\n    SendClientMessage(playerid, -1, "Veículo spawnado!");\n    return 1;\n}\n```\n\n⚠️ **Modo offline**. Pra códigos sob medida, cole uma **API Key** (🔑).';
+      }
+      else if(low.includes('fivem')||low.includes('lua')){
+        text='**Script Lua para FiveM:**\n\n```lua\nRegisterCommand("car", function()\n    local ped = PlayerPedId()\n    local coords = GetEntityCoords(ped)\n    local heading = GetEntityHeading(ped)\n    local hash = GetHashKey("adder")\n    RequestModel(hash)\n    while not HasModelLoaded(hash) do Wait(10) end\n    local vehicle = CreateVehicle(hash, coords.x, coords.y, coords.z, heading, true, false)\n    SetPedIntoVehicle(ped, vehicle, -1)\n    SetModelAsNoLongerNeeded(hash)\n    TriggerEvent("chat:addMessage", {args = {"Sistema", "Veículo spawnado!"}})\nend, false)\n```\n\n⚠️ **Modo offline**. Para IA de verdade, configure uma API Key (🔑).';
+      }
+      else if(low.includes('minecraft')||low.includes('bukkit')){
+        text='**Plugin Bukkit:**\n\n```java\npackage com.milla;\n\nimport org.bukkit.command.*;\nimport org.bukkit.entity.Player;\nimport org.bukkit.inventory.ItemStack;\nimport org.bukkit.Material;\nimport org.bukkit.plugin.java.JavaPlugin;\n\npublic class MillaPlugin extends JavaPlugin implements CommandExecutor {\n    @Override\n    public void onEnable() {\n        getCommand("kit").setExecutor(this);\n    }\n    @Override\n    public boolean onCommand(CommandSender s, Command c, String l, String[] a) {\n        if (s instanceof Player) {\n            Player p = (Player) s;\n            p.getInventory().addItem(new ItemStack(Material.DIAMOND_SWORD));\n            p.getInventory().addItem(new ItemStack(Material.BREAD, 16));\n            p.sendMessage("§aKit recebido!");\n        }\n        return true;\n    }\n}\n```\n\n⚠️ **Modo offline**. Pra IA completa, use uma API Key (🔑).';
+      }
+      else if(low.includes('jogo')||low.includes('dama')||low.includes('velha')||low.includes('domino')){
+        text='Bora jogar! 🎮 Abri o painel lateral. Escolhe aí!';
+        openWorkspace();
+        if(low.includes('dama'))toolJogo('dama');
+        else if(low.includes('velha'))toolJogo('velha');
+        else if(low.includes('domino'))toolJogo('domino');
+      }
+      else if(low.includes('mapa')||low.includes('em ')){
+        var m=userText.match(/(?:mapa de|em|de)\s+([A-Za-zÀ-ÿ\s]{3,30})/i);
+        var local=m?m[1].trim():'São Paulo';
+        openWorkspace();
+        var r=await toolMapa(local);
+        text=r.ok?'Prontinho! Abri o mapa de **'+r.local+'**. 🗺️':'Não achei esse lugar.';
+      }
+      else if(low.includes('piada'))text=toolPiada().piada;
+      else if(low.includes('enquete')){
+        toolEnquete('O que vamos fazer?',['Programar','Jogar','Conversar']);
+        text='Enquete criada! 👇';
+      }
+      else if(low.includes('oi')||low.includes('olá')||low.includes('ola')){
+        text='Oi! 👋 Bem-vindo à Milla.\n\n⚠️ **Você está em modo offline** (o modelo local não carregou). Posso te ajudar com **templates de código** (Pawno, FiveM, Minecraft, Python, etc), **mapas** e **jogos**.\n\n💡 **Para conversar como ChatGPT/DeepSeek**, clique no botão 🔑 no menu lateral e cole uma **API Key** grátis do [Groq](https://console.groq.com/keys) ou do [DeepSeek](https://platform.deepseek.com/).';
+      }
+      else{
+        text='🤔 Não vou conseguir responder isso bem em **modo offline**.\n\n**O que você pode fazer:**\n\n1. 🔑 **Configurar uma API Key** (recomendado) — clique em 🔑 no menu e cole uma chave do Groq (grátis) ou DeepSeek. A Milla vira uma IA de verdade igual ChatGPT.\n\n2. 🧠 **Tentar carregar o modelo local** — feche e abra de novo, ou troque o modelo no menu 🧠\n\n3. 🚀 **Usar os templates** — clique em 🚀 no menu pra gerar código pronto\n\n4. 🔎 **Pesquisar na web** — digite "pesquisa sobre [termo]"';
+      }
+      var last=conv.messages[conv.messages.length-1];
+      if(last)last.content=text;
+      finishGeneration();
+      renderMessages();
+    },400);
+  }
+
+  function sendMessage(){
+    if(state.isGenerating){
+      if(state.abortController){try{state.abortController.abort();}catch(e){}}
+      if(state.worker)state.worker.postMessage({type:'stop'});
+      finishGeneration();
+      return;
+    }
+    var input=$('#user-input');
+    var txt=input.value.trim();
+    if(!txt)return;
+    input.value='';
+    autoResize();
+    runAssistant(txt,false);
+  }
+
+  function renderTemplates(){
+    var tabs=$('#tpl-tabs'),grid=$('#tpl-grid');
+    var search=($('#tpl-search').value||'').toLowerCase().trim();
+    if(search){
+      tabs.innerHTML='<div class="tpl-tab active">🔎 "'+escapeHtml(search)+'"</div>';
+      var all=[];
+      Object.keys(TEMPLATES).forEach(function(cat){
+        TEMPLATES[cat].forEach(function(t){
+          var hay=(cat+' '+t.name+' '+t.desc+' '+t.prompt).toLowerCase();
+          if(hay.indexOf(search)>=0)all.push(Object.assign({cat:cat},t));
+        });
+      });
+      if(!all.length){grid.innerHTML='<div style="grid-column:1/-1;text-align:center;color:var(--text-dim);padding:20px;">Nada encontrado 😕</div>';return;}
+      grid.innerHTML=all.map(function(t){
+        return '<div class="tpl-item" data-prompt="'+escapeHtml(t.prompt)+'">'+
+          '<div class="icon">'+t.icon+'</div>'+
+          '<div class="name">'+escapeHtml(t.name)+'</div>'+
+          '<div class="desc">'+escapeHtml(t.cat)+' · '+escapeHtml(t.desc)+'</div></div>';
+      }).join('');
+    }else{
+      tabs.innerHTML=Object.keys(TEMPLATES).map(function(cat){
+        return '<div class="tpl-tab '+(cat===currentTplCategory?'active':'')+'" data-cat="'+escapeHtml(cat)+'">'+escapeHtml(cat)+'</div>';
+      }).join('');
+      var items=TEMPLATES[currentTplCategory]||[];
+      grid.innerHTML=items.map(function(t){
+        return '<div class="tpl-item" data-prompt="'+escapeHtml(t.prompt)+'">'+
+          '<div class="icon">'+t.icon+'</div>'+
+          '<div class="name">'+escapeHtml(t.name)+'</div>'+
+          '<div class="desc">'+escapeHtml(t.desc)+'</div></div>';
+      }).join('');
+      tabs.querySelectorAll('.tpl-tab').forEach(function(tab){
+        tab.onclick=function(){currentTplCategory=tab.dataset.cat;renderTemplates();};
+      });
+    }
+    grid.querySelectorAll('.tpl-item').forEach(function(item){
+      item.onclick=function(){
+        closeModal('templates-modal');
+        $('#user-input').value=item.dataset.prompt;
+        autoResize();
+        sendMessage();
+      };
+    });
+  }
+
+  function loadAPIUI(){
+    $('#api-provider').value=state.api.provider||'none';
+    $('#api-key').value=state.api.key||'';
+    $('#api-model').value=state.api.model||'';
+    $('#api-custom-url').value=state.api.customUrl||'';
+    $('#api-custom-model').value=state.api.customModel||'';
+    updateAPIUI();
+  }
+
+  function updateAPIUI(){
+    var p=$('#api-provider').value;
+    $('#custom-url-row').style.display=p==='custom'?'block':'none';
+    $('#custom-model-row').style.display=p==='custom'?'block':'none';
+    var prov=PROVIDERS[p];
+    var hint='Padrão do provider é usado se vazio.';
+    if(p==='deepseek')hint='Ex: deepseek-chat (padrão) ou deepseek-reasoner';
+    else if(p==='groq')hint='Ex: llama-3.3-70b-versatile (padrão), mixtral-8x7b-32768';
+    else if(p==='openrouter')hint='Ex: meta-llama/llama-3.3-70b-instruct:free';
+    else if(p==='openai')hint='Ex: gpt-4o-mini (padrão), gpt-4o';
+    $('#api-model-hint').textContent=hint;
+    if(prov&&prov.model)$('#api-model').placeholder=prov.model;
+  }
+
+  async function testAPI(){
+    var prov=PROVIDERS[$('#api-provider').value];
+    var key=$('#api-key').value.trim();
+    if(!key){toast('Cole a API key primeiro');return;}
+    if(prov.name==='Sem API'){toast('Escolha um provider');return;}
+    toast('🔍 Testando...');
+    try{
+      var url=$('#api-provider').value==='custom'?$('#api-custom-url').value.trim():prov.url;
+      var model=$('#api-model').value.trim()||($('#api-provider').value==='custom'?$('#api-custom-model').value.trim():prov.model);
+      var r=await fetch(url,{
+        method:'POST',
+        headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
+        body:JSON.stringify({
+          model:model,
+          messages:[{role:'user',content:'Diga apenas "ok"'}],
+          max_tokens:10
+        })
+      });
+      if(!r.ok){
+        var t=await r.text();
+        toast('❌ Erro '+r.status+': '+t.slice(0,80),5000);
+        return;
+      }
+      toast('✅ Conexão OK!');
+    }catch(e){
+      toast('❌ '+e.message,5000);
+    }
+  }
+
+  function saveAPIFromUI(){
+    state.api={
+      provider:$('#api-provider').value,
+      key:$('#api-key').value.trim(),
+      model:$('#api-model').value.trim(),
+      customUrl:$('#api-custom-url').value.trim(),
+      customModel:$('#api-custom-model').value.trim()
+    };
+    saveAPI();
+    closeModal('api-modal');
+    toast(state.useAPI?'✅ API configurada!':'API desativada');
+    if(state.useAPI){
+      state.demoMode=false;
+      $('#user-input').disabled=false;
+      $('#send-btn').disabled=false;
+      $('#token-info').textContent='Pronto · API';
+      $('#loading-screen').classList.add('hidden');
+      updateBadge();
+    }else{
+      updateBadge();
+    }
+  }
+
+  // ============================================================
+  // LOG toggle
+  // ============================================================
+  function toggleLog(){
+    var lp=document.getElementById('log-panel');
+    lp.classList.toggle('open');
+  }
+
+  function initUI(){
+    applyTheme();
+    loadSettings();
+    loadConvs();
+    renderChatList();
+    renderMessages();
+    updateBadge();
+
+    $('#new-chat-btn').onclick=function(){createConversation(false);};
+    $('#send-btn').onclick=sendMessage;
+
+    document.addEventListener('click',function(e){
+      if(e.target&&e.target.id==='stop-btn')sendMessage();
+    });
+
+    var inputEl=$('#user-input');
+    inputEl.oninput=autoResize;
+    inputEl.onkeydown=function(e){
+      if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMessage();}
+    };
+
+    $('#menu-toggle').onclick=function(){$('#app').classList.toggle('sidebar-open');};
+    $('#theme-btn').onclick=function(){
+      state.theme=state.theme==='dark'?'light':'dark';
+      try{localStorage.setItem('milla.theme',state.theme);}catch(e){}
+      applyTheme();
+    };
+
+    // Log toggle button
+    $('#log-toggle-btn').onclick=toggleLog;
+    $('#log-close-btn').onclick=function(e){e.stopPropagation();toggleLog();};
+    $('#log-header').addEventListener('click',function(e){
+      if(e.target.id==='log-close-btn')return;
+      // Não toggle aqui, apenas deixar clicar nos botões do header
+    });
+
+    $('#api-btn').onclick=function(){loadAPIUI();openModal('api-modal');};
+    $('#api-provider').onchange=updateAPIUI;
+    $('#api-test-btn').onclick=testAPI;
+    $('#api-save-btn').onclick=saveAPIFromUI;
+
+    $('#settings-btn').onclick=function(){
+      $('#cfg-persona').value=state.settings.persona;
+      $('#cfg-temp').value=state.settings.temp;
+      $('#cfg-temp-val').textContent=state.settings.temp;
+      $('#cfg-maxtok').value=state.settings.maxtok;
+      $('#cfg-maxtok-val').textContent=state.settings.maxtok;
+      $('#cfg-rep').value=state.settings.rep;
+      $('#cfg-rep-val').textContent=state.settings.rep.toFixed(2);
+      $('#cfg-tts').checked=state.settings.tts;
+      $('#cfg-autosearch').checked=state.settings.autosearch;
+      openModal('settings-modal');
+    };
+    $('#models-btn').onclick=function(){
+      var list=$('#model-list');
+      list.innerHTML=MODELS.map(function(m){
+        return '<div class="model-card '+(state.modelId===m.id?'selected':'')+'" data-id="'+m.id+'">'+
+          '<span class="size">'+m.size+'</span>'+
+          '<div class="name">'+escapeHtml(m.name)+'</div>'+
+          '<div class="desc">'+escapeHtml(m.desc)+'</div></div>';
+      }).join('');
+      list.querySelectorAll('.model-card').forEach(function(card){
+        card.onclick=function(){closeModal('models-modal');loadModel(card.dataset.id);};
+      });
+      openModal('models-modal');
+    };
+
+    $('#templates-btn').onclick=function(){
+      currentTplCategory='GTA SA / SA-MP';
+      $('#tpl-search').value='';
+      renderTemplates();
+      openModal('templates-modal');
+    };
+    $('#tpl-search').oninput=renderTemplates;
+
+    $('#workspace-btn').onclick=openWorkspace;
+    $('#close-workspace').onclick=closeWorkspace;
+
+    $('#deep-search-btn').onclick=function(){
+      var q=$('#deep-search-input').value.trim();
+      if(!q)return;
+      closeWorkspace();
+      $('#user-input').value='Pesquisa sobre '+q;
+      sendMessage();
+    };
+    $('#deep-search-input').onkeydown=function(e){
+      if(e.key==='Enter')$('#deep-search-btn').click();
+    };
+
+    $('#clear-btn').onclick=function(){
+      showCustomDialog('Limpar','Apagar mensagens desta conversa?',false,'',function(res){
+        if(res){var conv=currentConv();if(conv){conv.messages=[];saveConvs();renderMessages();}}
+      });
+    };
+    $('#export-btn').onclick=function(){
+      var conv=currentConv();
+      if(!conv||!conv.messages.length){toast('Nada para exportar');return;}
+      var text=conv.messages.map(function(m){return (m.role==='user'?'Usuário: ':'Milla: ')+m.content;}).join('\n\n');
+      var blob=new Blob([text],{type:'text/plain;charset=utf-8'});
+      var a=document.createElement('a');
+      a.href=URL.createObjectURL(blob);
+      a.download='conversa-milla.txt';
+      a.click();
+      toast('Exportado!');
+    };
+
+    $$('[data-close]').forEach(function(b){
+      b.onclick=function(){closeModal(b.dataset.close);};
+    });
+    $$('[data-tool]').forEach(function(b){
+      b.onclick=function(){quickTool(b.dataset.tool);};
+    });
+
+    $('#skip-load').onclick=function(){
+      state.demoMode=true;
+      $('#loading-screen').classList.add('hidden');
+      $('#user-input').disabled=false;
+      $('#send-btn').disabled=false;
+      $('#token-info').textContent='Pronto';
+      updateBadge();
+      LOG.warn('⚡ Modo demo');
+      toast('Pode usar! Cole API Key (🔑) para IA real.');
+    };
+
+    $('#cfg-temp').oninput=function(e){$('#cfg-temp-val').textContent=e.target.value;state.settings.temp=parseFloat(e.target.value);try{localStorage.setItem('milla.temp',state.settings.temp);}catch(err){}};
+    $('#cfg-maxtok').oninput=function(e){$('#cfg-maxtok-val').textContent=e.target.value;state.settings.maxtok=parseInt(e.target.value);try{localStorage.setItem('milla.maxtok',state.settings.maxtok);}catch(err){}};
+    $('#cfg-rep').oninput=function(e){$('#cfg-rep-val').textContent=parseFloat(e.target.value).toFixed(2);state.settings.rep=parseFloat(e.target.value);try{localStorage.setItem('milla.rep',state.settings.rep);}catch(err){}};
+    $('#cfg-tts').onchange=function(e){state.settings.tts=e.target.checked;try{localStorage.setItem('milla.tts',state.settings.tts);}catch(err){}};
+    $('#cfg-autosearch').onchange=function(e){state.settings.autosearch=e.target.checked;try{localStorage.setItem('milla.autosearch',state.settings.autosearch);}catch(err){}};
+    $('#cfg-persona').oninput=function(e){state.settings.persona=e.target.value;try{localStorage.setItem('milla.persona',state.settings.persona);}catch(err){}};
+    $('#reset-all').onclick=function(){
+      showCustomDialog('Apagar Dados','Apagar todos os dados e conversas?',false,'',function(res){
+        if(res){try{localStorage.clear();}catch(e){}location.reload();}
+      });
+    };
+
+    if(state.useAPI){
+      LOG.ok('✅ API configurada — usando IA real');
+      $('#loading-screen').classList.add('hidden');
+      $('#user-input').disabled=false;
+      $('#send-btn').disabled=false;
+      $('#token-info').textContent='Pronto · API';
+      updateBadge();
+    }else{
+      setupWorker();
+    }
+  }
+
+  window.onload=initUI;
+})();
+</script>
+</body>
+</html>
