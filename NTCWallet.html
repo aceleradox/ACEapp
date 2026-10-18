@@ -1,4 +1,4 @@
-v<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
@@ -97,6 +97,9 @@ v<!DOCTYPE html>
       // Toast
       const [toast, setToast] = useState(null);
 
+      // Cooldown de Bônus Diário (24h)
+      const [bonusCooldownTime, setBonusCooldownTime] = useState(0);
+
       // Exportação
       const [exportAmount, setExportAmount] = useState('');
       const [generatedVaultCode, setGeneratedVaultCode] = useState('');
@@ -140,7 +143,7 @@ v<!DOCTYPE html>
           username: username,
           seed: generatedSeed,
           address: address,
-          balance: 0.00, // Começa zerado conforme solicitado
+          balance: 0.00,
           history: [{
             id: 'TX-WELCOME',
             type: 'Carteira Criada (Saldo Zerado)',
@@ -157,6 +160,7 @@ v<!DOCTYPE html>
         setBalance(0.00);
         setHistory(defaultProfile.history);
         setActiveTab('dashboard');
+        checkBonusTimer(username);
         showToastMessage("Carteira Criada com Sucesso!");
       };
 
@@ -188,10 +192,73 @@ v<!DOCTYPE html>
           setHistory(foundUser.history || []);
           localStorage.setItem('ntc_active_session', foundUser.username);
           setActiveTab('dashboard');
+          checkBonusTimer(foundUser.username);
           showToastMessage(`Sessão Restaurada: @${foundUser.username}`);
         } else {
           setAuthError('Frase semente incorreta ou conta não encontrada.');
         }
+      };
+
+      // Verificar Timer do Bônus Diário (24h)
+      const checkBonusTimer = (currentUsername) => {
+        const lastClaim = localStorage.getItem(`ntc_last_bonus_${currentUsername}`);
+        if (lastClaim) {
+          const elapsed = Date.now() - parseInt(lastClaim);
+          const twentyFourHours = 24 * 60 * 60 * 1000;
+          if (elapsed < twentyFourHours) {
+            setBonusCooldownTime(twentyFourHours - elapsed);
+          } else {
+            setBonusCooldownTime(0);
+          }
+        } else {
+          setBonusCooldownTime(0);
+        }
+      };
+
+      // Decrementar temporizador do bônus
+      useEffect(() => {
+        const timer = setInterval(() => {
+          if (bonusCooldownTime > 0) {
+            setBonusCooldownTime(prev => (prev > 1000 ? prev - 1000 : 0));
+          }
+        }, 1000);
+        return () => clearInterval(timer);
+      }, [bonusCooldownTime]);
+
+      const handleClaimDailyBonus = () => {
+        if (bonusCooldownTime > 0) return;
+
+        // Abre o link em nova guia
+        window.open('https://asiafilm.org/4/5e37de5833637b26a4669e3ab8a7b0c4', '_blank');
+
+        // Credita 1 NTC
+        const amt = 1.00;
+        const nextBalance = Number((balance + amt).toFixed(4));
+        const newTx = {
+          id: 'BONUS-' + Math.random().toString(36).substr(2, 6).toUpperCase(),
+          type: 'Bônus Diário Resgatado',
+          amount: amt,
+          date: new Date().toLocaleString()
+        };
+        const nextHistory = [newTx, ...history];
+
+        setBalance(nextBalance);
+        setHistory(nextHistory);
+        saveUserData(nextBalance, nextHistory);
+
+        // Salva o momento do resgate (24h de cooldown)
+        localStorage.setItem(`ntc_last_bonus_${user}`, Date.now().toString());
+        setBonusCooldownTime(24 * 60 * 60 * 1000);
+
+        showToastMessage("Parabéns! +1.00 NTC adicionado à sua carteira.");
+      };
+
+      const formatTimeLeft = (ms) => {
+        const totalSecs = Math.floor(ms / 1000);
+        const hours = Math.floor(totalSecs / 3600);
+        const minutes = Math.floor((totalSecs % 3600) / 60);
+        const seconds = totalSecs % 60;
+        return `${hours}h ${minutes}m ${seconds}s`;
       };
 
       useEffect(() => {
@@ -204,6 +271,7 @@ v<!DOCTYPE html>
             setBalance(data.balance || 0);
             setHistory(data.history || []);
             setActiveTab('dashboard');
+            checkBonusTimer(data.username);
           }
         }
       }, []);
@@ -604,11 +672,29 @@ v<!DOCTYPE html>
                             {showWalletAddress ? '🔒 Ocultar' : '🔓 Ver'}
                           </button>
                         </div>
-                        <div className="mt-6">
-                          <p className="text-xs uppercase tracking-widest text-purple-200 font-semibold">Balanço Atual</p>
-                          <div className="flex items-baseline space-x-2">
-                            <span className="text-4xl md:text-5xl font-extrabold font-orbitron text-white">{balance.toFixed(4)}</span>
-                            <span className="text-pink-400 font-orbitron font-bold">NTC</span>
+                        <div className="mt-6 flex justify-between items-end">
+                          <div>
+                            <p className="text-xs uppercase tracking-widest text-purple-200 font-semibold">Balanço Atual</p>
+                            <div className="flex items-baseline space-x-2">
+                              <span className="text-4xl md:text-5xl font-extrabold font-orbitron text-white">{balance.toFixed(4)}</span>
+                              <span className="text-pink-400 font-orbitron font-bold">NTC</span>
+                            </div>
+                          </div>
+
+                          {/* BOTÃO DE BÔNUS DIÁRIO (24H) */}
+                          <div>
+                            {bonusCooldownTime > 0 ? (
+                              <button disabled className="px-4 py-2 bg-gray-800 text-gray-400 font-orbitron text-xs font-bold rounded-xl cursor-not-allowed">
+                                BÔNUS EM: {formatTimeLeft(bonusCooldownTime)}
+                              </button>
+                            ) : (
+                              <button 
+                                onClick={handleClaimDailyBonus}
+                                className="px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white font-orbitron font-bold text-xs rounded-xl shadow-lg transition animate-bounce"
+                              >
+                                🎁 RESGATAR +1 NTC DIÁRIO
+                              </button>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -742,23 +828,35 @@ v<!DOCTYPE html>
                       <span className="text-[10px] uppercase font-bold bg-pink-500/20 text-pink-400 px-3 py-1 rounded-full border border-pink-500/20 font-orbitron">Mineração de Áudio Direto</span>
                       <h3 className="text-2xl font-orbitron font-black text-white">Mineração por Reconhecimento de Mídia</h3>
                       <p className="text-xs text-gray-400 leading-relaxed">
-                        Escolha capturar o som da **Aba do YouTube / Sistema** para minerar diretamente a música que está tocando no seu navegador!
+                        O Itch.io restringe a captura direta de abas por segurança. Para capturar a aba do YouTube, abra o app em janela direta ou use o microfone local.
                       </p>
 
-                      <div className="pt-4 flex flex-col md:flex-row gap-3 justify-center">
+                      <div className="p-3 bg-purple-950/40 border border-purple-500/30 rounded-xl text-left space-y-2">
+                        <p className="text-[11px] text-purple-200">🚀 <strong>Modo Captura de Aba do YouTube:</strong></p>
+                        <a 
+                          href={window.location.href} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="block w-full text-center py-2 bg-pink-600 hover:bg-pink-500 text-white font-orbitron font-bold text-xs rounded-lg transition"
+                        >
+                          🔗 ABRIR APP EM JANELA DIRETA (LIBERA CAPTURA DE ABA)
+                        </a>
+                      </div>
+
+                      <div className="pt-2 flex flex-col md:flex-row gap-3 justify-center">
                         {!isMiningActive ? (
                           <>
                             <button 
                               onClick={() => startMiningMode('tab')} 
-                              className="px-6 py-3 rounded-xl font-orbitron font-bold text-xs bg-gradient-to-r from-purple-600 to-pink-500 hover:from-purple-500 text-white shadow-lg flex items-center justify-center space-x-2"
+                              className="px-6 py-3 rounded-xl font-orbitron font-bold text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 border border-purple-900/40 flex items-center justify-center space-x-2"
                             >
                               <span>🎵 CAPTURAR SOM DA ABA / YOUTUBE</span>
                             </button>
                             <button 
                               onClick={() => startMiningMode('mic')} 
-                              className="px-6 py-3 rounded-xl font-orbitron font-bold text-xs bg-gray-800 hover:bg-gray-700 text-gray-200 border border-purple-900/40"
+                              className="px-6 py-3 rounded-xl font-orbitron font-bold text-xs bg-gradient-to-r from-purple-600 to-pink-500 hover:from-purple-500 text-white shadow-lg"
                             >
-                              <span>🎙️ USAR MICROFONE DO PC</span>
+                              <span>🎙️ USAR MICROFONE DO PC (RECOMENDADO NO ITCH.IO)</span>
                             </button>
                           </>
                         ) : (
@@ -782,7 +880,7 @@ v<!DOCTYPE html>
                       <p className="text-xs font-bold text-purple-300 uppercase font-orbitron">Logs de Captura em Tempo Real:</p>
                       <div className="space-y-1.5 font-mono text-[11px] max-h-40 overflow-y-auto">
                         {miningLogs.length === 0 ? (
-                          <p className="text-gray-500 italic">Clique em "Capturar Som da Aba / YouTube" e certifique-se de marcar a opção de áudio ao compartilhar.</p>
+                          <p className="text-gray-500 italic">No Itch.io, clique em "Usar Microfone do PC" ou abra em janela direta para capturar abas.</p>
                         ) : (
                           miningLogs.map((log, idx) => (
                             <div key={idx} className="flex justify-between text-emerald-400 border-b border-purple-950/40 pb-1">
