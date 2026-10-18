@@ -1,291 +1,813 @@
-<!DOCTYPE html>
+v<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lista de Apps - Acelerian DK</title>
-    <style>
-        :root {
-            --bg-color: #0d1117;
-            --card-bg: #161b22;
-            --text-main: #c9d1d9;
-            --text-title: #f0f6fc;
-            --accent: #58a6ff;
-            --border-color: #30363d;
-            --tiktok-color: #ff0050;
-            --tiktok-hover: #ee0047;
-        }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NTC Wallet - Secure File Vault & Cyber Dashboard</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- CDNs via Cloudflare -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/lucide/0.321.0/umd/lucide.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/17.0.2/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/17.0.2/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.24.0/babel.min.js"></script>
+  
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800;900&family=Rajdhani:wght@500;600;700&display=swap');
+    
+    body {
+      font-family: 'Rajdhani', sans-serif;
+      background-color: #06060c;
+    }
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-main);
-            margin: 0;
-            padding: 40px 20px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            min-height: 100vh;
-        }
+    .font-orbitron {
+      font-family: 'Orbitron', sans-serif;
+    }
 
-        .container {
-            max-width: 650px;
-            width: 100%;
-            text-align: center;
-        }
-
-        h1 {
-            font-size: 2.2rem;
-            color: var(--text-title);
-            margin-bottom: 5px;
-            letter-spacing: -0.5px;
-        }
-
-        .subtitle {
-            color: #8b949e;
-            margin-bottom: 40px;
-            font-size: 1.1rem;
-            font-weight: 500;
-        }
-
-        /* Lista de Links do Site Principal */
-        .app-list {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
-
-        .app-item {
-            width: 100%;
-        }
-
-        .app-link {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            background-color: var(--card-bg);
-            color: var(--text-title);
-            text-decoration: none;
-            padding: 16px 24px;
-            border-radius: 8px;
-            font-weight: 600;
-            font-size: 1.05rem;
-            transition: all 0.2s ease-in-out;
-            border: 1px solid var(--border-color);
-        }
-
-        .app-link:hover {
-            transform: translateX(4px);
-            border-color: var(--accent);
-            background-color: #1f242c;
-        }
-
-        .icon {
-            font-size: 1.2rem;
-        }
-
-        /* 🔴 ESTRUTURA DO ANÚNCIO SOBREPOSTO (OVERLAY) */
-        .overlay-ad {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(10, 14, 20, 0.98); /* Escurece o site por baixo */
-            z-index: 9999; /* Mantém no topo absoluto da tela */
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-            box-sizing: border-box;
-        }
-
-        .ad-box {
-            background-color: #161b22;
-            padding: 30px;
-            border-radius: 12px;
-            border: 1px solid var(--border-color);
-            text-align: center;
-            max-width: 380px;
-            width: 100%;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.6);
-        }
-
-        .ad-title {
-            font-size: 0.85rem;
-            color: #8b949e;
-            text-transform: uppercase;
-            letter-spacing: 1.5px;
-            margin-bottom: 20px;
-            font-weight: 600;
-        }
-
-        .banner-slot {
-            margin-bottom: 25px;
-            display: flex;
-            justify-content: center;
-        }
-
-        .banner-slot img {
-            max-width: 100%;
-            height: auto;
-            border-radius: 6px;
-        }
-
-        /* Botão Interativo de Pular / TikTok */
-        .skip-btn {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 100%;
-            padding: 15px 20px;
-            background-color: #21262d;
-            color: #8b949e;
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            font-weight: 700;
-            font-size: 1rem;
-            transition: all 0.3s ease;
-            cursor: not-allowed;
-            pointer-events: none; /* Desativa cliques durante a contagem */
-        }
-
-        /* Botão ativo após os 5 segundos */
-        .skip-btn.active {
-            background-color: var(--tiktok-color);
-            color: #ffffff;
-            cursor: pointer;
-            pointer-events: auto; /* Libera o clique */
-            border-color: transparent;
-            box-shadow: 0 4px 20px rgba(255, 0, 80, 0.4);
-        }
-
-        .skip-btn.active:hover {
-            background-color: var(--tiktok-hover);
-            transform: scale(1.02);
-        }
-    </style>
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0b0b14;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #25103c;
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #db2777;
+    }
+  </style>
 </head>
-<body>
+<body class="text-gray-100 min-h-screen flex flex-col justify-between">
 
-    <!-- 🔴 ANÚNCIO EM TELA CHEIA -->
-    <div id="overlayAd" class="overlay-ad">
-        <div class="ad-box">
-            <div class="ad-title">Publicidade</div>
-            
-            <!-- Banner Oficial do ShrtFly -->
-            <div class="banner-slot">
-                <a href="https://shrtfly.com/ref/acelerado" target="_blank" rel="noopener"><img src="https://shrtfly.com/referral/336x280.gif" /></a>
-                <a href="https://shrinkme.io/ref/116633573127883922598"><img src="https://shrinkme.io/banners/ref/300x250.png" title="Make short links and earn the biggest money" /></a>
-            </div>
-            <br>
-            <article>
-               
-            </article>
-            <br>
-              <p>
-                 tiktok@Vulgo_acelerado_ofc <br>
-                 insta@vulgo_acelerado <br>
-                 github:Aceleradox - github.com/aceleradox <br>
-              </p>
+  <div id="root" class="flex-grow flex flex-col"></div>
 
-            <!-- Botão com Cronômetro Dinâmico -->
-            <button id="skipButton" class="skip-btn">
-                Aguardando Skip (15s)
-            </button>
-        </div>
-    </div>
+  <script type="text/babel" data-presets="env,react">
+    const { useState, useEffect, useRef } = React;
 
-    <!-- PORTAL DE APLICATIVOS (FICA LIBERADO DEPOIS DE FECHAR O ANÚNCIO) -->
-    <div class="container">
-        <h1>lista de app da acelerian DK</h1>
-        <p class="subtitle">(by Vulgo Acelerado)</p>
-           <section>
-    <article>
-        <p>
-          ganhe dinherio com ShrtFly
-        <p>
-            <div>
-                <a href="https://shrtfly.com/ref/acelerado" ><img src="https://shrtfly.com/referral/468x60.gif" /></a>
-            </div>
-    </article>
-</section>
-        <ul class="app-list">
-            <li class="app-item">
-                <a href="QQadega.html" class="app-link"><span>🍷 QQ Adega</span> <span class="icon">➔</span></a>
-            </li>
-            <li class="app-item">
-                <a href="QQfrevo-Flyer-Maker.html" class="app-link"><span>🎨 QQ Frevo - Flyer Maker</span> <span class="icon">➔</span></a>
-            </li>
-            <li class="app-item">
-                <a href="QQfrevo-card.html" class="app-link"><span>🎴 QQ Frevo Card</span> <span class="icon">➔</span></a>
-            </li>
-            <li class="app-item">
-                <a href="RadicalRails.html" class="app-link"><span>🛤️ Radical Rails</span> <span class="icon">➔</span></a>
-            </li>
-            <li class="app-item">
-                <a href="RadicalRails2.html" class="app-link"><span>🕹️ Radical Rails 2</span> <span class="icon">➔</span></a>
-            </li>
-            <li class="app-item">
-                <a href="SEO-Engine.html" class="app-link"><span>🔍 SEO Engine</span> <span class="icon">➔</span></a>
-            </li>
-            <li class="app-item">
-                <a href="SEO-RZ.html" class="app-link"><span>⚡ SEO RZ</span> <span class="icon">➔</span></a>
-            </li>
-            <li class="app-item">
-                <a href="VisualStoryMaker.html" class="app-link"><span>📖 Visual Story Maker</span> <span class="icon">➔</span></a>
-            </li>
-            <li class="app-item">
-                <a href="VisualStoryMaker1x.html" class="app-link"><span>🎬 Visual Story Maker 1x</span> <span class="icon">➔</span></a>
-            </li>
-            <li class="app-item">
-                <a href="nomoral2.html" class="app-link"><span>✌️ No Moral 2</span> <span class="icon">➔</span></a>
-            </li>
-        </ul>
-    </div>
-    <rodape>
-        <h1>Publicidades/banner referal</h1>
-        <h2>ganhe dinheiro com ShrtFly encurtador de links</h2>
-        <a href="https://shrtfly.com/ref/acelerado" ><img src="https://shrtfly.com/referral/728x90.gif" /></a>
-        <h2>Ganhe dinheiro com ShrinkMe IO</h2>
-        <a href="https://shrinkme.io/ref/116633573127883922598"><img src="https://shrinkme.io/banners/ref/728x90GIF.gif" title="Make short links and earn the biggest money" /></a>
-    </rodape>
+    const MNEMONIC_WORDS = [
+      "matrix", "net", "cyber", "token", "neon", "flow", "delta", "fusion", 
+      "protocol", "node", "quantum", "sync", "hash", "link", "grid", "shield", 
+      "code", "engine", "plasma", "vortex", "acelera", "notoriety", "glow", "wallet"
+    ];
 
-    <!-- LÓGICA JAVASCRIPT DO CONTADOR -->
-    <script>
-        document.addEventListener("DOMContentLoaded", function() {
-            let timeLeft = 15;
-            const skipBtn = document.getElementById("skipButton");
-            const overlay = document.getElementById("overlayAd");
+    const generateNewSeed = () => {
+      let words = [];
+      for (let i = 0; i < 12; i++) {
+        const randomIndex = Math.floor(Math.random() * MNEMONIC_WORDS.length);
+        words.push(MNEMONIC_WORDS[randomIndex]);
+      }
+      return words.join(' ');
+    };
 
-            // Executa a contagem regressiva a cada 1 segundo
-            const countdown = setInterval(function() {
-                timeLeft--;
-                if (timeLeft > 0) {
-                    skipBtn.textContent = "aguarde pra pular anuncio (" + timeLeft + "s)";
-                } else {
-                    clearInterval(countdown);
-                    skipBtn.textContent = "🚀Pular Anuncio";
-                    skipBtn.classList.add("active");
-                }
-            }, 1000);
+    const generateAddressFromSeed = (seed) => {
+      const cleanSeed = seed.trim().toLowerCase();
+      let hash = 0;
+      for (let i = 0; i < cleanSeed.length; i++) {
+        hash = cleanSeed.charCodeAt(i) + ((hash << 5) - hash);
+      }
+      let hex = '';
+      let value = Math.abs(hash);
+      for (let i = 0; i < 40; i++) {
+        value = (value * 7) ^ cleanSeed.charCodeAt(i % cleanSeed.length);
+        hex += Math.abs(value % 16).toString(16);
+      }
+      return 'NTC0x' + hex.substring(0, 40).toUpperCase();
+    };
 
-            // Controla as ações disparadas pelo clique do usuário
-            skipBtn.addEventListener("click", function() {
-                if (skipBtn.classList.contains("active")) {
-                    // 1. Abre a aba externa com o link direto do perfil do TikTok
-                   
-                    
-                    // 2. Remove o container de publicidade da interface, liberando os apps
-                    overlay.style.display = "none";
-                }
+    function App() {
+      const [user, setUser] = useState(null); 
+      const [walletAddress, setWalletAddress] = useState('');
+      const [showWalletAddress, setShowWalletAddress] = useState(false);
+      const [balance, setBalance] = useState(0.00);
+      const [history, setHistory] = useState([]);
+      const [activeTab, setActiveTab] = useState('auth'); 
+
+      // Autenticação
+      const [authMode, setAuthMode] = useState('login'); 
+      const [seedPhraseInput, setSeedPhraseInput] = useState('');
+      const [generatedSeed, setGeneratedSeed] = useState('');
+      const [username, setUsername] = useState('');
+      const [authError, setAuthError] = useState('');
+
+      // Toast
+      const [toast, setToast] = useState(null);
+
+      // Exportação
+      const [exportAmount, setExportAmount] = useState('');
+      const [generatedVaultCode, setGeneratedVaultCode] = useState('');
+      const [generatedVaultFileContent, setGeneratedVaultFileContent] = useState(null);
+      const [generatedFileName, setGeneratedFileName] = useState('');
+      const [hasCopiedVaultCode, setHasCopiedVaultCode] = useState(false);
+
+      // Importação
+      const [importCodeInput, setImportCodeInput] = useState('');
+      const [importedFilePayload, setImportedFilePayload] = useState(null);
+
+      // Mineração
+      const [isMiningActive, setIsMiningActive] = useState(false);
+      const [miningLogs, setMiningLogs] = useState([]);
+      const [currentAudioLevel, setCurrentAudioLevel] = useState(0);
+      const audioContextRef = useRef(null);
+      const analyserRef = useRef(null);
+      const mediaStreamRef = useRef(null);
+      const checkAudioIntervalRef = useRef(null);
+
+      const showToastMessage = (msg, type = "success") => {
+        setToast({ message: msg, type });
+        setTimeout(() => setToast(null), 4000);
+      };
+
+      const handleRegisterSeed = (e) => {
+        e.preventDefault();
+        setAuthError('');
+        if (!username.trim()) {
+          setAuthError('Escolha um nome de usuário.');
+          return;
+        }
+        const seed = generateNewSeed();
+        setGeneratedSeed(seed);
+        setAuthMode('seed_display');
+      };
+
+      const confirmAndCreateAccount = () => {
+        const address = generateAddressFromSeed(generatedSeed);
+        const defaultProfile = {
+          username: username,
+          seed: generatedSeed,
+          address: address,
+          balance: 0.00, // Começa zerado conforme solicitado
+          history: [{
+            id: 'TX-WELCOME',
+            type: 'Carteira Criada (Saldo Zerado)',
+            amount: 0.00,
+            date: new Date().toLocaleString()
+          }]
+        };
+
+        localStorage.setItem(`ntc_user_${username}`, JSON.stringify(defaultProfile));
+        localStorage.setItem('ntc_active_session', username);
+        
+        setUser(username);
+        setWalletAddress(address);
+        setBalance(0.00);
+        setHistory(defaultProfile.history);
+        setActiveTab('dashboard');
+        showToastMessage("Carteira Criada com Sucesso!");
+      };
+
+      const handleLoginSeed = (e) => {
+        e.preventDefault();
+        setAuthError('');
+        const cleanSeed = seedPhraseInput.trim().toLowerCase();
+        if (!cleanSeed) {
+          setAuthError('Insira sua frase semente.');
+          return;
+        }
+
+        let foundUser = null;
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key.startsWith('ntc_user_')) {
+            const uData = JSON.parse(localStorage.getItem(key));
+            if (uData.seed.trim().toLowerCase() === cleanSeed) {
+              foundUser = uData;
+              break;
+            }
+          }
+        }
+
+        if (foundUser) {
+          setUser(foundUser.username);
+          setWalletAddress(foundUser.address);
+          setBalance(foundUser.balance || 0);
+          setHistory(foundUser.history || []);
+          localStorage.setItem('ntc_active_session', foundUser.username);
+          setActiveTab('dashboard');
+          showToastMessage(`Sessão Restaurada: @${foundUser.username}`);
+        } else {
+          setAuthError('Frase semente incorreta ou conta não encontrada.');
+        }
+      };
+
+      useEffect(() => {
+        const activeUser = localStorage.getItem('ntc_active_session');
+        if (activeUser) {
+          const data = JSON.parse(localStorage.getItem(`ntc_user_${activeUser}`));
+          if (data) {
+            setUser(data.username);
+            setWalletAddress(data.address);
+            setBalance(data.balance || 0);
+            setHistory(data.history || []);
+            setActiveTab('dashboard');
+          }
+        }
+      }, []);
+
+      const saveUserData = (newBal, newHist) => {
+        if (!user) return;
+        const data = JSON.parse(localStorage.getItem(`ntc_user_${user}`)) || {};
+        data.balance = newBal;
+        data.history = newHist;
+        localStorage.setItem(`ntc_user_${user}`, JSON.stringify(data));
+      };
+
+      // Exportar arquivo seguro
+      const handleGenerateVaultFile = (e) => {
+        e.preventDefault();
+        const amt = parseFloat(exportAmount);
+        if (isNaN(amt) || amt <= 0) {
+          showToastMessage("Insira um valor válido para exportar.", "error");
+          return;
+        }
+        if (balance < amt) {
+          showToastMessage("Saldo NTC insuficiente para gerar este arquivo.", "error");
+          return;
+        }
+
+        const nextBalance = Number((balance - amt).toFixed(4));
+        const txId = 'VAULT-OUT-' + Math.random().toString(36).substr(2, 6).toUpperCase();
+        const newTx = {
+          id: txId,
+          type: `Exportação Arquivo Seguro (Valor: ${amt} NTC)`,
+          amount: -amt,
+          date: new Date().toLocaleString()
+        };
+        const nextHistory = [newTx, ...history];
+
+        setBalance(nextBalance);
+        setHistory(nextHistory);
+        saveUserData(nextBalance, nextHistory);
+
+        const secretCode = 'NTC-SEC-' + Math.random().toString(36).substr(2, 9).toUpperCase() + '-' + Date.now().toString(36).toUpperCase();
+        
+        const filePayload = {
+          version: "2.0-SECURE",
+          vaultId: Math.random().toString(36).substr(2, 12),
+          sender: user,
+          senderAddress: walletAddress,
+          amount: amt,
+          secretCode: secretCode,
+          timestamp: Date.now(),
+          checksum: Math.random().toString(36).substring(2)
+        };
+
+        const encodedData = btoa(JSON.stringify(filePayload));
+        setGeneratedVaultCode(secretCode);
+        setGeneratedVaultFileContent(encodedData);
+        setGeneratedFileName(`NTC_Vault_${amt}_NTC_${Date.now()}.ntcsecure`);
+        setHasCopiedVaultCode(false);
+        setExportAmount('');
+
+        showToastMessage("Arquivo gerado com sucesso! Anote o código de resgate.");
+      };
+
+      const downloadVaultFile = () => {
+        if (!hasCopiedVaultCode) {
+          showToastMessage("Você precisa copiar e anotar o código temporário antes de baixar!", "error");
+          return;
+        }
+
+        const blob = new Blob([generatedVaultFileContent], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = generatedFileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        showToastMessage("Arquivo seguro baixado com sucesso!");
+      };
+
+      // Importar arquivo seguro com validação de endereço
+      const handleFileUpload = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const usedFiles = JSON.parse(localStorage.getItem('ntc_used_vault_files')) || {};
+        if (usedFiles[file.name]) {
+          showToastMessage("ERRO: Este arquivo já foi upado neste computador!", "error");
+          return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          try {
+            const decoded = JSON.parse(atob(event.target.result));
+            if (!decoded.secretCode || !decoded.amount || !decoded.senderAddress) {
+              throw new Error("Formato inválido.");
+            }
+
+            if (decoded.senderAddress.trim().toUpperCase() === walletAddress.trim().toUpperCase()) {
+              showToastMessage("BLOQUEIO DE SEGURANÇA: Não é permitido importar um arquivo exportado pela mesma carteira!", "error");
+              setImportedFilePayload(null);
+              e.target.value = "";
+              return;
+            }
+
+            setImportedFilePayload({ ...decoded, fileName: file.name });
+            showToastMessage("Arquivo validado de outra carteira com sucesso!");
+          } catch (err) {
+            showToastMessage("Arquivo corrompido ou inválido.", "error");
+          }
+        };
+        reader.readAsText(file);
+      };
+
+      const confirmImportVault = () => {
+        if (!importedFilePayload) return;
+
+        if (importedFilePayload.senderAddress.trim().toUpperCase() === walletAddress.trim().toUpperCase()) {
+          showToastMessage("ERRO: Este arquivo pertence a esta própria carteira!", "error");
+          return;
+        }
+
+        if (importCodeInput.trim() !== importedFilePayload.secretCode.trim()) {
+          showToastMessage("O código temporário inserido não confere com o arquivo!", "error");
+          return;
+        }
+
+        const usedFiles = JSON.parse(localStorage.getItem('ntc_used_vault_files')) || {};
+        if (usedFiles[importedFilePayload.fileName]) {
+          showToastMessage("Este arquivo já foi resgatado anteriormente!", "error");
+          return;
+        }
+
+        usedFiles[importedFilePayload.fileName] = true;
+        localStorage.setItem('ntc_used_vault_files', JSON.stringify(usedFiles));
+
+        const amt = importedFilePayload.amount;
+        const nextBalance = Number((balance + amt).toFixed(4));
+        const newTx = {
+          id: 'VAULT-IN-' + Math.random().toString(36).substr(2, 6).toUpperCase(),
+          type: `Resgate de Arquivo Seguro (${amt} NTC)`,
+          amount: amt,
+          date: new Date().toLocaleString()
+        };
+        const nextHistory = [newTx, ...history];
+
+        setBalance(nextBalance);
+        setHistory(nextHistory);
+        saveUserData(nextBalance, nextHistory);
+
+        setImportedFilePayload(null);
+        setImportCodeInput('');
+        showToastMessage(`Sucesso! +${amt} NTC creditados na sua carteira.`);
+      };
+
+      // Mineração
+      const stopMining = () => {
+        if (checkAudioIntervalRef.current) clearInterval(checkAudioIntervalRef.current);
+        if (mediaStreamRef.current) mediaStreamRef.current.getTracks().forEach(track => track.stop());
+        if (audioContextRef.current) audioContextRef.current.close();
+        setIsMiningActive(false);
+        setCurrentAudioLevel(0);
+        showToastMessage("Mineração de NTC pausada.");
+      };
+
+      const startMiningMode = async (mode = 'tab') => {
+        stopMining();
+
+        try {
+          let stream;
+          if (mode === 'tab') {
+            stream = await navigator.mediaDevices.getDisplayMedia({
+              video: true,
+              audio: { echoCancellation: false, noiseSuppression: false }
             });
-        });
-    </script>
+          } else {
+            stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+          }
 
+          const audioTracks = stream.getAudioTracks();
+          if (audioTracks.length === 0) {
+            showToastMessage("Atenção: Marque a opção 'Compartilhar áudio da aba/sistema'!", "error");
+            stream.getTracks().forEach(t => t.stop());
+            return;
+          }
+
+          mediaStreamRef.current = stream;
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          audioContextRef.current = new AudioContext();
+          analyserRef.current = audioContextRef.current.createAnalyser();
+          
+          const audioStreamOnly = new MediaStream([audioTracks[0]]);
+          const source = audioContextRef.current.createMediaStreamSource(audioStreamOnly);
+          source.connect(analyserRef.current);
+          analyserRef.current.fftSize = 256;
+
+          setIsMiningActive(true);
+          showToastMessage(`Mineração ativada! Capturando som via ${mode === 'tab' ? 'Aba/Sistema' : 'Microfone'}.`);
+
+          checkAudioIntervalRef.current = setInterval(() => {
+            if (!analyserRef.current) return;
+
+            const dataArray = new Uint8Array(analyserRef.current.frequencyBinCount);
+            analyserRef.current.getByteFrequencyData(dataArray);
+            
+            const sum = dataArray.reduce((a, b) => a + b, 0);
+            const avg = sum / dataArray.length;
+            setCurrentAudioLevel(Math.round(avg));
+
+            if (avg > 0.5) {
+              const minedAmount = 0.05;
+              setBalance(prev => {
+                const nextBal = Number((prev + minedAmount).toFixed(4));
+                saveUserData(nextBal, history);
+                return nextBal;
+              });
+
+              setMiningLogs(prev => [
+                { time: new Date().toLocaleTimeString(), msg: `🎵 Mídia detectada (Nível de Áudio: ${Math.round(avg)}). +${minedAmount} NTC!` },
+                ...prev.slice(0, 4)
+              ]);
+            }
+          }, 3000);
+
+        } catch (err) {
+          console.error("Erro na captura de áudio:", err);
+          showToastMessage("Seleção cancelada ou permissão negada.", "error");
+        }
+      };
+
+      const handleLogout = () => {
+        stopMining();
+        localStorage.removeItem('ntc_active_session');
+        setUser(null);
+        setWalletAddress('');
+        setBalance(0);
+        setHistory([]);
+        setActiveTab('auth');
+        showToastMessage("Sessão finalizada!");
+      };
+
+      return (
+        <div className="flex-grow flex flex-col justify-between">
+          
+          {/* Header */}
+          <header className="border-b border-purple-950/40 bg-black/80 backdrop-blur-md px-6 py-4 sticky top-0 z-40 shadow-[0_0_15px_rgba(167,139,250,0.2)]">
+            <div className="max-w-6xl mx-auto flex justify-between items-center font-orbitron">
+              <div className="flex items-center space-x-3">
+                <div className="h-10 w-10 rounded-xl bg-gradient-to-tr from-purple-600 to-pink-500 flex items-center justify-center shadow-[0_0_10px_rgba(236,72,153,0.5)]">
+                  <span className="font-extrabold text-xl text-white">N</span>
+                </div>
+                <div>
+                  <h1 className="text-xl font-bold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-400 to-white">
+                    NTC VAULT PORTAL
+                  </h1>
+                  <p className="text-[10px] text-purple-300/70 tracking-widest uppercase">Segurança Máxima P2P</p>
+                </div>
+              </div>
+
+              {user && (
+                <div className="flex items-center space-x-4 text-xs font-semibold">
+                  <div className="text-right">
+                    <span className="text-gray-500 block uppercase">Carteira</span>
+                    <span className="text-pink-400">@{user}</span>
+                  </div>
+                  <button onClick={handleLogout} className="px-3 py-1.5 bg-red-950/40 text-red-400 hover:text-red-200 border border-red-900/40 rounded-lg transition">
+                    Sair
+                  </button>
+                </div>
+              )}
+            </div>
+          </header>
+
+          {/* Toast */}
+          {toast && (
+            <div className="fixed bottom-6 right-6 z-50 animate-bounce">
+              <div className={`p-4 rounded-xl border flex items-center space-x-3 text-sm shadow-2xl ${toast.type === 'error' ? 'bg-red-950/90 border-red-500/50 text-red-300' : 'bg-emerald-950/90 border-emerald-500/50 text-emerald-300'}`}>
+                <span>{toast.message}</span>
+              </div>
+            </div>
+          )}
+
+          <main className="flex-grow max-w-6xl w-full mx-auto p-4 md:p-6 flex flex-col justify-start">
+            
+            {/* AUTENTICAÇÃO */}
+            {activeTab === 'auth' && (
+              <div className="flex-grow flex items-center justify-center py-10">
+                <div className="w-full max-w-md bg-[#0c0c16] border border-purple-900/60 rounded-2xl p-8 shadow-xl">
+                  
+                  <div className="text-center mb-8">
+                    <h2 className="text-3xl font-black font-orbitron mt-3 tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400">
+                      SECURE VAULT
+                    </h2>
+                    <p className="text-xs text-gray-400 mt-2 italic">Acesse com sua Frase Semente de 12 palavras.</p>
+                  </div>
+
+                  {authError && (
+                    <div className="p-3 bg-red-950/40 border border-red-500/40 rounded-xl text-red-400 text-sm mb-4">
+                      {authError}
+                    </div>
+                  )}
+
+                  {authMode === 'login' && (
+                    <form onSubmit={handleLoginSeed} className="space-y-4">
+                      <div>
+                        <label className="block text-xs font-semibold uppercase tracking-widest text-purple-300 mb-1">Frase Semente</label>
+                        <textarea
+                          rows="3"
+                          value={seedPhraseInput}
+                          onChange={(e) => setSeedPhraseInput(e.target.value)}
+                          placeholder="EX: matrix net cyber token neon flow delta fusion protocol node quantum sync"
+                          className="w-full bg-black/40 border border-purple-900/50 rounded-xl py-3 px-4 text-white text-xs font-mono focus:outline-none focus:ring-1 focus:ring-pink-500"
+                        ></textarea>
+                      </div>
+                      <button type="submit" className="w-full py-3 bg-gradient-to-r from-purple-600 to-pink-500 hover:from-purple-500 hover:to-pink-400 text-white font-orbitron font-bold rounded-xl transition">
+                        ACESSAR CARTEIRA
+                      </button>
+                    </form>
+                  )}
+
+                  {authMode === 'register' && (
+                    <form onSubmit={handleRegisterSeed} className="space-y-4">
+                      <div>
+                        <label className="block text-xs font-semibold uppercase tracking-widest text-purple-300 mb-1">Nome do Dono</label>
+                        <input
+                          type="text"
+                          value={username}
+                          onChange={(e) => setUsername(e.target.value)}
+                          placeholder="EX: acelera_cyber"
+                          className="w-full bg-black/40 border border-purple-900/50 rounded-xl py-3 px-4 text-white focus:outline-none focus:ring-1 focus:ring-pink-500"
+                        />
+                      </div>
+                      <button type="submit" className="w-full py-3 bg-gradient-to-r from-purple-600 to-pink-500 hover:from-purple-500 hover:to-pink-400 text-white font-orbitron font-bold rounded-xl transition">
+                        GERAR SEMENTE DE SEGURANÇA
+                      </button>
+                    </form>
+                  )}
+
+                  {authMode === 'seed_display' && (
+                    <div className="space-y-6">
+                      <div className="p-4 bg-yellow-950/30 border border-yellow-500/30 rounded-xl text-yellow-300 text-xs">
+                        <strong>AVISO:</strong> Guarde esta frase semente em local seguro. Ela é a única chave para recuperar seu saldo.
+                      </div>
+                      <div className="bg-black/80 p-4 rounded-xl border border-purple-900/60 text-center">
+                        <p className="font-mono text-sm tracking-wide text-pink-400 select-all">{generatedSeed}</p>
+                      </div>
+                      <button onClick={confirmAndCreateAccount} className="w-full py-3 bg-green-600 hover:bg-green-500 text-white font-orbitron font-bold rounded-xl transition">
+                        CONCLUÍDO! ENTRAR NO PAINEL
+                      </button>
+                    </div>
+                  )}
+
+                  <div className="text-center mt-6 pt-6 border-t border-purple-950/60">
+                    {authMode === 'login' ? (
+                      <button onClick={() => setAuthMode('register')} className="text-xs text-pink-400 hover:text-pink-300 font-semibold">
+                        Criar nova carteira protegida
+                      </button>
+                    ) : (
+                      <button onClick={() => setAuthMode('login')} className="text-xs text-pink-400 hover:text-pink-300 font-semibold">
+                        Voltar para o Login
+                      </button>
+                    )}
+                  </div>
+
+                </div>
+              </div>
+            )}
+
+            {/* PAINEL LOGADO */}
+            {user && (
+              <div className="space-y-6">
+                
+                <div className="flex border-b border-purple-950/60 overflow-x-auto text-sm">
+                  <button onClick={() => setActiveTab('dashboard')} className={`pb-3 px-6 uppercase font-bold tracking-wider border-b-2 transition-all ${activeTab === 'dashboard' ? 'border-pink-500 text-pink-400' : 'border-transparent text-gray-400 hover:text-gray-200'}`}>
+                    <span>Balanço & Cofre de Arquivos</span>
+                  </button>
+                  <button onClick={() => setActiveTab('miner')} className={`pb-3 px-6 uppercase font-bold tracking-wider border-b-2 transition-all ${activeTab === 'miner' ? 'border-pink-500 text-pink-400' : 'border-transparent text-gray-400 hover:text-gray-200'}`}>
+                    <span>Mineração de Mídia (YouTube/Spotify)</span>
+                  </button>
+                </div>
+
+                {/* ABA 1: BALANÇO E COFRE DE ARQUIVOS */}
+                {activeTab === 'dashboard' && (
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fadeIn">
+                    <div className="lg:col-span-2 space-y-6">
+                      
+                      <div className="bg-gradient-to-r from-purple-950/80 to-indigo-950/80 border border-purple-500/50 rounded-2xl p-6 relative overflow-hidden shadow-[0_0_20px_rgba(167,139,250,0.3)]">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <p className="text-xs uppercase tracking-widest text-purple-200 font-semibold">Endereço da Carteira</p>
+                            <span className="font-mono text-xs text-gray-300 bg-black/40 px-3 py-1 rounded-lg border border-purple-950 block mt-1 select-all">
+                              {showWalletAddress ? walletAddress : '•'.repeat(20)}
+                            </span>
+                          </div>
+                          <button onClick={() => setShowWalletAddress(!showWalletAddress)} className="text-xs text-purple-300 hover:text-white">
+                            {showWalletAddress ? '🔒 Ocultar' : '🔓 Ver'}
+                          </button>
+                        </div>
+                        <div className="mt-6">
+                          <p className="text-xs uppercase tracking-widest text-purple-200 font-semibold">Balanço Atual</p>
+                          <div className="flex items-baseline space-x-2">
+                            <span className="text-4xl md:text-5xl font-extrabold font-orbitron text-white">{balance.toFixed(4)}</span>
+                            <span className="text-pink-400 font-orbitron font-bold">NTC</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* EXPORTAR ARQUIVO */}
+                      <div className="bg-[#0c0c16] border border-purple-900/40 rounded-2xl p-6 space-y-4">
+                        <h3 className="text-md font-orbitron font-bold text-purple-300">📦 Exportar Saldo para Arquivo Seguro (.ntcsecure)</h3>
+                        <p className="text-xs text-gray-400">Gere um arquivo encriptado contendo o valor e um código temporário de resgate único. O arquivo só pode ser resgatado em uma carteira **diferente**.</p>
+                        
+                        <form onSubmit={handleGenerateVaultFile} className="space-y-3">
+                          <div>
+                            <label className="block text-[10px] text-gray-400 uppercase mb-1">Quantidade de NTC a Exportar</label>
+                            <input 
+                              type="number" 
+                              step="any"
+                              value={exportAmount}
+                              onChange={(e) => setExportAmount(e.target.value)}
+                              placeholder="0.00" 
+                              className="w-full bg-black/40 border border-purple-900/40 rounded-xl px-4 py-2.5 text-xs text-white font-orbitron focus:outline-none" 
+                            />
+                          </div>
+                          <button type="submit" className="w-full py-2.5 bg-purple-600 hover:bg-purple-500 text-white font-orbitron font-bold text-xs rounded-xl transition">
+                            GERAR ARQUIVO E CÓDIGO TEMPORÁRIO
+                          </button>
+                        </form>
+
+                        {generatedVaultCode && (
+                          <div className="mt-4 p-4 bg-black/60 border border-pink-500/50 rounded-xl space-y-3">
+                            <div className="flex justify-between items-center">
+                              <span className="text-xs font-bold text-pink-400 uppercase">Tabela de Resgate Seguro</span>
+                              <span className="text-[10px] text-yellow-400">Copie o código antes de baixar!</span>
+                            </div>
+                            
+                            <div className="bg-black/80 p-3 rounded-lg border border-purple-950 flex justify-between items-center">
+                              <div>
+                                <span className="text-[10px] text-gray-500 block uppercase">Código Temporário Secreto</span>
+                                <span className="font-mono text-xs text-emerald-400 select-all">{generatedVaultCode}</span>
+                              </div>
+                              <button 
+                                onClick={() => {
+                                  navigator.clipboard.writeText(generatedVaultCode);
+                                  setHasCopiedVaultCode(true);
+                                  showToastMessage("Código temporário copiado! Agora você pode baixar o arquivo.");
+                                }}
+                                className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg"
+                              >
+                                {hasCopiedVaultCode ? '✔ Copiado' : 'Copiar Código'}
+                              </button>
+                            </div>
+
+                            <button 
+                              onClick={downloadVaultFile}
+                              className={`w-full py-2.5 font-orbitron font-bold text-xs rounded-xl transition ${hasCopiedVaultCode ? 'bg-gradient-to-r from-purple-600 to-pink-500 hover:from-purple-500 text-white' : 'bg-gray-800 text-gray-500 cursor-not-allowed'}`}
+                            >
+                              BAIXAR ARQUIVO ENCRIPTADO (.ntcsecure)
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* IMPORTAR ARQUIVO */}
+                      <div className="bg-[#0c0c16] border border-purple-900/40 rounded-2xl p-6 space-y-4">
+                        <h3 className="text-md font-orbitron font-bold text-pink-400">📥 Importar Arquivo e Resgatar em Outra Carteira</h3>
+                        <p className="text-xs text-gray-400">Carregue um arquivo recebido de outra carteira. O sistema bloqueia a importação se o arquivo pertencer à mesma carteira ativa.</p>
+                        
+                        <div className="space-y-3">
+                          <div>
+                            <label className="block text-[10px] text-gray-400 uppercase mb-1">Selecionar Arquivo (.ntcsecure)</label>
+                            <input 
+                              type="file" 
+                              accept=".ntcsecure,.txt"
+                              onChange={handleFileUpload}
+                              className="w-full bg-black/40 border border-purple-900/40 rounded-xl px-4 py-2 text-xs text-gray-300 file:mr-4 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-purple-900 file:text-white"
+                            />
+                          </div>
+
+                          {importedFilePayload && (
+                            <div className="p-3 bg-purple-950/30 border border-purple-500/30 rounded-xl space-y-2">
+                              <p className="text-xs text-gray-300">Valor contido no arquivo: <strong className="text-emerald-400">{importedFilePayload.amount} NTC</strong></p>
+                              <p className="text-[10px] text-gray-400 font-mono break-all">Origem: {importedFilePayload.senderAddress}</p>
+                              
+                              <div>
+                                <label className="block text-[10px] text-gray-400 uppercase mb-1">Insira o Código Temporário Anotado</label>
+                                <input 
+                                  type="text"
+                                  value={importCodeInput}
+                                  onChange={(e) => setImportCodeInput(e.target.value)}
+                                  placeholder="Cole o código temporário aqui..."
+                                  className="w-full bg-black/40 border border-purple-900/40 rounded-xl px-3 py-2 text-xs font-mono text-white focus:outline-none"
+                                />
+                              </div>
+
+                              <button 
+                                onClick={confirmImportVault}
+                                className="w-full py-2 bg-green-600 hover:bg-green-500 text-white font-orbitron font-bold text-xs rounded-xl transition mt-2"
+                              >
+                                VALIDAR E RESGATAR VALOR NA CARTEIRA
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                    </div>
+
+                    <div className="bg-[#0c0c16] border border-purple-900/40 rounded-2xl p-6 h-[400px] flex flex-col justify-between">
+                      <div>
+                        <h3 className="text-md font-orbitron font-bold text-purple-300 mb-4">Histórico do Cofre</h3>
+                        <div className="space-y-2 overflow-y-auto max-h-[300px] pr-1">
+                          {history.map((tx) => (
+                            <div key={tx.id} className="bg-black/30 border border-purple-950 p-2.5 rounded-xl flex justify-between items-center text-xs">
+                              <div>
+                                <p className="font-semibold text-gray-200">{tx.type}</p>
+                                <p className="text-[9px] text-gray-500">{tx.date}</p>
+                              </div>
+                              <span className={`font-mono font-bold ${tx.amount > 0 ? 'text-green-400' : 'text-gray-400'}`}>
+                                {tx.amount > 0 ? `+${tx.amount.toFixed(2)}` : tx.amount.toFixed(2)}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* ABA 2: MINERAÇÃO DE MÍDIA */}
+                {activeTab === 'miner' && (
+                  <div className="bg-[#0c0c16] border border-purple-900/40 rounded-2xl p-6 space-y-6 animate-fadeIn">
+                    <div className="text-center max-w-lg mx-auto space-y-3">
+                      <span className="text-[10px] uppercase font-bold bg-pink-500/20 text-pink-400 px-3 py-1 rounded-full border border-pink-500/20 font-orbitron">Mineração de Áudio Direto</span>
+                      <h3 className="text-2xl font-orbitron font-black text-white">Mineração por Reconhecimento de Mídia</h3>
+                      <p className="text-xs text-gray-400 leading-relaxed">
+                        Escolha capturar o som da **Aba do YouTube / Sistema** para minerar diretamente a música que está tocando no seu navegador!
+                      </p>
+
+                      <div className="pt-4 flex flex-col md:flex-row gap-3 justify-center">
+                        {!isMiningActive ? (
+                          <>
+                            <button 
+                              onClick={() => startMiningMode('tab')} 
+                              className="px-6 py-3 rounded-xl font-orbitron font-bold text-xs bg-gradient-to-r from-purple-600 to-pink-500 hover:from-purple-500 text-white shadow-lg flex items-center justify-center space-x-2"
+                            >
+                              <span>🎵 CAPTURAR SOM DA ABA / YOUTUBE</span>
+                            </button>
+                            <button 
+                              onClick={() => startMiningMode('mic')} 
+                              className="px-6 py-3 rounded-xl font-orbitron font-bold text-xs bg-gray-800 hover:bg-gray-700 text-gray-200 border border-purple-900/40"
+                            >
+                              <span>🎙️ USAR MICROFONE DO PC</span>
+                            </button>
+                          </>
+                        ) : (
+                          <button 
+                            onClick={stopMining} 
+                            className="px-8 py-3 rounded-xl font-orbitron font-bold text-xs bg-red-600 hover:bg-red-500 text-white animate-pulse"
+                          >
+                            PARAR MINERAÇÃO
+                          </button>
+                        )}
+                      </div>
+
+                      {isMiningActive && (
+                        <div className="mt-2 text-xs text-purple-300 font-mono">
+                          Nível do Sinal Capturado: <span className="text-emerald-400 font-bold">{currentAudioLevel}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="bg-black/60 border border-purple-950 rounded-xl p-4 max-w-xl mx-auto space-y-2">
+                      <p className="text-xs font-bold text-purple-300 uppercase font-orbitron">Logs de Captura em Tempo Real:</p>
+                      <div className="space-y-1.5 font-mono text-[11px] max-h-40 overflow-y-auto">
+                        {miningLogs.length === 0 ? (
+                          <p className="text-gray-500 italic">Clique em "Capturar Som da Aba / YouTube" e certifique-se de marcar a opção de áudio ao compartilhar.</p>
+                        ) : (
+                          miningLogs.map((log, idx) => (
+                            <div key={idx} className="flex justify-between text-emerald-400 border-b border-purple-950/40 pb-1">
+                              <span>{log.msg}</span>
+                              <span className="text-gray-500">{log.time}</span>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+              </div>
+            )}
+          </main>
+
+          <footer className="border-t border-purple-950 bg-black/40 px-6 py-4 text-center mt-8 text-[11px] text-gray-500 font-sans">
+            <p>Notoriety Coin Secure Vault &copy; 2026. Segurança total com arquivos e chaves exclusivas.</p>
+          </footer>
+        </div>
+      );
+    }
+
+    ReactDOM.render(<App />, document.getElementById('root'));
+  </script>
 </body>
 </html>
