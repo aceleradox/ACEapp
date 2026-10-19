@@ -84,6 +84,7 @@
       const [walletAddress, setWalletAddress] = useState('');
       const [showWalletAddress, setShowWalletAddress] = useState(false);
       const [balance, setBalance] = useState(0.00);
+      const [rouletteChips, setRouletteChips] = useState(0);
       const [history, setHistory] = useState([]);
       const [activeTab, setActiveTab] = useState('auth'); 
 
@@ -100,8 +101,12 @@
       // Cooldown de Bônus Diário (24h)
       const [bonusCooldownTime, setBonusCooldownTime] = useState(0);
 
+      // Cooldown de Fichas (3h)
+      const [chipsCooldownTime, setChipsCooldownTime] = useState(0);
+
       // Exportação
       const [exportAmount, setExportAmount] = useState('');
+      const [targetAddressInput, setTargetAddressInput] = useState('');
       const [generatedVaultCode, setGeneratedVaultCode] = useState('');
       const [generatedVaultFileContent, setGeneratedVaultFileContent] = useState(null);
       const [generatedFileName, setGeneratedFileName] = useState('');
@@ -119,6 +124,11 @@
       const analyserRef = useRef(null);
       const mediaStreamRef = useRef(null);
       const checkAudioIntervalRef = useRef(null);
+
+      // Roleta NTC
+      const [betNtcAmount, setBetNtcAmount] = useState('1.00');
+      const [isSpinning, setIsSpinning] = useState(false);
+      const [rouletteResult, setRouletteResult] = useState(null);
 
       const showToastMessage = (msg, type = "success") => {
         setToast({ message: msg, type });
@@ -144,9 +154,10 @@
           seed: generatedSeed,
           address: address,
           balance: 0.00,
+          chips: 5, 
           history: [{
             id: 'TX-WELCOME',
-            type: 'Carteira Criada (Saldo Zerado)',
+            type: 'Carteira Criada (+5 Fichas Bônus)',
             amount: 0.00,
             date: new Date().toLocaleString()
           }]
@@ -158,9 +169,11 @@
         setUser(username);
         setWalletAddress(address);
         setBalance(0.00);
+        setRouletteChips(5);
         setHistory(defaultProfile.history);
         setActiveTab('dashboard');
         checkBonusTimer(username);
+        checkChipsTimer(username);
         showToastMessage("Carteira Criada com Sucesso!");
       };
 
@@ -189,17 +202,18 @@
           setUser(foundUser.username);
           setWalletAddress(foundUser.address);
           setBalance(foundUser.balance || 0);
+          setRouletteChips(foundUser.chips || 0);
           setHistory(foundUser.history || []);
           localStorage.setItem('ntc_active_session', foundUser.username);
           setActiveTab('dashboard');
           checkBonusTimer(foundUser.username);
+          checkChipsTimer(foundUser.username);
           showToastMessage(`Sessão Restaurada: @${foundUser.username}`);
         } else {
           setAuthError('Frase semente incorreta ou conta não encontrada.');
         }
       };
 
-      // Verificar Timer do Bônus Diário (24h)
       const checkBonusTimer = (currentUsername) => {
         const lastClaim = localStorage.getItem(`ntc_last_bonus_${currentUsername}`);
         if (lastClaim) {
@@ -215,23 +229,38 @@
         }
       };
 
-      // Decrementar temporizador do bônus
+      const checkChipsTimer = (currentUsername) => {
+        const lastClaim = localStorage.getItem(`ntc_last_chips_${currentUsername}`);
+        if (lastClaim) {
+          const elapsed = Date.now() - parseInt(lastClaim);
+          const threeHours = 3 * 60 * 60 * 1000;
+          if (elapsed < threeHours) {
+            setChipsCooldownTime(threeHours - elapsed);
+          } else {
+            setChipsCooldownTime(0);
+          }
+        } else {
+          setChipsCooldownTime(0);
+        }
+      };
+
       useEffect(() => {
         const timer = setInterval(() => {
           if (bonusCooldownTime > 0) {
             setBonusCooldownTime(prev => (prev > 1000 ? prev - 1000 : 0));
           }
+          if (chipsCooldownTime > 0) {
+            setChipsCooldownTime(prev => (prev > 1000 ? prev - 1000 : 0));
+          }
         }, 1000);
         return () => clearInterval(timer);
-      }, [bonusCooldownTime]);
+      }, [bonusCooldownTime, chipsCooldownTime]);
 
       const handleClaimDailyBonus = () => {
         if (bonusCooldownTime > 0) return;
 
-        // Abre o link em nova guia
         window.open('https://asiafilm.org/4/5e37de5833637b26a4669e3ab8a7b0c4', '_blank');
 
-        // Credita 1 NTC
         const amt = 1.00;
         const nextBalance = Number((balance + amt).toFixed(4));
         const newTx = {
@@ -244,13 +273,29 @@
 
         setBalance(nextBalance);
         setHistory(nextHistory);
-        saveUserData(nextBalance, nextHistory);
+        saveUserData(nextBalance, rouletteChips, nextHistory);
 
-        // Salva o momento do resgate (24h de cooldown)
         localStorage.setItem(`ntc_last_bonus_${user}`, Date.now().toString());
         setBonusCooldownTime(24 * 60 * 60 * 1000);
 
         showToastMessage("Parabéns! +1.00 NTC adicionado à sua carteira.");
+      };
+
+      // Resgatar Fichas via Anúncio (3h)
+      const handleClaimRouletteChips = () => {
+        if (chipsCooldownTime > 0) return;
+
+        window.open('https://asiafilm.org/4/5e37de5833637b26a4669e3ab8a7b0c4', '_blank');
+
+        const addedChips = 5;
+        const nextChips = rouletteChips + addedChips;
+        setRouletteChips(nextChips);
+        saveUserData(balance, nextChips, history);
+
+        localStorage.setItem(`ntc_last_chips_${user}`, Date.now().toString());
+        setChipsCooldownTime(3 * 60 * 60 * 1000);
+
+        showToastMessage("Anúncio visualizado! +5 Fichas liberadas para a Roleta.");
       };
 
       const formatTimeLeft = (ms) => {
@@ -269,17 +314,20 @@
             setUser(data.username);
             setWalletAddress(data.address);
             setBalance(data.balance || 0);
+            setRouletteChips(data.chips || 0);
             setHistory(data.history || []);
             setActiveTab('dashboard');
             checkBonusTimer(data.username);
+            checkChipsTimer(data.username);
           }
         }
       }, []);
 
-      const saveUserData = (newBal, newHist) => {
+      const saveUserData = (newBal, newChips, newHist) => {
         if (!user) return;
         const data = JSON.parse(localStorage.getItem(`ntc_user_${user}`)) || {};
         data.balance = newBal;
+        data.chips = newChips;
         data.history = newHist;
         localStorage.setItem(`ntc_user_${user}`, JSON.stringify(data));
       };
@@ -288,10 +336,23 @@
       const handleGenerateVaultFile = (e) => {
         e.preventDefault();
         const amt = parseFloat(exportAmount);
+        const targetAddress = targetAddressInput.trim().toUpperCase();
+
         if (isNaN(amt) || amt <= 0) {
           showToastMessage("Insira um valor válido para exportar.", "error");
           return;
         }
+
+        if (!targetAddress || !targetAddress.startsWith('NTC0X')) {
+          showToastMessage("Digite um endereço de carteira NTC de destino válido!", "error");
+          return;
+        }
+
+        if (targetAddress === walletAddress.trim().toUpperCase()) {
+          showToastMessage("BLOQUEIO: O endereço de destino não pode ser a sua própria carteira!", "error");
+          return;
+        }
+
         if (balance < amt) {
           showToastMessage("Saldo NTC insuficiente para gerar este arquivo.", "error");
           return;
@@ -301,7 +362,7 @@
         const txId = 'VAULT-OUT-' + Math.random().toString(36).substr(2, 6).toUpperCase();
         const newTx = {
           id: txId,
-          type: `Exportação Arquivo Seguro (Valor: ${amt} NTC)`,
+          type: `Exportação para ${targetAddress.substring(0, 10)}... (${amt} NTC)`,
           amount: -amt,
           date: new Date().toLocaleString()
         };
@@ -309,15 +370,16 @@
 
         setBalance(nextBalance);
         setHistory(nextHistory);
-        saveUserData(nextBalance, nextHistory);
+        saveUserData(nextBalance, rouletteChips, nextHistory);
 
         const secretCode = 'NTC-SEC-' + Math.random().toString(36).substr(2, 9).toUpperCase() + '-' + Date.now().toString(36).toUpperCase();
         
         const filePayload = {
-          version: "2.0-SECURE",
+          version: "3.0-STRICT",
           vaultId: Math.random().toString(36).substr(2, 12),
           sender: user,
           senderAddress: walletAddress,
+          recipientAddress: targetAddress,
           amount: amt,
           secretCode: secretCode,
           timestamp: Date.now(),
@@ -330,6 +392,7 @@
         setGeneratedFileName(`NTC_Vault_${amt}_NTC_${Date.now()}.ntcsecure`);
         setHasCopiedVaultCode(false);
         setExportAmount('');
+        setTargetAddressInput('');
 
         showToastMessage("Arquivo gerado com sucesso! Anote o código de resgate.");
       };
@@ -353,7 +416,7 @@
         showToastMessage("Arquivo seguro baixado com sucesso!");
       };
 
-      // Importar arquivo seguro com validação de endereço
+      // Importar arquivo seguro
       const handleFileUpload = (e) => {
         const file = e.target.files[0];
         if (!file) return;
@@ -373,16 +436,23 @@
             }
 
             if (decoded.senderAddress.trim().toUpperCase() === walletAddress.trim().toUpperCase()) {
-              showToastMessage("BLOQUEIO DE SEGURANÇA: Não é permitido importar um arquivo exportado pela mesma carteira!", "error");
+              showToastMessage("BLOQUEIO DE SEGURANÇA: Não é permitido importar arquivos exportados por si mesmo!", "error");
+              setImportedFilePayload(null);
+              e.target.value = "";
+              return;
+            }
+
+            if (decoded.recipientAddress && decoded.recipientAddress.trim().toUpperCase() !== walletAddress.trim().toUpperCase()) {
+              showToastMessage("BLOQUEIO DE SEGURANÇA: Este arquivo foi gerado para OUTRO endereço de carteira!", "error");
               setImportedFilePayload(null);
               e.target.value = "";
               return;
             }
 
             setImportedFilePayload({ ...decoded, fileName: file.name });
-            showToastMessage("Arquivo validado de outra carteira com sucesso!");
+            showToastMessage("Arquivo validado exclusivamente para a sua carteira!");
           } catch (err) {
-            showToastMessage("Arquivo corrompido ou inválido.", "error");
+            showToastMessage("Arquivo corrompido ou formato inválido.", "error");
           }
         };
         reader.readAsText(file);
@@ -393,6 +463,11 @@
 
         if (importedFilePayload.senderAddress.trim().toUpperCase() === walletAddress.trim().toUpperCase()) {
           showToastMessage("ERRO: Este arquivo pertence a esta própria carteira!", "error");
+          return;
+        }
+
+        if (importedFilePayload.recipientAddress && importedFilePayload.recipientAddress.trim().toUpperCase() !== walletAddress.trim().toUpperCase()) {
+          showToastMessage("ERRO: Sua carteira não é a destinatária deste arquivo!", "error");
           return;
         }
 
@@ -422,11 +497,76 @@
 
         setBalance(nextBalance);
         setHistory(nextHistory);
-        saveUserData(nextBalance, nextHistory);
+        saveUserData(nextBalance, rouletteChips, nextHistory);
 
         setImportedFilePayload(null);
         setImportCodeInput('');
         showToastMessage(`Sucesso! +${amt} NTC creditados na sua carteira.`);
+      };
+
+      // Roleta NTC com Aposta em NTC + Consumo de 1 Ficha
+      const spinRoulette = () => {
+        const betAmt = parseFloat(betNtcAmount);
+        if (isNaN(betAmt) || betAmt <= 0) {
+          showToastMessage("Insira um valor válido de NTC para apostar.", "error");
+          return;
+        }
+        if (balance < betAmt) {
+          showToastMessage("Saldo NTC insuficiente para realizar esta aposta.", "error");
+          return;
+        }
+        if (rouletteChips <= 0) {
+          showToastMessage("Você precisa de pelo menos 1 Ficha! Resgate assistindo ao anúncio.", "error");
+          return;
+        }
+
+        setIsSpinning(true);
+        setRouletteResult(null);
+
+        // Consome 1 ficha e desconta o valor apostado em NTC
+        const nextChips = rouletteChips - 1;
+        const balanceAfterBet = Number((balance - betAmt).toFixed(4));
+        setRouletteChips(nextChips);
+        setBalance(balanceAfterBet);
+
+        setTimeout(() => {
+          const rand = Math.random(); // 0.00 até 0.99
+          let multiplier = 0;
+
+          if (rand < 0.70) {
+            multiplier = 0; // 70% perdas
+          } else if (rand < 0.90) {
+            multiplier = 2; // 20% ganha 2x
+          } else {
+            multiplier = 20; // 10% ganha 20x
+          }
+
+          const prize = Number((betAmt * multiplier).toFixed(4));
+          const finalBalance = Number((balanceAfterBet + prize).toFixed(4));
+          const netChange = prize - betAmt;
+
+          setBalance(finalBalance);
+
+          const newTx = {
+            id: 'ROULETTE-' + Math.random().toString(36).substr(2, 6).toUpperCase(),
+            type: `Roleta NTC (${multiplier}x apostando ${betAmt} NTC)`,
+            amount: netChange,
+            date: new Date().toLocaleString()
+          };
+          const nextHistory = [newTx, ...history];
+          setHistory(nextHistory);
+
+          saveUserData(finalBalance, nextChips, nextHistory);
+
+          setRouletteResult({ multiplier, prize, betAmt });
+          setIsSpinning(false);
+
+          if (multiplier > 0) {
+            showToastMessage(`🎰 INCRÍVEL! Caiu ${multiplier}x! Você ganhou ${prize} NTC!`);
+          } else {
+            showToastMessage("Caiu 0x. Mais sorte na próxima!", "error");
+          }
+        }, 1500);
       };
 
       // Mineração
@@ -487,7 +627,7 @@
               const minedAmount = 0.05;
               setBalance(prev => {
                 const nextBal = Number((prev + minedAmount).toFixed(4));
-                saveUserData(nextBal, history);
+                saveUserData(nextBal, rouletteChips, history);
                 return nextBal;
               });
 
@@ -510,6 +650,7 @@
         setUser(null);
         setWalletAddress('');
         setBalance(0);
+        setRouletteChips(0);
         setHistory([]);
         setActiveTab('auth');
         showToastMessage("Sessão finalizada!");
@@ -651,7 +792,10 @@
                     <span>Balanço & Cofre de Arquivos</span>
                   </button>
                   <button onClick={() => setActiveTab('miner')} className={`pb-3 px-6 uppercase font-bold tracking-wider border-b-2 transition-all ${activeTab === 'miner' ? 'border-pink-500 text-pink-400' : 'border-transparent text-gray-400 hover:text-gray-200'}`}>
-                    <span>Mineração de Mídia (YouTube/Spotify)</span>
+                    <span>Mineração de Mídia</span>
+                  </button>
+                  <button onClick={() => setActiveTab('roulette')} className={`pb-3 px-6 uppercase font-bold tracking-wider border-b-2 transition-all ${activeTab === 'roulette' ? 'border-pink-500 text-pink-400' : 'border-transparent text-gray-400 hover:text-gray-200'}`}>
+                    <span>🎰 Roleta NTC</span>
                   </button>
                 </div>
 
@@ -699,12 +843,23 @@
                         </div>
                       </div>
 
-                      {/* EXPORTAR ARQUIVO */}
+                      {/* EXPORTAR ARQUIVO COM VERIFICAÇÃO DE DESTINO */}
                       <div className="bg-[#0c0c16] border border-purple-900/40 rounded-2xl p-6 space-y-4">
                         <h3 className="text-md font-orbitron font-bold text-purple-300">📦 Exportar Saldo para Arquivo Seguro (.ntcsecure)</h3>
-                        <p className="text-xs text-gray-400">Gere um arquivo encriptado contendo o valor e um código temporário de resgate único. O arquivo só pode ser resgatado em uma carteira **diferente**.</p>
+                        <p className="text-xs text-gray-400">Gere um arquivo encriptado para um destinatário específico. Somente a carteira digitada abaixo poderá resgatar este saldo.</p>
                         
                         <form onSubmit={handleGenerateVaultFile} className="space-y-3">
+                          <div>
+                            <label className="block text-[10px] text-gray-400 uppercase mb-1">Endereço da Carteira de Destino (Obrigatório)</label>
+                            <input 
+                              type="text" 
+                              value={targetAddressInput}
+                              onChange={(e) => setTargetAddressInput(e.target.value)}
+                              placeholder="EX: NTC0xD904DAB199033830171F8A2B5DB2A9DE89AA6F76" 
+                              className="w-full bg-black/40 border border-purple-900/40 rounded-xl px-4 py-2.5 text-xs text-emerald-400 font-mono focus:outline-none" 
+                            />
+                          </div>
+
                           <div>
                             <label className="block text-[10px] text-gray-400 uppercase mb-1">Quantidade de NTC a Exportar</label>
                             <input 
@@ -716,6 +871,7 @@
                               className="w-full bg-black/40 border border-purple-900/40 rounded-xl px-4 py-2.5 text-xs text-white font-orbitron focus:outline-none" 
                             />
                           </div>
+
                           <button type="submit" className="w-full py-2.5 bg-purple-600 hover:bg-purple-500 text-white font-orbitron font-bold text-xs rounded-xl transition">
                             GERAR ARQUIVO E CÓDIGO TEMPORÁRIO
                           </button>
@@ -758,7 +914,7 @@
                       {/* IMPORTAR ARQUIVO */}
                       <div className="bg-[#0c0c16] border border-purple-900/40 rounded-2xl p-6 space-y-4">
                         <h3 className="text-md font-orbitron font-bold text-pink-400">📥 Importar Arquivo e Resgatar em Outra Carteira</h3>
-                        <p className="text-xs text-gray-400">Carregue um arquivo recebido de outra carteira. O sistema bloqueia a importação se o arquivo pertencer à mesma carteira ativa.</p>
+                        <p className="text-xs text-gray-400">Carregue um arquivo recebido de outra carteira. O sistema bloqueia a importação se o seu endereço não for o destinatário exclusivo.</p>
                         
                         <div className="space-y-3">
                           <div>
@@ -828,35 +984,23 @@
                       <span className="text-[10px] uppercase font-bold bg-pink-500/20 text-pink-400 px-3 py-1 rounded-full border border-pink-500/20 font-orbitron">Mineração de Áudio Direto</span>
                       <h3 className="text-2xl font-orbitron font-black text-white">Mineração por Reconhecimento de Mídia</h3>
                       <p className="text-xs text-gray-400 leading-relaxed">
-                        O Itch.io restringe a captura direta de abas por segurança. Para capturar a aba do YouTube, abra o app em janela direta ou use o microfone local.
+                        Escolha capturar o som da aba do YouTube/Sistema para minerar diretamente a música que está tocando no seu navegador.
                       </p>
-
-                      <div className="p-3 bg-purple-950/40 border border-purple-500/30 rounded-xl text-left space-y-2">
-                        <p className="text-[11px] text-purple-200">🚀 <strong>Modo Captura de Aba do YouTube:</strong></p>
-                        <a 
-                          href={window.location.href} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="block w-full text-center py-2 bg-pink-600 hover:bg-pink-500 text-white font-orbitron font-bold text-xs rounded-lg transition"
-                        >
-                          🔗 ABRIR APP EM JANELA DIRETA (LIBERA CAPTURA DE ABA)
-                        </a>
-                      </div>
 
                       <div className="pt-2 flex flex-col md:flex-row gap-3 justify-center">
                         {!isMiningActive ? (
                           <>
                             <button 
                               onClick={() => startMiningMode('tab')} 
-                              className="px-6 py-3 rounded-xl font-orbitron font-bold text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 border border-purple-900/40 flex items-center justify-center space-x-2"
+                              className="px-6 py-3 rounded-xl font-orbitron font-bold text-xs bg-gradient-to-r from-purple-600 to-pink-500 hover:from-purple-500 text-white shadow-lg"
                             >
                               <span>🎵 CAPTURAR SOM DA ABA / YOUTUBE</span>
                             </button>
                             <button 
                               onClick={() => startMiningMode('mic')} 
-                              className="px-6 py-3 rounded-xl font-orbitron font-bold text-xs bg-gradient-to-r from-purple-600 to-pink-500 hover:from-purple-500 text-white shadow-lg"
+                              className="px-6 py-3 rounded-xl font-orbitron font-bold text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 border border-purple-900/40"
                             >
-                              <span>🎙️ USAR MICROFONE DO PC (RECOMENDADO NO ITCH.IO)</span>
+                              <span>🎙️ USAR MICROFONE DO PC</span>
                             </button>
                           </>
                         ) : (
@@ -880,7 +1024,7 @@
                       <p className="text-xs font-bold text-purple-300 uppercase font-orbitron">Logs de Captura em Tempo Real:</p>
                       <div className="space-y-1.5 font-mono text-[11px] max-h-40 overflow-y-auto">
                         {miningLogs.length === 0 ? (
-                          <p className="text-gray-500 italic">No Itch.io, clique em "Usar Microfone do PC" ou abra em janela direta para capturar abas.</p>
+                          <p className="text-gray-500 italic">Clique em "Capturar Som da Aba" e certifique-se de marcar a opção de áudio ao compartilhar.</p>
                         ) : (
                           miningLogs.map((log, idx) => (
                             <div key={idx} className="flex justify-between text-emerald-400 border-b border-purple-950/40 pb-1">
@@ -890,6 +1034,99 @@
                           ))
                         )}
                       </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* ABA 3: ROLETA NTC COM ANÚNCIO DE FICHAS E APOSTA EM NTC */}
+                {activeTab === 'roulette' && (
+                  <div className="bg-[#0c0c16] border border-purple-900/40 rounded-2xl p-6 max-w-xl mx-auto space-y-6 animate-fadeIn text-center">
+                    <div>
+                      <span className="text-[10px] uppercase font-bold bg-purple-500/20 text-purple-400 px-3 py-1 rounded-full border border-purple-500/20 font-orbitron">Multiplicadores NTC</span>
+                      <h3 className="text-3xl font-orbitron font-black text-white mt-2">🎰 Roleta Cyber NTC</h3>
+                      <p className="text-xs text-gray-400 mt-1">Assista ao anúncio para ganhar fichas e aposte seus NTC na roleta!</p>
+                    </div>
+
+                    {/* MOSTRADOR DE FICHAS E BOTÃO DE RESGATE (3H) */}
+                    <div className="bg-black/60 border border-purple-900/50 rounded-2xl p-4 flex flex-col sm:flex-row justify-between items-center gap-4">
+                      <div>
+                        <span className="text-[10px] text-gray-400 uppercase block font-orbitron">Suas Fichas para Girar</span>
+                        <span className="text-3xl font-orbitron font-black text-pink-400">{rouletteChips} Fichas</span>
+                      </div>
+
+                      <div>
+                        {chipsCooldownTime > 0 ? (
+                          <button disabled className="px-4 py-2.5 bg-gray-800 text-gray-400 font-orbitron text-xs font-bold rounded-xl cursor-not-allowed">
+                            +5 FICHAS EM: {formatTimeLeft(chipsCooldownTime)}
+                          </button>
+                        ) : (
+                          <button 
+                            onClick={handleClaimRouletteChips}
+                            className="px-5 py-2.5 bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-500 hover:to-purple-500 text-white font-orbitron font-bold text-xs rounded-xl shadow-lg transition animate-pulse"
+                          >
+                            🎟️ VER ANÚNCIO (+5 FICHAS)
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* PROBABILIDADES */}
+                    <div className="grid grid-cols-3 gap-2 text-center text-xs font-orbitron">
+                      <div className="bg-black/60 p-2 border border-red-900/40 rounded-xl">
+                        <span className="text-red-400 font-bold block text-lg">0x</span>
+                        <span className="text-gray-500 text-[10px]">70% Chance</span>
+                      </div>
+                      <div className="bg-black/60 p-2 border border-purple-900/40 rounded-xl">
+                        <span className="text-purple-400 font-bold block text-lg">2x</span>
+                        <span className="text-gray-500 text-[10px]">20% Chance</span>
+                      </div>
+                      <div className="bg-black/60 p-2 border border-pink-900/40 rounded-xl">
+                        <span className="text-pink-400 font-bold block text-lg">20x</span>
+                        <span className="text-gray-500 text-[10px]">10% Chance</span>
+                      </div>
+                    </div>
+
+                    {/* MOSTRADOR DA ROLETA */}
+                    <div className="bg-black/80 border-2 border-purple-500/40 rounded-2xl p-8 relative overflow-hidden h-36 flex items-center justify-center">
+                      {isSpinning ? (
+                        <div className="text-3xl font-orbitron font-black text-pink-400 animate-pulse tracking-widest">
+                          GIRANDO...
+                        </div>
+                      ) : rouletteResult !== null ? (
+                        <div className="space-y-1 animate-bounce">
+                          <span className={`text-5xl font-orbitron font-black ${rouletteResult.multiplier > 0 ? 'text-emerald-400' : 'text-red-500'}`}>
+                            {rouletteResult.multiplier}x
+                          </span>
+                          <p className="text-xs text-gray-400">
+                            {rouletteResult.multiplier > 0 ? `Ganhou ${rouletteResult.prize} NTC!` : 'Perdeu a aposta.'}
+                          </p>
+                        </div>
+                      ) : (
+                        <span className="text-4xl font-orbitron font-bold text-gray-600">0 | 2 | 20</span>
+                      )}
+                    </div>
+
+                    {/* CONTROLES DA APOSTA EM NTC */}
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-[10px] text-gray-400 uppercase mb-1 font-orbitron">Quantidade de NTC a Apostar por Giro</label>
+                        <input 
+                          type="number" 
+                          step="any"
+                          value={betNtcAmount}
+                          onChange={(e) => setBetNtcAmount(e.target.value)}
+                          disabled={isSpinning}
+                          className="w-full bg-black/40 border border-purple-900/40 rounded-xl px-4 py-3 text-center text-lg font-orbitron text-white focus:outline-none"
+                        />
+                      </div>
+
+                      <button 
+                        onClick={spinRoulette}
+                        disabled={isSpinning}
+                        className={`w-full py-4 font-orbitron font-black text-sm rounded-xl transition shadow-lg ${isSpinning ? 'bg-gray-800 text-gray-500 cursor-not-allowed' : 'bg-gradient-to-r from-purple-600 via-pink-500 to-purple-600 hover:opacity-90 text-white'}`}
+                      >
+                        GIRAR ROLETA (Gasta 1 Ficha)
+                      </button>
                     </div>
                   </div>
                 )}
