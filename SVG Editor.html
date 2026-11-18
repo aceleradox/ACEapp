@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Laureta SVG Tile Editor (Pro)</title>
+<style>
+    :root { --bg: #1e1e24; --bg2: #2b2b36; --border: #444; --text: #eee; }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: monospace; }
+    body { background: var(--bg); color: var(--text); display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+    
+    /* Barra de ferramentas */
+    #toolbar { background: var(--bg2); padding: 10px; display: flex; gap: 8px; align-items: center; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+    .group { display: flex; gap: 5px; align-items: center; background: #222; padding: 5px 10px; border-radius: 5px; border: 1px solid var(--border); }
+    button { background: #444; color: #fff; border: none; padding: 5px 8px; cursor: pointer; border-radius: 3px; font-weight: bold; font-size: 12px;}
+    button:hover:not(:disabled) { background: #666; }
+    button.active { background: #4CAF50; color: #000; }
+    button:disabled { opacity: 0.3; cursor: not-allowed; }
+    select { background: #222; color: #fff; border: 1px solid var(--border); outline: none; padding: 3px; border-radius: 3px; font-family: monospace; cursor: pointer; }
+    
+    /* Cores */
+    #colors { display: flex; gap: 5px; }
+    .color-btn { width: 24px; height: 24px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; }
+    .color-btn.active { border-color: #fff; transform: scale(1.1); }
+    
+    /* Área do Canvas */
+    #workspace { flex: 1; display: flex; align-items: center; justify-content: center; overflow: auto; background: #111; position: relative; }
+    
+    /* Fundo Xadrez para Transparência */
+    #canvas-wrapper { 
+        position: relative; 
+        box-shadow: 0 0 20px rgba(0,0,0,0.8);
+        background-image: linear-gradient(45deg, #333 25%, transparent 25%), linear-gradient(-45deg, #333 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #333 75%), linear-gradient(-45deg, transparent 75%, #333 75%);
+        background-size: 20px 20px;
+        background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+        cursor: crosshair;
+        width: 512px;
+        height: 512px;
+    }
+    #canvas-wrapper.solid-bg { background: #fff; }
+    
+    canvas { display: block; image-rendering: pixelated; width: 100%; height: 100%; }
+    
+    /* Grid */
+    #grid-overlay { position: absolute; inset: 0; pointer-events: none; }
+    .grid-line { stroke: rgba(255,255,255,0.15); stroke-width: 1; }
+    .grid-line.thick { stroke: rgba(255,255,255,0.3); stroke-width: 2; }
+</style>
+</head>
+<body>
+
+<div id="toolbar">
+    <div class="group">
+        <button id="btn-pencil" class="active" title="Lápis">✏️ Lápis</button>
+        <button id="btn-eraser" title="Borracha">🩹 Borracha</button>
+        <button id="btn-fill" title="Balde">🪣 Balde</button>
+        <button id="btn-picker" title="Conta-gotas">💧 Conta-gotas</button>
+    </div>
+
+    <div class="group">
+        <button id="btn-undo" title="Desfazer (Ctrl+Z)" disabled>↩️ Desfazer</button>
+        <button id="btn-redo" title="Refazer (Ctrl+Y)" disabled>↪️ Refazer</button>
+    </div>
+
+    <div class="group">
+        <span style="font-size: 12px">Resolução:</span>
+        <select id="size-select">
+            <option value="16">16 x 16</option>
+            <option value="32" selected>32 x 32</option>
+            <option value="64">64 x 64</option>
+            <option value="128">128 x 128</option>
+            <option value="256">256 x 256</option>
+            <option value="512">512 x 512</option>
+        </select>
+    </div>
+
+    <div class="group">
+        <span style="font-size: 12px">Pincel:</span>
+        <select id="brush-select">
+            <option value="1" selected>1 x 1 (Pixel)</option>
+            <option value="2">2 x 2</option>
+            <option value="3">3 x 3</option>
+            <option value="4">4 x 4</option>
+            <option value="8">8 x 8</option>
+            <option value="16">16 x 16</option>
+            <option value="32">32 x 32</option>
+        </select>
+    </div>
+
+    <div class="group">
+        <span style="font-size: 12px">Cor:</span>
+        <div id="colors">
+            <div class="color-btn active" style="background:#4CAF50" data-color="#4CAF50"></div>
+            <div class="color-btn" style="background:#8d6e63" data-color="#8d6e63"></div>
+            <div class="color-btn" style="background:#cfd8dc" data-color="#cfd8dc"></div>
+            <div class="color-btn" style="background:#e53935" data-color="#e53935"></div>
+            <div class="color-btn" style="background:#1a1a2e" data-color="#1a1a2e"></div>
+            <input type="color" id="custom-color" value="#4CAF50" style="width: 24px; height: 24px; border: none; padding: 0; cursor: pointer; background: transparent;">
+        </div>
+    </div>
+
+    <div class="group">
+        <button id="btn-grid" class="active">📐 Grid</button>
+        <button id="btn-bg">🏁 Fundo Transparente</button>
+    </div>
+
+    <div class="group" style="margin-left: auto;">
+        <button id="btn-export" style="background: #f39c12; color: #000;">⬇️ Baixar SVG</button>
+        <button id="btn-clear" style="background: #ef4444;">🗑️ Limpar</button>
+    </div>
+</div>
+
+<div id="workspace">
+    <div id="canvas-wrapper">
+        <canvas id="pixel-canvas" width="32" height="32" style="display:none;"></canvas>
+        <canvas id="view-canvas" width="512" height="512"></canvas>
+        <svg id="grid-overlay" viewBox="0 0 512 512" preserveAspectRatio="none"></svg>
+    </div>
+</div>
+
+<script>
+    let TILE_SIZE = 32; 
+    const DISPLAY_SIZE = 512; 
+    
+    let currentColor = '#4CAF50';
+    let currentTool = 'pencil'; 
+    let brushSize = 1; 
+    let isDrawing = false;
+    let showGrid = true;
+    
+    const pixelCanvas = document.getElementById('pixel-canvas');
+    const ctxPixel = pixelCanvas.getContext('2d', { willReadFrequently: true });
+    const viewCanvas = document.getElementById('view-canvas');
+    const ctxView = viewCanvas.getContext('2d');
+    const gridOverlay = document.getElementById('grid-overlay');
+    const canvasWrapper = document.getElementById('canvas-wrapper');
+
+    let undoStack = [];
+    let redoStack = [];
+    const MAX_HISTORY = 20; 
+
+    function updateHistoryButtons() {
+        document.getElementById('btn-undo').disabled = undoStack.length === 0;
+        document.getElementById('btn-redo').disabled = redoStack.length === 0;
+    }
+
+    function saveState() {
+        if (undoStack.length >= MAX_HISTORY) undoStack.shift();
+        const currentData = ctxPixel.getImageData(0, 0, TILE_SIZE, TILE_SIZE);
+        undoStack.push(new ImageData(new Uint8ClampedArray(currentData.data), currentData.width, currentData.height));
+        redoStack = []; 
+        updateHistoryButtons();
+    }
+
+    function undo() {
+        if (undoStack.length === 0) return;
+        const current = ctxPixel.getImageData(0, 0, TILE_SIZE, TILE_SIZE);
+        redoStack.push(new ImageData(new Uint8ClampedArray(current.data), current.width, current.height));
+        ctxPixel.putImageData(undoStack.pop(), 0, 0);
+        updateView();
+        updateHistoryButtons();
+    }
+
+    function redo() {
+        if (redoStack.length === 0) return;
+        const current = ctxPixel.getImageData(0, 0, TILE_SIZE, TILE_SIZE);
+        undoStack.push(new ImageData(new Uint8ClampedArray(current.data), current.width, current.height));
+        ctxPixel.putImageData(redoStack.pop(), 0, 0);
+        updateView();
+        updateHistoryButtons();
+    }
+
+    function updateView() {
+        ctxView.clearRect(0, 0, DISPLAY_SIZE, DISPLAY_SIZE);
+        ctxView.imageSmoothingEnabled = false;
+        ctxView.drawImage(pixelCanvas, 0, 0, TILE_SIZE, TILE_SIZE, 0, 0, DISPLAY_SIZE, DISPLAY_SIZE);
+    }
+
+    function drawGrid() {
+        gridOverlay.innerHTML = '';
+        if (!showGrid) return;
+        
+        if (TILE_SIZE > 128) {
+            const step = DISPLAY_SIZE / 16; 
+            let html = '';
+            for(let i=0; i<=16; i++){
+                html += `<line x1="${i * step}" y1="0" x2="${i * step}" y2="${DISPLAY_SIZE}" class="grid-line thick" />`;
+                html += `<line x1="0" y1="${i * step}" x2="${DISPLAY_SIZE}" y2="${i * step}" class="grid-line thick" />`;
+            }
+            gridOverlay.innerHTML = html;
+            return;
+        }
+        
+        const step = DISPLAY_SIZE / TILE_SIZE;
+        let html = '';
+        for (let i = 0; i <= TILE_SIZE; i++) {
+            html += `<line x1="${i * step}" y1="0" x2="${i * step}" y2="${DISPLAY_SIZE}" class="grid-line" />`;
+            html += `<line x1="0" y1="${i * step}" x2="${DISPLAY_SIZE}" y2="${i * step}" class="grid-line" />`;
+        }
+        gridOverlay.innerHTML = html;
+    }
+
+    function getMousePos(e) {
+        const rect = viewCanvas.getBoundingClientRect();
+        const x = ((e.clientX - rect.left) / rect.width) * TILE_SIZE;
+        const y = ((e.clientY - rect.top) / rect.height) * TILE_SIZE;
+        return {
+            x: Math.floor(x),
+            y: Math.floor(y)
+        };
+    }
+
+    function drawPixel(pos) {
+        // Calcula o offset para centralizar o pincel no cursor do mouse
+        const offset = Math.floor(brushSize / 2);
+        const drawX = pos.x - offset;
+        const drawY = pos.y - offset;
+
+        if (currentTool === 'pencil') {
+            ctxPixel.fillStyle = currentColor;
+            ctxPixel.fillRect(drawX, drawY, brushSize, brushSize);
+        } else if (currentTool === 'eraser') {
+            ctxPixel.clearRect(drawX, drawY, brushSize, brushSize);
+        }
+        updateView();
+    }
+
+    function hexToRgb(hex) {
+        const bigint = parseInt(hex.replace('#', ''), 16);
+        return [(bigint >> 16) & 255, (bigint >> 8) & 255, bigint & 255];
+    }
+
+    function floodFill(startX, startY, fillHex) {
+        const imgData = ctxPixel.getImageData(0, 0, TILE_SIZE, TILE_SIZE);
+        const data = imgData.data;
+        const [fillR, fillG, fillB] = hexToRgb(fillHex);
+        
+        const idx = (startY * TILE_SIZE + startX) * 4;
+        const targetR = data[idx], targetG = data[idx+1], targetB = data[idx+2], targetA = data[idx+3];
+        
+        if (targetR === fillR && targetG === fillG && targetB === fillB && targetA === 255) return;
+
+        const stack = [[startX, startY]];
+        
+        while (stack.length > 0) {
+            const [x, y] = stack.pop();
+            if (x < 0 || x >= TILE_SIZE || y < 0 || y >= TILE_SIZE) continue;
+            
+            const i = (y * TILE_SIZE + x) * 4;
+            if (data[i] === targetR && data[i+1] === targetG && data[i+2] === targetB && data[i+3] === targetA) {
+                data[i] = fillR; data[i+1] = fillG; data[i+2] = fillB; data[i+3] = 255;
+                stack.push([x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]);
+            }
+        }
+        ctxPixel.putImageData(imgData, 0, 0);
+        updateView();
+    }
+
+    function pickColor(x, y) {
+        const imgData = ctxPixel.getImageData(x, y, 1, 1).data;
+        if (imgData[3] === 0) return;
+        const hex = "#" + ((1 << 24) + (imgData[0] << 16) + (imgData[1] << 8) + imgData[2]).toString(16).slice(1);
+        currentColor = hex;
+        document.getElementById('custom-color').value = hex;
+        document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active'));
+        setActiveTool('btn-pencil');
+    }
+
+    // Eventos de Mouse
+    viewCanvas.addEventListener('mousedown', (e) => {
+        const pos = getMousePos(e);
+        if (pos.x < 0 || pos.x >= TILE_SIZE || pos.y < 0 || pos.y >= TILE_SIZE) return;
+
+        if (currentTool === 'picker') {
+            pickColor(pos.x, pos.y);
+            return;
+        }
+
+        saveState();
+
+        if (currentTool === 'fill') {
+            floodFill(pos.x, pos.y, currentColor);
+        } else {
+            isDrawing = true;
+            drawPixel(pos);
+        }
+    });
+    
+    viewCanvas.addEventListener('mousemove', (e) => {
+        if (!isDrawing) return;
+        const pos = getMousePos(e);
+        // Permitir desenhar um pouco fora da borda se o pincel for grande
+        if (pos.x >= -brushSize && pos.x < TILE_SIZE + brushSize && pos.y >= -brushSize && pos.y < TILE_SIZE + brushSize) {
+            drawPixel(pos);
+        }
+    });
+    
+    window.addEventListener('mouseup', () => { isDrawing = false; });
+
+    // Ferramentas
+    function setActiveTool(btnId) {
+        ['btn-pencil', 'btn-eraser', 'btn-fill', 'btn-picker'].forEach(id => {
+            document.getElementById(id).classList.toggle('active', id === btnId);
+        });
+        currentTool = btnId.replace('btn-', '');
+    }
+
+    document.getElementById('btn-pencil').onclick = () => setActiveTool('btn-pencil');
+    document.getElementById('btn-eraser').onclick = () => setActiveTool('btn-eraser');
+    document.getElementById('btn-fill').onclick = () => setActiveTool('btn-fill');
+    document.getElementById('btn-picker').onclick = () => setActiveTool('btn-picker');
+    document.getElementById('btn-undo').onclick = undo;
+    document.getElementById('btn-redo').onclick = redo;
+
+    // Tamanho do Pincel
+    document.getElementById('brush-select').addEventListener('change', (e) => {
+        brushSize = parseInt(e.target.value);
+    });
+
+    window.addEventListener('keydown', (e) => {
+        if (e.ctrlKey || e.metaKey) {
+            if (e.key.toLowerCase() === 'z') {
+                if (e.shiftKey) redo(); else undo();
+                e.preventDefault();
+            } else if (e.key.toLowerCase() === 'y') {
+                redo(); e.preventDefault();
+            }
+        }
+    });
+
+    // Mudar Resolução
+    document.getElementById('size-select').addEventListener('change', (e) => {
+        const newSize = parseInt(e.target.value);
+        if (newSize === TILE_SIZE) return;
+
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = TILE_SIZE;
+        tempCanvas.height = TILE_SIZE;
+        tempCanvas.getContext('2d').drawImage(pixelCanvas, 0, 0);
+
+        TILE_SIZE = newSize;
+        pixelCanvas.width = TILE_SIZE;
+        pixelCanvas.height = TILE_SIZE;
+
+        ctxPixel.imageSmoothingEnabled = false;
+        ctxPixel.drawImage(tempCanvas, 0, 0, TILE_SIZE, TILE_SIZE);
+
+        // Auto-ajustar o tamanho do pincel se for muito pequeno para a nova resolução
+        const brushSelect = document.getElementById('brush-select');
+        if (TILE_SIZE >= 256 && brushSize < 4) {
+            brushSize = 4;
+            brushSelect.value = "4";
+        } else if (TILE_SIZE >= 512 && brushSize < 8) {
+            brushSize = 8;
+            brushSelect.value = "8";
+        }
+
+        undoStack = []; 
+        redoStack = [];
+        updateHistoryButtons();
+        
+        drawGrid();
+        updateView();
+    });
+
+    // Cores e UI
+    document.querySelectorAll('.color-btn').forEach(btn => {
+        btn.onclick = () => {
+            document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentColor = btn.dataset.color;
+            document.getElementById('custom-color').value = currentColor;
+            if (currentTool === 'eraser' || currentTool === 'picker') setActiveTool('btn-pencil');
+        };
+    });
+
+    document.getElementById('custom-color').oninput = (e) => {
+        currentColor = e.target.value;
+        document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active'));
+        if (currentTool === 'eraser' || currentTool === 'picker') setActiveTool('btn-pencil');
+    };
+
+    document.getElementById('btn-grid').onclick = (e) => {
+        showGrid = !showGrid;
+        e.target.classList.toggle('active', showGrid);
+        drawGrid();
+    };
+
+    document.getElementById('btn-bg').onclick = (e) => {
+        canvasWrapper.classList.toggle('solid-bg');
+        e.target.textContent = canvasWrapper.classList.contains('solid-bg') ? '🏁 Fundo Sólido' : '🏁 Fundo Transparente';
+    };
+
+    document.getElementById('btn-clear').onclick = () => {
+        if (confirm("Apagar todo o desenho?")) {
+            saveState();
+            ctxPixel.clearRect(0, 0, TILE_SIZE, TILE_SIZE);
+            updateView();
+        }
+    };
+
+    // --- EXPORTAR SVG ULTRA OTIMIZADO ---
+    document.getElementById('btn-export').onclick = () => {
+        const imgData = ctxPixel.getImageData(0, 0, TILE_SIZE, TILE_SIZE).data;
+        let svgContent = `<svg xmlns="http://www.w3.org/2000/svg" width="${TILE_SIZE}" height="${TILE_SIZE}" viewBox="0 0 ${TILE_SIZE} ${TILE_SIZE}">\n`;
+        const colorMap = {};
+
+        for (let y = 0; y < TILE_SIZE; y++) {
+            let currentColor = null;
+            let startX = 0;
+
+            for (let x = 0; x < TILE_SIZE; x++) {
+                const index = (y * TILE_SIZE + x) * 4;
+                const r = imgData[index], g = imgData[index+1], b = imgData[index+2], a = imgData[index+3];
+                let hex = a > 0 ? `#${((1<<24) + (r<<16) + (g<<8) + b).toString(16).slice(1)}` : null;
+
+                if (hex !== currentColor) {
+                    if (currentColor !== null) {
+                        if (!colorMap[currentColor]) colorMap[currentColor] = [];
+                        const width = x - startX;
+                        colorMap[currentColor].push(`M${startX} ${y}h${width}v1h-${width}z`);
+                    }
+                    currentColor = hex;
+                    startX = x;
+                }
+            }
+            if (currentColor !== null) {
+                if (!colorMap[currentColor]) colorMap[currentColor] = [];
+                const width = TILE_SIZE - startX;
+                colorMap[currentColor].push(`M${startX} ${y}h${width}v1h-${width}z`);
+            }
+        }
+
+        for (const [hex, paths] of Object.entries(colorMap)) {
+            svgContent += `  <path fill="${hex}" d="${paths.join('')}" />\n`;
+        }
+        svgContent += `</svg>`;
+
+        const blob = new Blob([svgContent], { type: "image/svg+xml" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `laureta_tile_${TILE_SIZE}_${Date.now()}.svg`;
+        a.click();
+        URL.revokeObjectURL(url);
+    };
+
+    // Inicialização
+    updateView();
+    drawGrid();
+</script>
+</body>
+</html>
