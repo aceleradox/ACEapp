@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Laureta 3D Editor (Pro)</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+    :root { --bg: #1e1e24; --bg2: #2b2b36; --border: #444; --text: #eee; --accent: #4CAF50; --laureta: #8b5cf6; }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    body { background: var(--bg); color: var(--text); display: flex; height: 100vh; overflow: hidden; }
+    
+    /* Layout da Sidebar */
+    #sidebar { width: 320px; background: var(--bg2); border-right: 1px solid var(--border); display: flex; flex-direction: column; z-index: 10; }
+    #topbar { display: flex; background: #111; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+    .tab-btn { flex: 1; padding: 12px; background: none; border: none; color: #888; cursor: pointer; font-weight: bold; border-bottom: 2px solid transparent; transition: 0.2s;}
+    .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); background: var(--bg2); }
+    
+    /* Área de Rolagem customizada */
+    #sidebar-content { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding: 15px; }
+    #sidebar-content::-webkit-scrollbar { width: 6px; }
+    #sidebar-content::-webkit-scrollbar-track { background: var(--bg2); }
+    #sidebar-content::-webkit-scrollbar-thumb { background: #555; border-radius: 3px; }
+    #sidebar-content::-webkit-scrollbar-thumb:hover { background: #777; }
+
+    .panel { display: none; flex-direction: column; gap: 10px; }
+    .panel.active { display: flex; }
+
+    .group { background: #222; padding: 12px; border-radius: 6px; border: 1px solid var(--border); display: flex; flex-direction: column; gap: 8px; }
+    .group-title { font-size: 11px; text-transform: uppercase; color: #888; letter-spacing: 1px; margin-bottom: 2px; font-weight: bold; }
+    
+    /* Botões */
+    button { background: #333; color: #fff; border: 1px solid #555; padding: 8px; cursor: pointer; border-radius: 4px; font-weight: bold; transition: 0.2s; display: flex; justify-content: center; align-items: center; gap: 5px; font-size: 12px;}
+    button:hover { background: #444; }
+    button.active { background: var(--accent); color: #000; border-color: var(--accent); }
+    button.danger { background: #ef4444; border-color: #dc2626; color: #fff; }
+    button.danger:hover { background: #dc2626; }
+    button.laureta-btn { background: var(--laureta); color: #fff; border-color: #7c3aed; }
+    button.laureta-btn:hover { background: #7c3aed; }
+    button.zip-btn { background: #06b6d4; color: #000; border-color: #0891b2; }
+    button.zip-btn:hover { background: #0891b2; }
+    
+    .flex-row { display: flex; gap: 5px; }
+    .flex-row button { flex: 1; }
+    
+    /* Grid para botões de adicionar (mais organizado) */
+    .grid-add { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
+    .grid-add button { padding: 10px 5px; font-size: 11px; }
+
+    /* Inputs */
+    input[type="color"] { width: 100%; height: 35px; cursor: pointer; background: #333; border: 1px solid #555; border-radius: 4px; padding: 2px; }
+    input[type="file"] { display: none; }
+
+    /* Galeria */
+    #texture-gallery { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; margin-top: 5px; max-height: 120px; overflow-y: auto; padding-right: 5px; }
+    #texture-gallery::-webkit-scrollbar { width: 4px; }
+    #texture-gallery::-webkit-scrollbar-thumb { background: #555; border-radius: 2px; }
+    .texture-item {
+        width: 100%; aspect-ratio: 1; background-size: contain; background-repeat: no-repeat; background-position: center;
+        background-color: #111; border: 1px solid #444; border-radius: 4px; cursor: pointer;
+        background-image: linear-gradient(45deg, #222 25%, transparent 25%), linear-gradient(-45deg, #222 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #222 75%), linear-gradient(-45deg, transparent 75%, #222 75%);
+        background-size: 10px 10px;
+    }
+    .texture-item:hover { border-color: var(--accent); transform: scale(1.05); }
+
+    /* Viewport */
+    #viewport { flex: 1; position: relative; overflow: hidden; outline: none; }
+    #hint { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.7); padding: 8px 16px; border-radius: 20px; font-size: 12px; pointer-events: none; text-align: center; line-height: 1.4; }
+    canvas { display: block; }
+</style>
+</head>
+<body>
+
+<div id="sidebar">
+    <div id="topbar">
+        <button class="tab-btn active" onclick="switchTab('map')">🗺️ Mapa 3D</button>
+        <button class="tab-btn" onclick="switchTab('model')">🧊 Modelo Voxel</button>
+    </div>
+
+    <div id="sidebar-content">
+        <!-- Aba Mapa -->
+        <div id="panel-map" class="panel active">
+            <div class="group">
+                <div class="group-title">Adicionar Objeto</div>
+                <div class="grid-add">
+                    <button onclick="addObject('plane')">🟩 Plane</button>
+                    <button onclick="addObject('cube')">🟫 Cube</button>
+                    <button onclick="addObject('sphere')">🔴 Esfera</button>
+                    <button onclick="addObject('cylinder')">🥫 Cilindro</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Aba Voxel -->
+        <div id="panel-model" class="panel">
+            <div class="group">
+                <div class="group-title">Adicionar Voxel</div>
+                <button onclick="toggleVoxelMode()" id="btn-voxel-mode">🔨 Modo Construção: OFF</button>
+            </div>
+        </div>
+
+        <!-- Ferramentas de Transformação -->
+        <div class="group">
+            <div class="group-title">Ferramentas</div>
+            <div class="flex-row" style="margin-bottom: 5px;">
+                <button id="tool-translate" class="active" onclick="setTransformMode('translate')">✥ Mover</button>
+                <button id="tool-rotate" onclick="setTransformMode('rotate')">⟳ Girar</button>
+                <button id="tool-scale" onclick="setTransformMode('scale')">⤢ Escala</button>
+            </div>
+            <div class="flex-row">
+                <button onclick="undo()" title="Ctrl+Z">↩️ Undo</button>
+                <button onclick="redo()" title="Ctrl+Y">↪️ Redo</button>
+            </div>
+            <div class="flex-row" style="margin-top: 5px;">
+                <button onclick="copyObject()" title="Ctrl+C">📄 Copiar</button>
+                <button onclick="cutObject()" title="Ctrl+X">✂️ Recortar</button>
+                <button onclick="pasteObject()" title="Ctrl+V">📋 Colar</button>
+            </div>
+            <button class="danger" onclick="deleteSelected()" style="margin-top: 5px;">🗑️ Apagar Selecionado</button>
+        </div>
+
+        <!-- Aparência e Assets -->
+        <div class="group">
+            <div class="group-title">Aparência e Texturas</div>
+            <input type="color" id="color-picker" value="#4CAF50" onchange="applyColor(this.value)">
+            
+            <button onclick="document.getElementById('local-svg-input').click()" style="background:#ec4899; color:#fff;">🖼️ Importar SVG do PC</button>
+            <input type="file" id="local-svg-input" accept=".svg" onchange="loadLocalSVG(event)">
+            
+            <button onclick="document.getElementById('zip-input').click()" style="background:#f39c12; color:#000;">📦 Importar SRC (.zip)</button>
+            <input type="file" id="zip-input" accept=".zip" onchange="handleZipUpload(event)">
+            
+            <div id="texture-gallery"></div>
+        </div>
+
+        <!-- Exportação -->
+        <div class="group">
+            <div class="group-title">Exportar</div>
+            <input type="text" id="export-name" value="world" placeholder="Nome do arquivo (ex: world)" style="padding: 8px; background: #111; color: #fff; border: 1px solid #444; border-radius: 4px; font-weight: bold; margin-bottom: 5px; font-family: monospace;">
+            <button class="zip-btn" onclick="saveProjectZip()">💾 Salvar Projeto (.zip)</button>
+            <button class="laureta-btn" onclick="exportToLaureta()">🚀 Exportar para Laureta</button>
+        </div>
+    </div>
+</div>
+
+<div id="viewport">
+    <div id="hint">
+        Clique para selecionar / Arraste para orbitar<br>
+        <b>Ctrl+C / V / X / Z / Y</b> para atalhos
+    </div>
+</div>
+
+<script type="importmap">
+{
+    "imports": {
+        "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+    }
+}
+</script>
+
+<script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { TransformControls } from 'three/addons/controls/TransformControls.js';
+
+    // --- CONFIGURAÇÃO INICIAL ---
+    const viewport = document.getElementById('viewport');
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x1e1e24);
+
+    const mapGroup = new THREE.Group();
+    const modelGroup = new THREE.Group();
+    scene.add(mapGroup, modelGroup);
+    modelGroup.visible = false;
+
+    const camera = new THREE.PerspectiveCamera(50, viewport.clientWidth / viewport.clientHeight, 0.1, 1000);
+    camera.position.set(10, 10, 10);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(viewport.clientWidth, viewport.clientHeight);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    viewport.appendChild(renderer.domElement);
+
+    const orbit = new OrbitControls(camera, renderer.domElement);
+    orbit.enableDamping = true;
+    orbit.dampingFactor = 0.05;
+
+    const transform = new TransformControls(camera, renderer.domElement);
+    const transformHelper = typeof transform.getHelper === 'function' ? transform.getHelper() : transform; 
+    scene.add(transformHelper);
+    
+    transform.addEventListener('dragging-changed', function (event) {
+        orbit.enabled = !event.value;
+        if (!event.value) saveState();
+    });
+
+    scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+    const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
+    dirLight.position.set(10, 20, 10);
+    dirLight.castShadow = true;
+    dirLight.shadow.mapSize.width = 2048;
+    dirLight.shadow.mapSize.height = 2048;
+    scene.add(dirLight);
+
+    const gridMap = new THREE.GridHelper(40, 40, 0x4CAF50, 0x333333);
+    const gridModel = new THREE.GridHelper(20, 20, 0x06b6d4, 0x333333);
+    scene.add(gridMap, gridModel);
+    gridModel.visible = false;
+
+    const planeGeo = new THREE.PlaneGeometry(100, 100);
+    planeGeo.rotateX(-Math.PI / 2);
+    const floorPlane = new THREE.Mesh(planeGeo, new THREE.MeshBasicMaterial({ visible: false }));
+    scene.add(floorPlane);
+
+    // --- ESTADO DO EDITOR ---
+    let selectedObject = null;
+    let currentTab = 'map';
+    let isBuildingVoxel = false;
+    let mappedTextures = {};
+    let clipboard = null;
+
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2();
+
+    // --- FUNÇÃO AUXILIAR DE GEOMETRIA ---
+    function getGeometry(type) {
+        switch (type) {
+            case 'plane': return new THREE.PlaneGeometry(1, 1);
+            case 'sphere': return new THREE.SphereGeometry(0.5, 32, 32);
+            case 'cylinder': return new THREE.CylinderGeometry(0.5, 0.5, 1, 32);
+            case 'cube':
+            case 'voxel':
+            default: return new THREE.BoxGeometry(1, 1, 1);
+        }
+    }
+
+    // --- HISTÓRICO ---
+    let history = [];
+    let historyIndex = -1;
+    let isRestoring = false;
+
+    function getActiveGroup() {
+        return currentTab === 'map' ? mapGroup : modelGroup;
+    }
+
+    function serializeObject(obj) {
+        return {
+            type: obj.userData.type,
+            pos: obj.position.toArray(),
+            rot: [obj.rotation.x, obj.rotation.y, obj.rotation.z],
+            scale: obj.scale.toArray(),
+            color: obj.material.color ? obj.material.color.getHexString() : 'ffffff',
+            texPath: obj.userData.texPath || null,
+            texDataUrl: obj.userData.texDataUrl || null
+        };
+    }
+
+    function saveState() {
+        if (isRestoring) return;
+        const state = getActiveGroup().children.filter(c => c.userData.isEditable).map(serializeObject);
+        if (historyIndex < history.length - 1) history = history.slice(0, historyIndex + 1);
+        history.push(state);
+        historyIndex++;
+        if (history.length > 30) { history.shift(); historyIndex--; }
+    }
+
+    function restoreState(state, targetGroupName) {
+        isRestoring = true;
+        const group = targetGroupName === 'model' ? modelGroup : mapGroup;
+        group.children.slice().forEach(c => { if (c.userData.isEditable) group.remove(c); });
+
+        state.forEach(data => {
+            const geo = getGeometry(data.type);
+            const mat = new THREE.MeshStandardMaterial({ color: '#' + data.color, side: THREE.DoubleSide });
+            const mesh = new THREE.Mesh(geo, mat);
+            
+            mesh.position.fromArray(data.pos);
+            mesh.rotation.set(data.rot[0], data.rot[1], data.rot[2], 'XYZ');
+            mesh.scale.fromArray(data.scale);
+            
+            mesh.castShadow = true; mesh.receiveShadow = true;
+            mesh.userData.isEditable = true;
+            mesh.userData.type = data.type;
+            if (data.texPath) mesh.userData.texPath = data.texPath;
+            if (data.texDataUrl) mesh.userData.texDataUrl = data.texDataUrl;
+
+            let texUrl = data.texDataUrl || (data.texPath && mappedTextures[data.texPath] ? mappedTextures[data.texPath] : null);
+            if (texUrl) {
+                const texLoader = new THREE.TextureLoader();
+                texLoader.load(texUrl, (tex) => {
+                    tex.colorSpace = THREE.SRGBColorSpace;
+                    tex.magFilter = THREE.NearestFilter;
+                    mesh.material.map = tex;
+                    mesh.material.color.setHex(0xffffff);
+                    mesh.material.needsUpdate = true;
+                });
+            }
+
+            if (data.type === 'plane') mesh.rotation.x = -Math.PI / 2;
+            group.add(mesh);
+        });
+        isRestoring = false;
+        deselectObject();
+    }
+
+    window.undo = function() { 
+        if (historyIndex > 0) { 
+            historyIndex--; 
+            restoreState(history[historyIndex], currentTab); 
+        } 
+    };
+    
+    window.redo = function() { 
+        if (historyIndex < history.length - 1) { 
+            historyIndex++; 
+            restoreState(history[historyIndex], currentTab); 
+        } 
+    };
+
+    // --- COPIAR / COLAR / RECORTAR ---
+    window.copyObject = function() {
+        if (!selectedObject) return;
+        clipboard = serializeObject(selectedObject);
+    };
+
+    window.pasteObject = function() {
+        if (!clipboard) return;
+        const newPos = [...clipboard.pos];
+        newPos[0] += 1; newPos[2] += 1; 
+
+        const geo = getGeometry(clipboard.type);
+        const mat = new THREE.MeshStandardMaterial({ color: '#' + clipboard.color, side: THREE.DoubleSide });
+        const mesh = new THREE.Mesh(geo, mat);
+        
+        mesh.position.fromArray(newPos);
+        mesh.rotation.set(clipboard.rot[0], clipboard.rot[1], clipboard.rot[2], 'XYZ');
+        mesh.scale.fromArray(clipboard.scale);
+        mesh.castShadow = true; mesh.receiveShadow = true;
+        mesh.userData.isEditable = true;
+        mesh.userData.type = clipboard.type;
+        
+        if (clipboard.texPath) mesh.userData.texPath = clipboard.texPath;
+        if (clipboard.texDataUrl) mesh.userData.texDataUrl = clipboard.texDataUrl;
+
+        let texUrl = clipboard.texDataUrl || (clipboard.texPath && mappedTextures[clipboard.texPath] ? mappedTextures[clipboard.texPath] : null);
+        if (texUrl) {
+            const texLoader = new THREE.TextureLoader();
+            texLoader.load(texUrl, (tex) => {
+                tex.colorSpace = THREE.SRGBColorSpace;
+                tex.magFilter = THREE.NearestFilter;
+                mesh.material.map = tex;
+                mesh.material.color.setHex(0xffffff);
+                mesh.material.needsUpdate = true;
+            });
+        }
+
+        getActiveGroup().add(mesh);
+        saveState();
+        selectObject(mesh);
+    };
+
+    window.cutObject = function() {
+        if (!selectedObject) return;
+        copyObject();
+        deleteSelected();
+    };
+
+    // --- ATALHOS DE TECLADO ---
+    document.addEventListener('keydown', (e) => {
+        if (e.target.tagName === 'INPUT') return;
+        if (e.ctrlKey || e.metaKey) {
+            const key = e.key.toLowerCase();
+            if (key === 'z') { e.shiftKey ? redo() : undo(); e.preventDefault(); }
+            else if (key === 'y') { redo(); e.preventDefault(); }
+            else if (key === 'c') { copyObject(); e.preventDefault(); }
+            else if (key === 'v') { pasteObject(); e.preventDefault(); }
+            else if (key === 'x') { cutObject(); e.preventDefault(); }
+        }
+    });
+
+    // --- SELEÇÃO ---
+    renderer.domElement.addEventListener('pointerdown', (e) => {
+        if (orbit.enabled === false) return;
+        const rect = renderer.domElement.getBoundingClientRect();
+        mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+        mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+
+        raycaster.setFromCamera(mouse, camera);
+        const editableObjects = getActiveGroup().children.filter(c => c.userData.isEditable);
+        const intersects = raycaster.intersectObjects([...editableObjects, floorPlane]);
+
+        if (intersects.length > 0) {
+            const hit = intersects[0];
+            if (currentTab === 'model' && isBuildingVoxel) {
+                let spawnPos = new THREE.Vector3();
+                if (hit.object === floorPlane) spawnPos.set(Math.round(hit.point.x), 0.5, Math.round(hit.point.z));
+                else {
+                    const normal = hit.face.normal.clone().transformDirection(hit.object.matrixWorld);
+                    spawnPos.copy(hit.object.position).add(normal);
+                }
+                createMesh('voxel', spawnPos);
+                return;
+            }
+            if (hit.object !== floorPlane) selectObject(hit.object);
+            else deselectObject();
+        } else deselectObject();
+    });
+
+    function selectObject(obj) { selectedObject = obj; transform.attach(obj); }
+    function deselectObject() { selectedObject = null; transform.detach(); }
+
+    function createMesh(type, pos = new THREE.Vector3(0, 0.5, 0)) {
+        const geo = getGeometry(type);
+        const mat = new THREE.MeshStandardMaterial({ color: 0x4CAF50, side: THREE.DoubleSide });
+        const mesh = new THREE.Mesh(geo, mat);
+        
+        mesh.position.copy(pos);
+        if (type === 'plane') { mesh.rotation.x = -Math.PI / 2; mesh.position.y = 0.01; }
+
+        mesh.castShadow = true; mesh.receiveShadow = true;
+        mesh.userData = { isEditable: true, type: type };
+        
+        getActiveGroup().add(mesh);
+        saveState();
+        selectObject(mesh);
+        return mesh;
+    }
+
+    // --- CONTROLES UI ---
+    window.addObject = function(type) { createMesh(type, new THREE.Vector3(0, type === 'plane' ? 0.01 : 0.5, 0)); };
+    
+    window.switchTab = function(tab) {
+        currentTab = tab; 
+        deselectObject();
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+        document.querySelector(`.tab-btn[onclick="switchTab('${tab}')"]`).classList.add('active');
+        document.getElementById(`panel-${tab}`).classList.add('active');
+        
+        mapGroup.visible = (tab === 'map'); 
+        gridMap.visible = (tab === 'map');
+        modelGroup.visible = (tab === 'model'); 
+        gridModel.visible = (tab === 'model');
+        
+        if (tab === 'map') { camera.position.set(10, 10, 10); orbit.target.set(0, 0, 0); }
+        else { camera.position.set(5, 5, 5); orbit.target.set(0, 1, 0); }
+        orbit.update();
+        if (history.length === 0) saveState();
+    };
+    
+    window.setTransformMode = function(mode) {
+        transform.setMode(mode);
+        document.querySelectorAll('#sidebar button').forEach(b => { if (b.id.startsWith('tool-')) b.classList.remove('active'); });
+        document.getElementById(`tool-${mode}`).classList.add('active');
+    };
+    
+    window.toggleVoxelMode = function() {
+        isBuildingVoxel = !isBuildingVoxel;
+        document.getElementById('btn-voxel-mode').textContent = `🔨 Modo Construção: ${isBuildingVoxel ? 'ON' : 'OFF'}`;
+        document.getElementById('btn-voxel-mode').classList.toggle('active', isBuildingVoxel);
+        if (isBuildingVoxel) deselectObject();
+    };
+    
+    window.deleteSelected = function() { if (selectedObject) { getActiveGroup().remove(selectedObject); deselectObject(); saveState(); } };
+    
+    window.applyColor = function(colorHex) {
+        if (selectedObject) {
+            selectedObject.material.color.set(colorHex);
+            selectedObject.material.map = null; 
+            selectedObject.material.needsUpdate = true;
+            selectedObject.userData.texPath = null;
+            selectedObject.userData.texDataUrl = null; 
+            saveState();
+        }
+    };
+
+    // --- IMPORTAÇÃO LOCAL (Do PC) ---
+    window.loadLocalSVG = function(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        if (!selectedObject) return alert("Selecione um objeto primeiro!");
+        
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const dataUrl = e.target.result;
+            const texLoader = new THREE.TextureLoader();
+            texLoader.load(dataUrl, (texture) => {
+                texture.colorSpace = THREE.SRGBColorSpace;
+                texture.magFilter = THREE.NearestFilter; 
+                selectedObject.material.map = texture;
+                selectedObject.material.color.setHex(0xffffff);
+                selectedObject.material.needsUpdate = true;
+                selectedObject.userData.texDataUrl = dataUrl; 
+                selectedObject.userData.texPath = null;
+                saveState();
+            });
+        };
+        reader.readAsDataURL(file);
+        event.target.value = '';
+    };
+
+    // --- IMPORTAÇÃO ZIP (Assets ou Projeto) ---
+    window.handleZipUpload = async function(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const zip = new JSZip();
+        const gallery = document.getElementById('texture-gallery');
+        
+        try {
+            const contents = await zip.loadAsync(file);
+            
+            if (contents.files['project.json']) {
+                gallery.innerHTML = '';
+                const jsonStr = await contents.files['project.json'].async('string');
+                const projectData = JSON.parse(jsonStr);
+                
+                for (const [filename, zipEntry] of Object.entries(contents.files)) {
+                    if (filename.endsWith('.svg')) {
+                        const blob = await zipEntry.async('blob');
+                        mappedTextures[filename] = URL.createObjectURL(blob);
+                    }
+                }
+
+                restoreState(projectData.map, 'map');
+                restoreState(projectData.model, 'model');
+
+                alert("✅ Projeto carregado com sucesso!");
+                saveState();
+                return;
+            }
+            
+            gallery.innerHTML = '<div style="grid-column: span 4; color:#f39c12; text-align:center;">Lendo ZIP...</div>';
+            let svgCount = 0, jsCount = 0, sub15Count = 0;
+            gallery.innerHTML = '';
+            mappedTextures = {};
+
+            for (const [filename, zipEntry] of Object.entries(contents.files)) {
+                if (zipEntry.dir) continue;
+                if (filename.endsWith('.svg')) {
+                    const blob = await zipEntry.async('blob');
+                    const url = URL.createObjectURL(blob);
+                    mappedTextures[filename] = url;
+                    
+                    const item = document.createElement('div');
+                    item.className = 'texture-item';
+                    item.title = filename;
+                    item.style.backgroundImage = `url(${url})`;
+                    item.onclick = () => applyTextureFromURL(url, filename);
+                    gallery.appendChild(item);
+                    svgCount++;
+                } else if (filename.endsWith('.js')) jsCount++;
+                else if (filename.endsWith('.sub15')) sub15Count++;
+            }
+            const report = document.createElement('div');
+            report.style.cssText = 'grid-column: span 4; font-size: 11px; color: #4CAF50; text-align: center;';
+            report.innerHTML = `✅ Extraído:<br>${svgCount} SVGs · ${jsCount} JS · ${sub15Count} sub15`;
+            gallery.prepend(report);
+
+        } catch (e) { 
+            console.error(e);
+            gallery.innerHTML = '<div style="color:#ef4444; text-align:center;">Erro ao ler ZIP</div>'; 
+        }
+        event.target.value = '';
+    };
+
+    function applyTextureFromURL(url, originalPath) {
+        if (!selectedObject) return alert("Selecione um objeto primeiro!");
+        const texLoader = new THREE.TextureLoader();
+        texLoader.load(url, (texture) => {
+            texture.colorSpace = THREE.SRGBColorSpace;
+            texture.magFilter = THREE.NearestFilter; 
+            selectedObject.material.map = texture;
+            selectedObject.material.color.setHex(0xffffff);
+            selectedObject.material.needsUpdate = true;
+            selectedObject.userData.texPath = originalPath;
+            selectedObject.userData.texDataUrl = null;
+            saveState();
+        });
+    }
+
+    // --- FUNÇÃO MESTRE DE GERAÇÃO DE CÓDIGO ---
+    function generateLauretaCode() {
+        const mapObjects = mapGroup.children.filter(c => c.userData.isEditable);
+        let jsCode = `// Arquivo gerado automaticamente pelo Laureta 3D Editor\n`;
+        jsCode += `import * as THREE from 'three';\n\n`;
+        jsCode += `export function buildCustomMap(scene) {\n`;
+        jsCode += `    const texLoader = new THREE.TextureLoader();\n`;
+        jsCode += `    const group = new THREE.Group();\n\n`;
+
+        mapObjects.forEach((obj, index) => {
+            const pos = obj.position.toArray();
+            const rot = [obj.rotation.x, obj.rotation.y, obj.rotation.z];
+            const scale = obj.scale.toArray();
+            const type = obj.userData.type;
+            
+            jsCode += `    // Objeto ${index + 1} (${type})\n`;
+            if (type === 'plane') jsCode += `    const geo${index} = new THREE.PlaneGeometry(1, 1);\n`;
+            else if (type === 'sphere') jsCode += `    const geo${index} = new THREE.SphereGeometry(0.5, 32, 32);\n`;
+            else if (type === 'cylinder') jsCode += `    const geo${index} = new THREE.CylinderGeometry(0.5, 0.5, 1, 32);\n`;
+            else jsCode += `    const geo${index} = new THREE.BoxGeometry(1, 1, 1);\n`;
+            
+            if (obj.userData.texPath || obj.userData.texDataUrl) {
+                const texSrc = obj.userData.texPath ? `'${obj.userData.texPath}'` : `'${obj.userData.texDataUrl}'`; 
+                jsCode += `    const mat${index} = new THREE.MeshLambertMaterial({ color: 0xffffff });\n`;
+                jsCode += `    texLoader.load(${texSrc}, (tex) => {\n`;
+                jsCode += `        tex.magFilter = THREE.NearestFilter;\n`;
+                jsCode += `        mat${index}.map = tex;\n`;
+                jsCode += `        mat${index}.needsUpdate = true;\n`;
+                jsCode += `    });\n`;
+            } else {
+                const hexColor = obj.material.color.getHexString();
+                jsCode += `    const mat${index} = new THREE.MeshLambertMaterial({ color: 0x${hexColor} });\n`;
+            }
+
+            jsCode += `    const mesh${index} = new THREE.Mesh(geo${index}, mat${index});\n`;
+            jsCode += `    mesh${index}.position.set(${pos.join(', ')});\n`;
+            jsCode += `    mesh${index}.rotation.set(${rot.join(', ')});\n`;
+            jsCode += `    mesh${index}.scale.set(${scale.join(', ')});\n`;
+            jsCode += `    mesh${index}.castShadow = true;\n`;
+            jsCode += `    mesh${index}.receiveShadow = true;\n`;
+            jsCode += `    group.add(mesh${index});\n\n`;
+        });
+
+        jsCode += `    scene.add(group);\n`;
+        jsCode += `    return group;\n`;
+        jsCode += `}\n`;
+
+        const sub15Data = { 
+            engine: "Laureta JS", 
+            version: "1.0", 
+            type: "map", 
+            objectsCount: mapObjects.length 
+        };
+
+        return { jsCode, sub15Data };
+    }
+
+    // --- SALVAR PROJETO ZIP ---
+    window.saveProjectZip = function() {
+        const zip = new JSZip();
+        const baseName = document.getElementById('export-name').value.trim() || 'world'; 
+        
+        const projectData = {
+            map: mapGroup.children.filter(c => c.userData.isEditable).map(serializeObject),
+            model: modelGroup.children.filter(c => c.userData.isEditable).map(serializeObject)
+        };
+        
+        zip.file("project.json", JSON.stringify(projectData, null, 2));
+        
+        const { jsCode, sub15Data } = generateLauretaCode();
+        zip.file(`${baseName}.js`, jsCode);
+        zip.file(`${baseName}.sub15`, JSON.stringify(sub15Data, null, 2));
+        
+        if (Object.keys(mappedTextures).length > 0) {
+            let promises = [];
+            for (const [path, url] of Object.entries(mappedTextures)) {
+                promises.push(fetch(url).then(res => res.blob()).then(blob => {
+                    zip.file(path, blob);
+                }));
+            }
+            Promise.all(promises).then(() => {
+                zip.generateAsync({type:"blob"}).then(function(content) {
+                    const a = document.createElement("a");
+                    a.href = URL.createObjectURL(content);
+                    a.download = `${baseName}_projeto_completo.zip`;
+                    a.click();
+                    URL.revokeObjectURL(a.href);
+                });
+            });
+        } else {
+            zip.generateAsync({type:"blob"}).then(function(content) {
+                const a = document.createElement("a");
+                a.href = URL.createObjectURL(content);
+                a.download = `${baseName}_projeto_completo.zip`;
+                a.click();
+                URL.revokeObjectURL(a.href);
+            });
+        }
+    };
+
+    // --- EXPORTAR PARA LAURETA JS ---
+    window.exportToLaureta = function() {
+        const mapObjects = mapGroup.children.filter(c => c.userData.isEditable);
+        if (mapObjects.length === 0) return alert("Seu mapa está vazio!");
+
+        const baseName = document.getElementById('export-name').value.trim() || 'world';
+        const { jsCode, sub15Data } = generateLauretaCode();
+
+        const jsBlob = new Blob([jsCode], { type: 'text/javascript' });
+        const jsUrl = URL.createObjectURL(jsBlob);
+        const a1 = document.createElement('a');
+        a1.href = jsUrl;
+        a1.download = `${baseName}.js`;
+        a1.click();
+        URL.revokeObjectURL(jsUrl);
+        
+        const sub15Blob = new Blob([JSON.stringify(sub15Data, null, 2)], { type: 'application/json' });
+        const sub15Url = URL.createObjectURL(sub15Blob);
+        const a2 = document.createElement('a');
+        a2.href = sub15Url;
+        a2.download = `${baseName}.sub15`;
+        a2.click();
+        URL.revokeObjectURL(sub15Url);
+        
+        alert(`✅ Exportado!\nArquivos: ${baseName}.js e ${baseName}.sub15`);
+    };
+
+    // --- LOOP ---
+    window.addEventListener('resize', () => {
+        camera.aspect = viewport.clientWidth / viewport.clientHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(viewport.clientWidth, viewport.clientHeight);
+    });
+
+    function animate() {
+        requestAnimationFrame(animate);
+        orbit.update();
+        renderer.render(scene, camera);
+    }
+    animate();
+    saveState();
+</script>
+</body>
+</html>
