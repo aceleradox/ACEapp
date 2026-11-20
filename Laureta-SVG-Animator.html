@@ -1,0 +1,1362 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Laureta SVG Tile Editor + Animator</title>
+<style>
+    :root { --bg:#1e1e24; --bg2:#2b2b36; --border:#444; --text:#eee; }
+    * { box-sizing:border-box; margin:0; padding:0; font-family:monospace; }
+    body { background:var(--bg); color:var(--text); display:flex; flex-direction:column; height:100vh; overflow:hidden; }
+
+    /* ---------- Toolbar ---------- */
+    #toolbar { background:var(--bg2); padding:8px; display:flex; gap:8px; align-items:center; border-bottom:1px solid var(--border); flex-wrap:wrap; }
+    .group { display:flex; gap:5px; align-items:center; background:#222; padding:5px 10px; border-radius:5px; border:1px solid var(--border); }
+    button { background:#444; color:#fff; border:none; padding:5px 8px; cursor:pointer; border-radius:3px; font-weight:bold; font-size:12px; }
+    button:hover:not(:disabled) { background:#666; }
+    button.active { background:#4CAF50; color:#000; }
+    button:disabled { opacity:.3; cursor:not-allowed; }
+    select, input[type=number] { background:#222; color:#fff; border:1px solid var(--border); outline:none; padding:3px; border-radius:3px; font-family:monospace; cursor:pointer; }
+
+    #colors { display:flex; gap:5px; align-items:center; }
+    .color-btn { width:24px; height:24px; border-radius:50%; cursor:pointer; border:2px solid transparent; }
+    .color-btn.active { border-color:#fff; transform:scale(1.1); }
+
+    /* ---------- Layout ---------- */
+    #main { flex:1; display:flex; overflow:hidden; }
+    #layers-panel { width:225px; border-right:1px solid var(--border); }
+    #anim-panel   { width:310px; border-left:1px solid var(--border); }
+    #layers-panel, #anim-panel { background:var(--bg2); display:flex; flex-direction:column; overflow:hidden; }
+    .panel-title { font-size:11px; text-transform:uppercase; letter-spacing:1px; padding:8px; border-bottom:1px solid var(--border); color:#aaa; display:flex; justify-content:space-between; align-items:center; gap:4px; }
+    .panel-body { flex:1; overflow-y:auto; padding:6px; }
+    .panel-foot { padding:6px; border-top:1px solid var(--border); display:flex; gap:4px; flex-wrap:wrap; align-items:center; }
+
+    /* ---------- Camadas ---------- */
+    .layer-item { display:flex; align-items:center; gap:5px; padding:3px 5px; border-radius:4px; cursor:pointer; margin-bottom:3px; background:#222; border:1px solid transparent; }
+    .layer-item.active { border-color:#4CAF50; background:#263326; }
+    .layer-item .lname { flex:1; font-size:11px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .layer-item button { padding:2px 3px; font-size:11px; background:transparent; }
+    .layer-item .thumb { width:26px; height:26px; background:#111; border-radius:2px; image-rendering:pixelated; }
+    #layer-opacity { width:100%; }
+
+    /* ---------- Workspace ---------- */
+    #workspace { flex:1; display:flex; align-items:center; justify-content:center; overflow:auto; background:#111; }
+    #canvas-wrapper { position:relative; box-shadow:0 0 20px rgba(0,0,0,.8);
+        background-image:linear-gradient(45deg,#333 25%,transparent 25%),linear-gradient(-45deg,#333 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#333 75%),linear-gradient(-45deg,transparent 75%,#333 75%);
+        background-size:20px 20px; background-position:0 0,0 10px,10px -10px,-10px 0; cursor:crosshair; width:512px; height:512px; flex:0 0 auto; }
+    #canvas-wrapper.solid-bg { background:#fff; }
+    canvas { display:block; image-rendering:pixelated; }
+    #view-canvas { width:100%; height:100%; }
+    #grid-overlay { position:absolute; inset:0; pointer-events:none; width:100%; height:100%; }
+    .grid-line { stroke:rgba(255,255,255,.15); stroke-width:1; }
+    .grid-line.thick { stroke:rgba(255,255,255,.3); stroke-width:2; }
+
+    /* ---------- Script ---------- */
+    #script-body { display:flex; flex-direction:column; }
+    #script-editor { width:100%; flex:1; min-height:160px; resize:none; background:#15151c; color:#9fe08f;
+        border:1px solid var(--border); border-radius:4px; padding:8px; font-size:11px; line-height:1.5; outline:none; }
+
+    /* ---------- Timeline ---------- */
+    #timeline { height:100px; background:var(--bg2); border-top:1px solid var(--border); display:flex; flex-direction:column; flex:0 0 auto; }
+    #timeline-controls { display:flex; align-items:center; gap:6px; padding:5px 8px; border-bottom:1px solid var(--border); font-size:11px; }
+    #frames-strip { flex:1; display:flex; gap:6px; padding:6px 8px; overflow-x:auto; align-items:center; }
+    .frame-item { position:relative; border:2px solid #444; border-radius:4px; cursor:pointer; background:#111; flex:0 0 auto; }
+    .frame-item.active { border-color:#4CAF50; }
+    .frame-item canvas { display:block; width:54px; height:54px; image-rendering:pixelated; }
+    .frame-item .num { position:absolute; top:0; left:2px; font-size:9px; color:#fff; text-shadow:0 0 3px #000; }
+
+    /* ---------- Manual Modal ---------- */
+    #manual-modal { position:fixed; inset:0; background:rgba(0,0,0,.78); display:none; align-items:center; justify-content:center; z-index:1000; padding:20px; }
+    #manual-modal.open { display:flex; }
+    #manual-box { background:var(--bg2); border:1px solid var(--border); border-radius:8px; max-width:860px; width:100%; max-height:90vh; display:flex; flex-direction:column; box-shadow:0 0 60px rgba(0,0,0,.9); }
+    #manual-head { padding:12px 16px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; gap:10px; }
+    #manual-head h2 { font-size:15px; color:#4CAF50; }
+    #manual-body { padding:16px 20px; overflow-y:auto; line-height:1.6; font-size:12px; }
+    #manual-body h3 { color:#4CAF50; margin-top:18px; margin-bottom:6px; font-size:13px; border-bottom:1px dashed #333; padding-bottom:3px; }
+    #manual-body h3:first-child { margin-top:0; }
+    #manual-body code { background:#15151c; padding:2px 5px; border-radius:3px; color:#ffcc80; font-size:11.5px; }
+    #manual-body pre { background:#15151c; padding:10px; border-radius:5px; margin:8px 0; overflow-x:auto; color:#9fe08f; border:1px solid var(--border); line-height:1.5; }
+    #manual-body table { width:100%; border-collapse:collapse; margin:8px 0; font-size:11.5px; }
+    #manual-body th, #manual-body td { border:1px solid var(--border); padding:5px 8px; text-align:left; vertical-align:top; }
+    #manual-body th { background:#222; color:#ccc; }
+    #manual-body p { margin-bottom:8px; }
+    #manual-body ul { margin-left:20px; margin-bottom:8px; }
+    #manual-body li { margin-bottom:3px; }
+    #manual-body .note { background:#2a2416; border-left:3px solid #f39c12; padding:8px 10px; border-radius:3px; margin:10px 0; color:#ffe0a0; }
+</style>
+</head>
+<body>
+
+<div id="toolbar">
+    <div class="group">
+        <button id="btn-pencil" class="active" title="Lápis (B)">✏️ Lápis</button>
+        <button id="btn-eraser" title="Borracha (E)">🩹 Borracha</button>
+        <button id="btn-fill" title="Balde (G)">🪣 Balde</button>
+        <button id="btn-picker" title="Conta-gotas (I)">💧 Conta-gotas</button>
+    </div>
+
+    <div class="group">
+        <button id="btn-undo" title="Desfazer (Ctrl+Z)" disabled>↩️ Desfazer</button>
+        <button id="btn-redo" title="Refazer (Ctrl+Y)" disabled>↪️ Refazer</button>
+    </div>
+
+    <div class="group">
+        <span style="font-size:12px">Resolução:</span>
+        <select id="size-select">
+            <option value="16">16 x 16</option>
+            <option value="32" selected>32 x 32</option>
+            <option value="64">64 x 64</option>
+            <option value="128">128 x 128</option>
+            <option value="256">256 x 256</option>
+            <option value="512">512 x 512</option>
+        </select>
+    </div>
+
+    <div class="group">
+        <span style="font-size:12px">Pincel:</span>
+        <select id="brush-select">
+            <option value="1" selected>1 x 1</option>
+            <option value="2">2 x 2</option>
+            <option value="3">3 x 3</option>
+            <option value="4">4 x 4</option>
+            <option value="8">8 x 8</option>
+            <option value="16">16 x 16</option>
+            <option value="32">32 x 32</option>
+        </select>
+    </div>
+
+    <div class="group">
+        <span style="font-size:12px">Cor:</span>
+        <div id="colors">
+            <div class="color-btn active" style="background:#4CAF50" data-color="#4CAF50"></div>
+            <div class="color-btn" style="background:#8d6e63" data-color="#8d6e63"></div>
+            <div class="color-btn" style="background:#cfd8dc" data-color="#cfd8dc"></div>
+            <div class="color-btn" style="background:#e53935" data-color="#e53935"></div>
+            <div class="color-btn" style="background:#1a1a2e" data-color="#1a1a2e"></div>
+            <input type="color" id="custom-color" value="#4CAF50" style="width:24px;height:24px;border:none;padding:0;cursor:pointer;background:transparent;">
+        </div>
+    </div>
+
+    <div class="group">
+        <button id="btn-grid" class="active">📐 Grid</button>
+        <button id="btn-bg">🏁 Fundo</button>
+    </div>
+
+    <div class="group" style="margin-left:auto;">
+        <button id="btn-export" style="background:#f39c12;color:#000;" title="Baixar SVG do frame atual">⬇️ SVG</button>
+        <button id="btn-export-anim" style="background:#f39c12;color:#000;" title="Baixar SVG animado (todos os frames)">⬇️ SVG Anim</button>
+        <button id="btn-export-gif" style="background:#e91e63;color:#fff;" title="Exportar GIF animado (requer internet para carregar a biblioteca)">🎞 GIF</button>
+        <button id="btn-export-mp4" style="background:#2196f3;color:#fff;" title="Exportar vídeo MP4 (ou WebM se o navegador não suportar MP4)">🎥 MP4</button>
+        <label style="font-size:11px;color:#aaa;display:flex;align-items:center;gap:3px;">Escala
+            <select id="export-scale">
+                <option value="1">1x</option>
+                <option value="4" selected>4x</option>
+                <option value="8">8x</option>
+                <option value="16">16x</option>
+            </select>
+        </label>
+        <button id="btn-clear" style="background:#ef4444;" title="Limpar camada ativa">🗑️</button>
+    </div>
+</div>
+
+<div id="main">
+    <!-- ===== CAMADAS ===== -->
+    <aside id="layers-panel">
+        <div class="panel-title">
+            🧱 Camadas
+            <span>
+                <button id="btn-layer-add" title="Nova camada">＋</button>
+                <button id="btn-layer-dup" title="Duplicar camada">⧉</button>
+            </span>
+        </div>
+        <div id="layers-list" class="panel-body"></div>
+        <div class="panel-foot">
+            <button id="btn-layer-up" style="flex:1">▲ Subir</button>
+            <button id="btn-layer-down" style="flex:1">▼ Descer</button>
+            <button id="btn-layer-del" style="background:#ef4444;flex:1">✕ Apagar</button>
+            <label style="font-size:10px;color:#aaa;width:100%">Opacidade: <span id="opacity-val">100%</span></label>
+            <input type="range" id="layer-opacity" min="0" max="100" value="100">
+        </div>
+    </aside>
+
+    <!-- ===== CANVAS ===== -->
+    <div id="workspace">
+        <div id="canvas-wrapper">
+            <canvas id="view-canvas" width="512" height="512"></canvas>
+            <svg id="grid-overlay" viewBox="0 0 512 512" preserveAspectRatio="none"></svg>
+        </div>
+    </div>
+
+    <!-- ===== SCRIPT ===== -->
+    <aside id="anim-panel">
+        <div class="panel-title">🤖 Script / Comandos</div>
+        <div class="panel-body" id="script-body">
+<textarea id="script-editor" spellcheck="false"># ---- Exemplo de animação ----
+# Cria 8 frames deslocando a camada ativa
+repeat 7 {
+  newframe
+  shift 4 0
+}
+goto 0
+</textarea>
+        </div>
+        <div class="panel-foot">
+            <button id="btn-run" style="background:#4CAF50;color:#000;flex:1">▶ Executar script</button>
+            <button id="btn-help" title="Abrir manual do script">📖 Manual</button>
+        </div>
+    </aside>
+</div>
+
+<!-- ===== TIMELINE ===== -->
+<div id="timeline">
+    <div id="timeline-controls">
+        <button id="btn-play" title="Play / Stop (Espaço)">▶</button>
+        <button id="btn-frame-add">＋ Frame</button>
+        <button id="btn-frame-dup">⧉ Duplicar</button>
+        <button id="btn-frame-del" style="background:#ef4444">✕</button>
+        <label>FPS <input type="number" id="fps" value="8" min="1" max="60"></label>
+        <span id="frame-info" style="color:#888">Frame 1 / 1</span>
+    </div>
+    <div id="frames-strip"></div>
+</div>
+
+<!-- ===== MANUAL MODAL ===== -->
+<div id="manual-modal">
+    <div id="manual-box">
+        <div id="manual-head">
+            <h2>📖 Manual do Script — Laureta Editor</h2>
+            <button id="manual-close">✕ Fechar</button>
+        </div>
+        <div id="manual-body">
+
+            <h3>Visão geral</h3>
+            <p>O script é uma sequência de <strong>comandos</strong>, um por linha. Ele automatiza transformações da camada ativa, cria frames em série e monta animações completas. Toda execução é registrada no histórico — um único <code>Ctrl+Z</code> desfaz o script inteiro.</p>
+            <ul>
+                <li>Comentários começam com <code>#</code></li>
+                <li>Argumentos separados por espaço</li>
+                <li>Comandos são <em>case-insensitive</em></li>
+                <li>Blocos de repetição com <code>repeat N { ... }</code></li>
+                <li>Se houver erro, o script para no ponto do erro (use <code>Ctrl+Z</code> para reverter)</li>
+            </ul>
+
+            <h3>Transformação da camada ativa</h3>
+            <table>
+                <tr><th>Comando</th><th>Descrição</th></tr>
+                <tr><td><code>shift &lt;dx&gt; &lt;dy&gt;</code></td><td>Desloca os pixels da camada ativa em <code>dx</code>, <code>dy</code> pixels. Pixels que saem da borda são perdidos. Ex: <code>shift 4 0</code></td></tr>
+                <tr><td><code>rotate &lt;90|180|270&gt;</code></td><td>Gira a camada ativa em 90, 180 ou 270 graus.</td></tr>
+                <tr><td><code>flip &lt;h|v&gt;</code></td><td>Espelha a camada ativa horizontal (<code>h</code>) ou vertical (<code>v</code>).</td></tr>
+                <tr><td><code>fill &lt;#hex&gt;</code></td><td>Preenche a camada inteira com a cor informada. Ex: <code>fill #4CAF50</code></td></tr>
+                <tr><td><code>clear</code></td><td>Apaga todo o conteúdo da camada ativa.</td></tr>
+                <tr><td><code>opacity &lt;0..1&gt;</code></td><td>Define a opacidade da camada (ex: <code>0.5</code> = 50%).</td></tr>
+                <tr><td><code>show</code> / <code>hide</code></td><td>Exibe / oculta a camada ativa.</td></tr>
+            </table>
+
+            <h3>Gerenciamento de camadas</h3>
+            <table>
+                <tr><th>Comando</th><th>Descrição</th></tr>
+                <tr><td><code>layer &lt;n&gt;</code></td><td>Seleciona a camada <code>n</code> (0 = primeira / base).</td></tr>
+                <tr><td><code>addlayer</code></td><td>Cria uma nova camada em branco no topo.</td></tr>
+                <tr><td><code>duplayer</code></td><td>Duplica a camada ativa (insere logo acima).</td></tr>
+                <tr><td><code>dellayer</code></td><td>Remove a camada ativa.</td></tr>
+                <tr><td><code>uplayer</code> / <code>uploayer</code></td><td>Sobe a camada ativa uma posição.</td></tr>
+                <tr><td><code>downlayer</code></td><td>Desce a camada ativa uma posição.</td></tr>
+            </table>
+
+            <h3>Frames / Timeline</h3>
+            <table>
+                <tr><th>Comando</th><th>Descrição</th></tr>
+                <tr><td><code>newframe</code> / <code>dupframe</code></td><td>Cria um novo frame copiando o atual (inserido após o atual).</td></tr>
+                <tr><td><code>delframe</code></td><td>Remove o frame atual.</td></tr>
+                <tr><td><code>goto &lt;n&gt;</code></td><td>Vai para o frame <code>n</code> (0-based).</td></tr>
+                <tr><td><code>clearframe</code></td><td>Limpa todas as camadas do frame atual.</td></tr>
+            </table>
+
+            <h3>Controle de fluxo</h3>
+            <p><code>repeat N { ... }</code> executa o bloco N vezes. Pode ser aninhado.</p>
+            <pre>repeat 3 {
+  shift 2 0
+  repeat 2 {
+    newframe
+  }
+}</pre>
+
+            <h3>Exemplo — deslocamento contínuo</h3>
+            <p>Cria 8 frames, cada um 4px à direita do anterior:</p>
+            <pre>repeat 7 {
+  newframe
+  shift 4 0
+}
+goto 0</pre>
+
+            <h3>Exemplo — pulsar opacidade</h3>
+            <p>Alterna entre 50% e 100% de opacidade a cada frame:</p>
+            <pre>repeat 4 {
+  newframe
+  opacity 0.5
+  newframe
+  opacity 1
+}
+goto 0</pre>
+
+            <h3>Exemplo — animação com múltiplas camadas</h3>
+            <pre># camada 0 = fundo (fixo)
+# camada 1 = objeto animado
+layer 1
+repeat 10 {
+  newframe
+  shift 1 0
+}
+goto 0</pre>
+
+            <h3>Exportação de vídeo e GIF</h3>
+            <p>Os botões na barra superior exportam a animação:</p>
+            <ul>
+                <li><strong>⬇️ SVG</strong> — baixa o frame atual como SVG vetorial otimizado.</li>
+                <li><strong>⬇️ SVG Anim</strong> — baixa todos os frames como um SVG com <code>&lt;style&gt;</code> e <code>@keyframes</code>, tocando em loop.</li>
+                <li><strong>🎞 GIF</strong> — gera um GIF animado usando a biblioteca <em>gif.js</em>. Requer internet para baixar o worker.</li>
+                <li><strong>🎥 MP4</strong> — grava a animação usando <code>MediaRecorder</code> nativo. Se o navegador não suportar MP4, o arquivo é salvo como WebM (o console avisa).</li>
+            </ul>
+            <div class="note">O seletor <strong>Escala</strong> multiplica a resolução final (ex: 32px × 4 = 128×128). O tamanho máximo é limitado a 1024px por lado para evitar arquivos gigantes.</div>
+            <p>As exportações de vídeo/GIF compõem as camadas visíveis sobre <strong>fundo branco</strong> (formatos de vídeo e GIF não suportam transparência total).</p>
+
+            <h3>Dicas</h3>
+            <ul>
+                <li>Comandos rodam na ordem em que aparecem.</li>
+                <li>Use <code>goto 0</code> no final para voltar ao primeiro frame.</li>
+                <li>O botão <strong>▶ Executar script</strong> aplica o script como uma única operação desfazível.</li>
+                <li>Tecla <code>Espaço</code> reproduz/pausa a animação.</li>
+                <li><code>Ctrl+Z</code> / <code>Ctrl+Y</code> desfazem/refazem (funciona também para scripts inteiros).</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<!-- Biblioteca de GIF (CDN) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.js"></script>
+
+<script>
+/* =====================================================================
+   ESTADO GLOBAL
+   ===================================================================== */
+let TILE_SIZE = 32;
+const DISPLAY_SIZE = 512;
+
+let currentColor = '#4CAF50';
+let currentTool  = 'pencil';
+let brushSize    = 1;
+let isDrawing    = false;
+let showGrid     = true;
+
+/* Frames: cada frame é { layers:[ {name,visible,opacity,canvas,ctx} ] } */
+let frames       = [];
+let currentFrame = 0;
+let layers       = [];      // === frames[currentFrame].layers
+let activeLayer  = 0;
+
+/* Playback */
+let isPlaying = false;
+let playTimer = null;
+let playIndex = 0;
+let fps = 8;
+
+/* Histórico */
+let undoStack = [];
+let redoStack = [];
+const MAX_HISTORY = 30;
+
+/* =====================================================================
+   ELEMENTOS
+   ===================================================================== */
+const viewCanvas  = document.getElementById('view-canvas');
+const ctxView     = viewCanvas.getContext('2d');
+const gridOverlay = document.getElementById('grid-overlay');
+const canvasWrapper = document.getElementById('canvas-wrapper');
+
+/* =====================================================================
+   HELPERS DE CANVAS / CAMADAS
+   ===================================================================== */
+function mkCanvas(size) {
+    const c = document.createElement('canvas');
+    c.width = size; c.height = size;
+    return c;
+}
+
+function newLayerObj(name) {
+    const c = mkCanvas(TILE_SIZE);
+    const ctx = c.getContext('2d', { willReadFrequently: true });
+    ctx.imageSmoothingEnabled = false;
+    return { name: name, visible: true, opacity: 1, canvas: c, ctx: ctx };
+}
+
+function cloneLayer(L) {
+    const n = newLayerObj(L.name);
+    n.visible = L.visible;
+    n.opacity = L.opacity;
+    n.ctx.drawImage(L.canvas, 0, 0);
+    return n;
+}
+
+function curLayer() { return layers[activeLayer]; }
+
+/* =====================================================================
+   RENDER
+   ===================================================================== */
+function render() {
+    ctxView.clearRect(0, 0, DISPLAY_SIZE, DISPLAY_SIZE);
+    ctxView.imageSmoothingEnabled = false;
+    for (const L of layers) {
+        if (!L.visible || L.opacity <= 0) continue;
+        ctxView.globalAlpha = L.opacity;
+        ctxView.drawImage(L.canvas, 0, 0, TILE_SIZE, TILE_SIZE, 0, 0, DISPLAY_SIZE, DISPLAY_SIZE);
+    }
+    ctxView.globalAlpha = 1;
+}
+
+function drawFrameTo(ctx, frame, size) {
+    ctx.clearRect(0, 0, size, size);
+    ctx.imageSmoothingEnabled = false;
+    for (const L of frame.layers) {
+        if (!L.visible || L.opacity <= 0) continue;
+        ctx.globalAlpha = L.opacity;
+        ctx.drawImage(L.canvas, 0, 0, TILE_SIZE, TILE_SIZE, 0, 0, size, size);
+    }
+    ctx.globalAlpha = 1;
+}
+
+function renderLayersUI() {
+    const list = document.getElementById('layers-list');
+    list.innerHTML = '';
+
+    for (let i = layers.length - 1; i >= 0; i--) {   // topo primeiro
+        const L = layers[i];
+        const row = document.createElement('div');
+        row.className = 'layer-item' + (i === activeLayer ? ' active' : '');
+
+        const eye = document.createElement('button');
+        eye.textContent = L.visible ? '👁' : '🚫';
+        eye.title = 'Visibilidade';
+        eye.onclick = (e) => { e.stopPropagation(); L.visible = !L.visible; refreshAll(); };
+
+        const thumb = mkCanvas(26);
+        const tc = thumb.getContext('2d');
+        tc.imageSmoothingEnabled = false;
+        tc.globalAlpha = L.opacity;
+        tc.drawImage(L.canvas, 0, 0, 26, 26);
+        thumb.className = 'thumb';
+
+        const name = document.createElement('span');
+        name.className = 'lname';
+        name.textContent = L.name;
+        name.title = 'Duplo clique para renomear';
+        name.ondblclick = (e) => {
+            e.stopPropagation();
+            const n = prompt('Nome da camada:', L.name);
+            if (n) { L.name = n; refreshAll(); }
+        };
+
+        row.onclick = () => { activeLayer = i; refreshAll(); };
+        row.append(eye, thumb, name);
+        list.appendChild(row);
+    }
+
+    const op = curLayer() ? Math.round(curLayer().opacity * 100) : 100;
+    document.getElementById('layer-opacity').value = op;
+    document.getElementById('opacity-val').textContent = op + '%';
+}
+
+function renderTimeline() {
+    const strip = document.getElementById('frames-strip');
+    strip.innerHTML = '';
+
+    frames.forEach((f, i) => {
+        const item = document.createElement('div');
+        item.className = 'frame-item' + (i === currentFrame ? ' active' : '');
+
+        const c = mkCanvas(54);
+        drawFrameTo(c.getContext('2d'), f, 54);
+
+        const num = document.createElement('span');
+        num.className = 'num';
+        num.textContent = i + 1;
+
+        item.append(c, num);
+        item.onclick = () => { if (!isPlaying) loadFrame(i); };
+        strip.appendChild(item);
+    });
+
+    document.getElementById('frame-info').textContent =
+        'Frame ' + (currentFrame + 1) + ' / ' + frames.length;
+
+    const act = strip.children[currentFrame];
+    if (act) act.scrollIntoView({ inline: 'center', block: 'nearest' });
+}
+
+function refreshAll() {
+    render();
+    renderLayersUI();
+    renderTimeline();
+}
+
+/* =====================================================================
+   GRID
+   ===================================================================== */
+function drawGrid() {
+    gridOverlay.innerHTML = '';
+    if (!showGrid) return;
+
+    if (TILE_SIZE > 128) {
+        const step = DISPLAY_SIZE / 16;
+        let html = '';
+        for (let i = 0; i <= 16; i++) {
+            html += `<line x1="${i*step}" y1="0" x2="${i*step}" y2="${DISPLAY_SIZE}" class="grid-line thick"/>`;
+            html += `<line x1="0" y1="${i*step}" x2="${DISPLAY_SIZE}" y2="${i*step}" class="grid-line thick"/>`;
+        }
+        gridOverlay.innerHTML = html;
+        return;
+    }
+
+    const step = DISPLAY_SIZE / TILE_SIZE;
+    let html = '';
+    for (let i = 0; i <= TILE_SIZE; i++) {
+        html += `<line x1="${i*step}" y1="0" x2="${i*step}" y2="${DISPLAY_SIZE}" class="grid-line"/>`;
+        html += `<line x1="0" y1="${i*step}" x2="${DISPLAY_SIZE}" y2="${i*step}" class="grid-line"/>`;
+    }
+    gridOverlay.innerHTML = html;
+}
+
+/* =====================================================================
+   HISTÓRICO (undo / redo) — por frame
+   ===================================================================== */
+function captureState() {
+    return {
+        active: activeLayer,
+        layers: layers.map(L => ({
+            name: L.name,
+            visible: L.visible,
+            opacity: L.opacity,
+            data: L.ctx.getImageData(0, 0, TILE_SIZE, TILE_SIZE)
+        }))
+    };
+}
+
+function applyState(s) {
+    const nl = s.layers.map(l => {
+        const o = newLayerObj(l.name);
+        o.visible = l.visible;
+        o.opacity = l.opacity;
+        o.ctx.putImageData(l.data, 0, 0);
+        return o;
+    });
+    frames[currentFrame].layers = nl;
+    layers = nl;
+    activeLayer = Math.min(s.active, nl.length - 1);
+    if (activeLayer < 0) activeLayer = 0;
+    refreshAll();
+}
+
+function updateHistoryButtons() {
+    document.getElementById('btn-undo').disabled = undoStack.length === 0;
+    document.getElementById('btn-redo').disabled = redoStack.length === 0;
+}
+
+function pushUndo() {
+    if (undoStack.length >= MAX_HISTORY) undoStack.shift();
+    undoStack.push(captureState());
+    redoStack = [];
+    updateHistoryButtons();
+}
+
+function undo() {
+    if (!undoStack.length) return;
+    redoStack.push(captureState());
+    applyState(undoStack.pop());
+    updateHistoryButtons();
+}
+
+function redo() {
+    if (!redoStack.length) return;
+    undoStack.push(captureState());
+    applyState(redoStack.pop());
+    updateHistoryButtons();
+}
+
+/* =====================================================================
+   FERRAMENTAS DE DESENHO
+   ===================================================================== */
+function getMousePos(e) {
+    const rect = viewCanvas.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width) * TILE_SIZE;
+    const y = ((e.clientY - rect.top) / rect.height) * TILE_SIZE;
+    return { x: Math.floor(x), y: Math.floor(y) };
+}
+
+function drawPixel(pos) {
+    const L = curLayer();
+    if (!L) return;
+    const offset = Math.floor(brushSize / 2);
+    const dx = pos.x - offset;
+    const dy = pos.y - offset;
+
+    if (currentTool === 'pencil') {
+        L.ctx.fillStyle = currentColor;
+        L.ctx.fillRect(dx, dy, brushSize, brushSize);
+    } else if (currentTool === 'eraser') {
+        L.ctx.clearRect(dx, dy, brushSize, brushSize);
+    }
+    render();
+}
+
+function hexToRgb(hex) {
+    const b = parseInt(hex.replace('#', ''), 16);
+    return [(b >> 16) & 255, (b >> 8) & 255, b & 255];
+}
+
+function floodFill(startX, startY, fillHex) {
+    const L = curLayer();
+    if (!L) return;
+    const imgData = L.ctx.getImageData(0, 0, TILE_SIZE, TILE_SIZE);
+    const data = imgData.data;
+    const [fr, fg, fb] = hexToRgb(fillHex);
+
+    const idx = (startY * TILE_SIZE + startX) * 4;
+    const tr = data[idx], tg = data[idx+1], tb = data[idx+2], ta = data[idx+3];
+
+    if (tr === fr && tg === fg && tb === fb && ta === 255) return;
+
+    const stack = [[startX, startY]];
+    while (stack.length) {
+        const [x, y] = stack.pop();
+        if (x < 0 || x >= TILE_SIZE || y < 0 || y >= TILE_SIZE) continue;
+        const i = (y * TILE_SIZE + x) * 4;
+        if (data[i] === tr && data[i+1] === tg && data[i+2] === tb && data[i+3] === ta) {
+            data[i] = fr; data[i+1] = fg; data[i+2] = fb; data[i+3] = 255;
+            stack.push([x+1,y], [x-1,y], [x,y+1], [x,y-1]);
+        }
+    }
+    L.ctx.putImageData(imgData, 0, 0);
+}
+
+function pickColor(x, y) {
+    const tmp = mkCanvas(TILE_SIZE);
+    const tc = tmp.getContext('2d');
+    for (const L of layers) {
+        if (!L.visible) continue;
+        tc.globalAlpha = L.opacity;
+        tc.drawImage(L.canvas, 0, 0);
+    }
+    const d = tc.getImageData(x, y, 1, 1).data;
+    if (d[3] === 0) return;
+    currentColor = '#' + ((1 << 24) + (d[0] << 16) + (d[1] << 8) + d[2]).toString(16).slice(1);
+    document.getElementById('custom-color').value = currentColor;
+    document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active'));
+    setActiveTool('btn-pencil');
+}
+
+/* =====================================================================
+   EVENTOS DE MOUSE
+   ===================================================================== */
+viewCanvas.addEventListener('mousedown', (e) => {
+    if (isPlaying) return;
+    const pos = getMousePos(e);
+    if (pos.x < 0 || pos.x >= TILE_SIZE || pos.y < 0 || pos.y >= TILE_SIZE) return;
+
+    if (currentTool === 'picker') { pickColor(pos.x, pos.y); return; }
+
+    pushUndo();
+
+    if (currentTool === 'fill') {
+        floodFill(pos.x, pos.y, currentColor);
+        render();
+    } else {
+        isDrawing = true;
+        drawPixel(pos);
+    }
+});
+
+viewCanvas.addEventListener('mousemove', (e) => {
+    if (!isDrawing || isPlaying) return;
+    const pos = getMousePos(e);
+    if (pos.x >= -brushSize && pos.x < TILE_SIZE + brushSize &&
+        pos.y >= -brushSize && pos.y < TILE_SIZE + brushSize) {
+        drawPixel(pos);
+    }
+});
+
+window.addEventListener('mouseup', () => {
+    if (isDrawing) { isDrawing = false; refreshAll(); }
+});
+
+/* =====================================================================
+   FERRAMENTAS (UI)
+   ===================================================================== */
+function setActiveTool(btnId) {
+    ['btn-pencil','btn-eraser','btn-fill','btn-picker'].forEach(id =>
+        document.getElementById(id).classList.toggle('active', id === btnId));
+    currentTool = btnId.replace('btn-', '');
+}
+
+document.getElementById('btn-pencil').onclick = () => setActiveTool('btn-pencil');
+document.getElementById('btn-eraser').onclick = () => setActiveTool('btn-eraser');
+document.getElementById('btn-fill').onclick   = () => setActiveTool('btn-fill');
+document.getElementById('btn-picker').onclick = () => setActiveTool('btn-picker');
+document.getElementById('btn-undo').onclick = undo;
+document.getElementById('btn-redo').onclick = redo;
+
+document.getElementById('brush-select').addEventListener('change', e => {
+    brushSize = parseInt(e.target.value);
+});
+
+window.addEventListener('keydown', (e) => {
+    if (e.ctrlKey || e.metaKey) {
+        if (e.key.toLowerCase() === 'z') { e.shiftKey ? redo() : undo(); e.preventDefault(); }
+        else if (e.key.toLowerCase() === 'y') { redo(); e.preventDefault(); }
+        return;
+    }
+    if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT') return;
+    switch (e.key.toLowerCase()) {
+        case 'b': setActiveTool('btn-pencil'); break;
+        case 'e': setActiveTool('btn-eraser'); break;
+        case 'g': setActiveTool('btn-fill');   break;
+        case 'i': setActiveTool('btn-picker'); break;
+        case ' ': togglePlay(); e.preventDefault(); break;
+    }
+});
+
+/* =====================================================================
+   CAMADAS — AÇÕES
+   ===================================================================== */
+function addLayer() {
+    layers.push(newLayerObj('Camada ' + (layers.length + 1)));
+    activeLayer = layers.length - 1;
+}
+function dupLayer() {
+    if (!curLayer()) return;
+    layers.splice(activeLayer + 1, 0, cloneLayer(curLayer()));
+    activeLayer++;
+}
+function delLayer() {
+    if (layers.length <= 1) { alert('É preciso ter ao menos 1 camada.'); return; }
+    layers.splice(activeLayer, 1);
+    activeLayer = Math.min(activeLayer, layers.length - 1);
+}
+function moveLayer(dir) {
+    const ni = activeLayer + dir;
+    if (ni < 0 || ni >= layers.length) return;
+    [layers[activeLayer], layers[ni]] = [layers[ni], layers[activeLayer]];
+    activeLayer = ni;
+}
+
+document.getElementById('btn-layer-add').onclick = () => { pushUndo(); addLayer(); refreshAll(); };
+document.getElementById('btn-layer-dup').onclick = () => { pushUndo(); dupLayer(); refreshAll(); };
+document.getElementById('btn-layer-del').onclick = () => { pushUndo(); delLayer(); refreshAll(); };
+document.getElementById('btn-layer-up').onclick   = () => { pushUndo(); moveLayer(+1); refreshAll(); };
+document.getElementById('btn-layer-down').onclick = () => { pushUndo(); moveLayer(-1); refreshAll(); };
+
+document.getElementById('layer-opacity').addEventListener('input', (e) => {
+    const v = parseInt(e.target.value) / 100;
+    if (curLayer()) { curLayer().opacity = v; }
+    document.getElementById('opacity-val').textContent = e.target.value + '%';
+    render();
+});
+document.getElementById('layer-opacity').addEventListener('change', () => {
+    renderLayersUI(); renderTimeline();
+});
+
+/* =====================================================================
+   FRAMES — AÇÕES
+   ===================================================================== */
+function loadFrame(i) {
+    if (i < 0 || i >= frames.length) return;
+    currentFrame = i;
+    layers = frames[i].layers;
+    if (activeLayer >= layers.length) activeLayer = layers.length - 1;
+    if (activeLayer < 0) activeLayer = 0;
+    refreshAll();
+}
+
+function newFrame() {
+    const copy = layers.map(L => cloneLayer(L));
+    frames.splice(currentFrame + 1, 0, { layers: copy });
+    currentFrame++;
+    layers = frames[currentFrame].layers;
+    activeLayer = Math.min(activeLayer, layers.length - 1);
+}
+
+function delFrame() {
+    if (frames.length <= 1) return;
+    frames.splice(currentFrame, 1);
+    if (currentFrame >= frames.length) currentFrame = frames.length - 1;
+    layers = frames[currentFrame].layers;
+    activeLayer = Math.min(activeLayer, layers.length - 1);
+}
+
+document.getElementById('btn-frame-add').onclick = () => { newFrame(); refreshAll(); };
+document.getElementById('btn-frame-dup').onclick = () => { newFrame(); refreshAll(); };
+document.getElementById('btn-frame-del').onclick = () => { delFrame(); refreshAll(); };
+
+/* =====================================================================
+   PLAYBACK
+   ===================================================================== */
+function tickPlay() {
+    if (!isPlaying) return;
+    drawFrameTo(ctxView, frames[playIndex], DISPLAY_SIZE);
+    playIndex = (playIndex + 1) % frames.length;
+    playTimer = setTimeout(tickPlay, 1000 / fps);
+}
+
+function togglePlay() {
+    if (isPlaying) {
+        isPlaying = false;
+        clearTimeout(playTimer);
+        document.getElementById('btn-play').textContent = '▶';
+        render();
+        return;
+    }
+    if (frames.length < 2) { alert('Crie mais de um frame para animar.'); return; }
+    isPlaying = true;
+    playIndex = currentFrame;
+    document.getElementById('btn-play').textContent = '⏸';
+    tickPlay();
+}
+
+document.getElementById('btn-play').onclick = togglePlay;
+document.getElementById('fps').addEventListener('change', (e) => {
+    fps = Math.max(1, Math.min(60, parseInt(e.target.value) || 8));
+    e.target.value = fps;
+});
+
+/* =====================================================================
+   SCRIPT / COMANDOS
+   ===================================================================== */
+function parseScript(src) {
+    const tokens = src.split('\n')
+        .map(l => l.trim())
+        .filter(l => l.length && !l.startsWith('#'));
+
+    let pos = 0;
+    function block() {
+        const out = [];
+        while (pos < tokens.length) {
+            const line = tokens[pos];
+            if (line === '}') { pos++; return out; }
+
+            const m = line.match(/^repeat\s+(\d+)\s*\{?$/i);
+            if (m) {
+                pos++;
+                const body = block();
+                const n = parseInt(m[1]);
+                for (let k = 0; k < n; k++) {
+                    if (out.length > 20000) throw new Error('Script muito grande (limite 20000 comandos).');
+                    out.push(...body);
+                }
+                continue;
+            }
+            pos++;
+            const parts = line.split(/\s+/);
+            out.push({ op: parts[0].toLowerCase(), args: parts.slice(1), raw: line });
+        }
+        return out;
+    }
+    return block();
+}
+
+function layerTransform(L, fn) {
+    const tmp = mkCanvas(TILE_SIZE);
+    const tctx = tmp.getContext('2d');
+    tctx.imageSmoothingEnabled = false;
+    fn(tctx);
+    L.ctx.clearRect(0, 0, TILE_SIZE, TILE_SIZE);
+    L.ctx.drawImage(tmp, 0, 0);
+}
+
+function execCmd(c) {
+    const A = c.args;
+    switch (c.op) {
+
+        /* --- transformações na camada ativa --- */
+        case 'shift': {
+            const dx = parseInt(A[0]) || 0, dy = parseInt(A[1]) || 0;
+            const L = curLayer();
+            layerTransform(L, t => t.drawImage(L.canvas, dx, dy));
+            break;
+        }
+        case 'rotate': {
+            const deg = ((parseInt(A[0]) || 0) % 360 + 360) % 360;
+            const L = curLayer();
+            layerTransform(L, t => {
+                if (deg === 90)  { t.translate(TILE_SIZE, 0); t.rotate(Math.PI / 2); }
+                if (deg === 180) { t.translate(TILE_SIZE, TILE_SIZE); t.rotate(Math.PI); }
+                if (deg === 270) { t.translate(0, TILE_SIZE); t.rotate(-Math.PI / 2); }
+                t.drawImage(L.canvas, 0, 0);
+            });
+            break;
+        }
+        case 'flip': {
+            const dir = (A[0] || 'h').toLowerCase();
+            const L = curLayer();
+            layerTransform(L, t => {
+                if (dir === 'v') { t.translate(0, TILE_SIZE); t.scale(1, -1); }
+                else             { t.translate(TILE_SIZE, 0); t.scale(-1, 1); }
+                t.drawImage(L.canvas, 0, 0);
+            });
+            break;
+        }
+        case 'fill': {
+            const L = curLayer();
+            L.ctx.fillStyle = A[0] || '#ffffff';
+            L.ctx.fillRect(0, 0, TILE_SIZE, TILE_SIZE);
+            break;
+        }
+        case 'clear': {
+            curLayer().ctx.clearRect(0, 0, TILE_SIZE, TILE_SIZE);
+            break;
+        }
+        case 'opacity': {
+            curLayer().opacity = Math.max(0, Math.min(1, parseFloat(A[0]) || 0));
+            break;
+        }
+        case 'show': curLayer().visible = true;  break;
+        case 'hide': curLayer().visible = false; break;
+
+        /* --- camadas --- */
+        case 'layer': {
+            const n = parseInt(A[0]) || 0;
+            activeLayer = Math.max(0, Math.min(layers.length - 1, n));
+            break;
+        }
+        case 'addlayer': addLayer(); break;
+        case 'duplayer': dupLayer(); break;
+        case 'dellayer': delLayer(); break;
+        case 'uplayer':
+        case 'uploayer': moveLayer(+1); break;
+        case 'downlayer': moveLayer(-1); break;
+
+        /* --- frames --- */
+        case 'newframe':
+        case 'dupframe': newFrame(); break;
+        case 'delframe': delFrame(); break;
+        case 'goto': loadFrame(parseInt(A[0]) || 0); break;
+        case 'clearframe':
+            layers.forEach(L => L.ctx.clearRect(0, 0, TILE_SIZE, TILE_SIZE));
+            break;
+
+        default:
+            throw new Error('Comando desconhecido: "' + c.raw + '"');
+    }
+}
+
+document.getElementById('btn-run').onclick = () => {
+    if (isPlaying) togglePlay();
+    let cmds;
+    try {
+        cmds = parseScript(document.getElementById('script-editor').value);
+    } catch (err) {
+        alert('Erro ao ler o script: ' + err.message);
+        return;
+    }
+
+    pushUndo();
+    try {
+        for (const c of cmds) execCmd(c);
+    } catch (err) {
+        alert('Erro no script: ' + err.message);
+    }
+    refreshAll();
+};
+
+/* =====================================================================
+   MANUAL (modal)
+   ===================================================================== */
+const manualModal = document.getElementById('manual-modal');
+document.getElementById('btn-help').onclick = () => manualModal.classList.add('open');
+document.getElementById('manual-close').onclick = () => manualModal.classList.remove('open');
+manualModal.addEventListener('click', (e) => {
+    if (e.target === manualModal) manualModal.classList.remove('open');
+});
+window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') manualModal.classList.remove('open');
+});
+
+/* =====================================================================
+   EXPORTAÇÃO SVG
+   ===================================================================== */
+function buildColorMap(frame) {
+    const tmp = mkCanvas(TILE_SIZE);
+    const c = tmp.getContext('2d');
+    for (const L of frame.layers) {
+        if (!L.visible || L.opacity <= 0) continue;
+        c.globalAlpha = L.opacity;
+        c.drawImage(L.canvas, 0, 0);
+    }
+    const data = c.getImageData(0, 0, TILE_SIZE, TILE_SIZE).data;
+    const colorMap = {};
+
+    for (let y = 0; y < TILE_SIZE; y++) {
+        let cur = null, startX = 0;
+        for (let x = 0; x < TILE_SIZE; x++) {
+            const i = (y * TILE_SIZE + x) * 4;
+            const r = data[i], g = data[i+1], b = data[i+2], a = data[i+3];
+            const key = a === 0 ? null
+                : '#' + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1) + '|' + a;
+
+            if (key !== cur) {
+                if (cur !== null) pushRun(colorMap, cur, startX, y, x - startX);
+                cur = key; startX = x;
+            }
+        }
+        if (cur !== null) pushRun(colorMap, cur, startX, y, TILE_SIZE - startX);
+    }
+    return colorMap;
+}
+
+function pushRun(map, key, x, y, w) {
+    if (!map[key]) map[key] = [];
+    map[key].push(`M${x} ${y}h${w}v1h-${w}z`);
+}
+
+function colorMapToPaths(colorMap) {
+    let out = '';
+    for (const [key, runs] of Object.entries(colorMap)) {
+        const [hex, a] = key.split('|');
+        const alpha = parseInt(a);
+        const op = alpha < 255 ? ` fill-opacity="${(alpha / 255).toFixed(3)}"` : '';
+        out += `  <path fill="${hex}"${op} d="${runs.join('')}"/>\n`;
+    }
+    return out;
+}
+
+function download(filename, content, type) {
+    const blob = new Blob([content], { type: type });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+
+/* --- SVG estático (frame atual) --- */
+document.getElementById('btn-export').onclick = () => {
+    const body = colorMapToPaths(buildColorMap(frames[currentFrame]));
+    const svg =
+`<svg xmlns="http://www.w3.org/2000/svg" width="${TILE_SIZE}" height="${TILE_SIZE}" viewBox="0 0 ${TILE_SIZE} ${TILE_SIZE}" shape-rendering="crispEdges">
+${body}</svg>`;
+    download(`laureta_tile_${TILE_SIZE}_${Date.now()}.svg`, svg, 'image/svg+xml');
+};
+
+/* --- SVG animado (todos os frames, CSS keyframes) --- */
+document.getElementById('btn-export-anim').onclick = () => {
+    const N = frames.length;
+    if (!N) return;
+    const dur = (N / fps).toFixed(3);
+
+    let svg =
+`<svg xmlns="http://www.w3.org/2000/svg" width="${TILE_SIZE}" height="${TILE_SIZE}" viewBox="0 0 ${TILE_SIZE} ${TILE_SIZE}" shape-rendering="crispEdges">
+<style>
+`;
+
+    for (let i = 0; i < N; i++) {
+        const s  = (i / N) * 100;
+        const e  = ((i + 1) / N) * 100;
+        const sd = s.toFixed(4);
+        const ed = e.toFixed(4);
+        const sb = (s - 0.01).toFixed(4);
+        const eb = (e - 0.01).toFixed(4);
+
+        let kf;
+        if (i === 0) {
+            kf = `0%{opacity:1}${eb}%{opacity:1}${ed}%{opacity:0}100%{opacity:0}`;
+        } else {
+            kf = `0%{opacity:0}${sb}%{opacity:0}${sd}%{opacity:1}${eb}%{opacity:1}${ed}%{opacity:0}100%{opacity:0}`;
+        }
+        svg += `#f${i}{opacity:0;animation:a${i} ${dur}s linear infinite}\n`;
+        svg += `@keyframes a${i}{${kf}}\n`;
+    }
+
+    svg += `</style>\n`;
+
+    for (let i = 0; i < N; i++) {
+        svg += `<g id="f${i}">\n${colorMapToPaths(buildColorMap(frames[i]))}</g>\n`;
+    }
+
+    svg += `</svg>`;
+    download(`laureta_anim_${TILE_SIZE}_${N}f_${fps}fps.svg`, svg, 'image/svg+xml');
+};
+
+/* =====================================================================
+   EXPORTAÇÃO GIF / MP4  (NOVO)
+   ===================================================================== */
+const MAX_EXPORT_SIDE = 1024;
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+function composeFrame(frame, size) {
+    const c = mkCanvas(size);
+    const ctx = c.getContext('2d');
+    ctx.imageSmoothingEnabled = false;
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, size, size);
+    for (const L of frame.layers) {
+        if (!L.visible || L.opacity <= 0) continue;
+        ctx.globalAlpha = L.opacity;
+        ctx.drawImage(L.canvas, 0, 0, TILE_SIZE, TILE_SIZE, 0, 0, size, size);
+    }
+    ctx.globalAlpha = 1;
+    return c;
+}
+
+function getExportSize() {
+    let scale = parseInt(document.getElementById('export-scale').value) || 1;
+    let size = TILE_SIZE * scale;
+    if (size > MAX_EXPORT_SIDE) {
+        scale = Math.max(1, Math.floor(MAX_EXPORT_SIDE / TILE_SIZE));
+        size = TILE_SIZE * scale;
+    }
+    return { scale, size };
+}
+
+function setBusy(btn, busy, label) {
+    if (busy) {
+        if (!btn.dataset.orig) btn.dataset.orig = btn.textContent;
+        btn.textContent = label || '⏳ ...';
+        btn.disabled = true;
+    } else {
+        if (btn.dataset.orig) btn.textContent = btn.dataset.orig;
+        btn.disabled = false;
+    }
+}
+
+/* ---------- GIF (gif.js) ---------- */
+let __gifWorkerURL = null;
+async function getGifWorkerURL() {
+    if (__gifWorkerURL) return __gifWorkerURL;
+    const resp = await fetch('https://cdnjs.cloudflare.com/ajax/libs/gif.js/0.2.0/gif.worker.js');
+    if (!resp.ok) throw new Error('Não foi possível baixar o worker do GIF (HTTP ' + resp.status + ').');
+    const text = await resp.text();
+    __gifWorkerURL = URL.createObjectURL(new Blob([text], { type: 'application/javascript' }));
+    return __gifWorkerURL;
+}
+
+async function exportGIF() {
+    if (typeof GIF === 'undefined') {
+        alert('Biblioteca de GIF não carregada. Verifique sua conexão com a internet.');
+        return;
+    }
+    if (!frames.length) return;
+
+    const btn = document.getElementById('btn-export-gif');
+    setBusy(btn, true, '⏳ GIF...');
+
+    try {
+        const { size } = getExportSize();
+        const delay = Math.max(20, Math.round(1000 / fps));
+        const workerURL = await getGifWorkerURL();
+
+        const gif = new GIF({
+            workers: 2,
+            quality: 10,
+            width: size,
+            height: size,
+            workerScript: workerURL
+        });
+
+        for (const f of frames) {
+            const c = composeFrame(f, size);
+            gif.addFrame(c, { delay, copy: true });
+        }
+
+        gif.on('progress', (p) => {
+            btn.textContent = '⏳ ' + Math.round(p * 100) + '%';
+        });
+
+        gif.on('finished', (blob) => {
+            download(`laureta_anim_${size}px_${frames.length}f_${fps}fps.gif`, blob, 'image/gif');
+            setBusy(btn, false);
+        });
+
+        gif.on('abort', () => setBusy(btn, false));
+        gif.render();
+    } catch (err) {
+        alert('Erro ao gerar GIF: ' + err.message);
+        setBusy(btn, false);
+    }
+}
+
+/* ---------- MP4 / WebM (MediaRecorder) ---------- */
+async function exportVideo() {
+    if (!window.MediaRecorder) {
+        alert('Seu navegador não suporta MediaRecorder. Use Chrome/Firefox/Edge atualizados.');
+        return;
+    }
+    if (!frames.length) return;
+
+    const btn = document.getElementById('btn-export-mp4');
+    setBusy(btn, true, '⏳ MP4...');
+
+    try {
+        const { size } = getExportSize();
+
+        const candidates = [
+            'video/mp4;codecs=avc1.42E01E',
+            'video/mp4;codecs=avc1',
+            'video/mp4',
+            'video/webm;codecs=vp9',
+            'video/webm;codecs=vp8',
+            'video/webm'
+        ];
+        let mime = null;
+        for (const m of candidates) {
+            if (MediaRecorder.isTypeSupported(m)) { mime = m; break; }
+        }
+        if (!mime) {
+            alert('Nenhum formato de vídeo é suportado neste navegador.');
+            setBusy(btn, false);
+            return;
+        }
+
+        const canvas = mkCanvas(size);
+        const ctx = canvas.getContext('2d');
+        ctx.imageSmoothingEnabled = false;
+
+        const stream = canvas.captureStream(0);
+        const track = stream.getVideoTracks()[0];
+
+        const recorder = new MediaRecorder(stream, {
+            mimeType: mime,
+            videoBitsPerSecond: 4_000_000
+        });
+
+        const chunks = [];
+        recorder.ondataavailable = (e) => { if (e.data && e.data.size) chunks.push(e.data); };
+        const donePromise = new Promise((resolve) => { recorder.onstop = resolve; });
+
+        recorder.start();
+        await sleep(120);
+
+        const delay = Math.max(20, Math.round(1000 / fps));
+        for (let i = 0; i < frames.length; i++) {
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, size, size);
+            for (const L of frames[i].layers) {
+                if (!L.visible || L.opacity <= 0) continue;
+                ctx.globalAlpha = L.opacity;
+                ctx.drawImage(L.canvas, 0, 0, TILE_SIZE, TILE_SIZE, 0, 0, size, size);
+            }
+            ctx.globalAlpha = 1;
+            track.requestFrame();
+            await sleep(delay);
+        }
+
+        await sleep(Math.max(delay, 100));
+        recorder.stop();
+        await donePromise;
+
+        const blob = new Blob(chunks, { type: mime.split(';')[0] });
+        const ext = mime.startsWith('video/mp4') ? 'mp4' : 'webm';
+        download(`laureta_anim_${size}px_${frames.length}f_${fps}fps.${ext}`, blob, mime.split(';')[0]);
+
+        if (ext === 'webm') {
+            console.info('[Laureta] MP4 não suportado neste navegador. Arquivo salvo como WebM.');
+        }
+    } catch (err) {
+        alert('Erro ao gerar vídeo: ' + err.message);
+    } finally {
+        setBusy(btn, false);
+    }
+}
+
+document.getElementById('btn-export-gif').onclick = exportGIF;
+document.getElementById('btn-export-mp4').onclick = exportVideo;
+
+/* =====================================================================
+   RESOLUÇÃO
+   ===================================================================== */
+document.getElementById('size-select').addEventListener('change', (e) => {
+    const newSize = parseInt(e.target.value);
+    if (newSize === TILE_SIZE) return;
+    const oldSize = TILE_SIZE;
+
+    frames.forEach(f => {
+        f.layers.forEach(L => {
+            const tmp = mkCanvas(oldSize);
+            tmp.getContext('2d').drawImage(L.canvas, 0, 0);
+
+            const nc = mkCanvas(newSize);
+            const nctx = nc.getContext('2d', { willReadFrequently: true });
+            nctx.imageSmoothingEnabled = false;
+            nctx.drawImage(tmp, 0, 0, oldSize, oldSize, 0, 0, newSize, newSize);
+
+            L.canvas = nc;
+            L.ctx = nctx;
+        });
+    });
+
+    TILE_SIZE = newSize;
+
+    const bs = document.getElementById('brush-select');
+    if (TILE_SIZE >= 512 && brushSize < 8)      { brushSize = 8; bs.value = '8'; }
+    else if (TILE_SIZE >= 256 && brushSize < 4) { brushSize = 4; bs.value = '4'; }
+
+    undoStack = [];
+    redoStack = [];
+    updateHistoryButtons();
+
+    drawGrid();
+    refreshAll();
+});
+
+/* =====================================================================
+   UI GERAL
+   ===================================================================== */
+document.querySelectorAll('.color-btn').forEach(btn => {
+    btn.onclick = () => {
+        document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentColor = btn.dataset.color;
+        document.getElementById('custom-color').value = currentColor;
+        if (currentTool === 'eraser' || currentTool === 'picker') setActiveTool('btn-pencil');
+    };
+});
+
+document.getElementById('custom-color').oninput = (e) => {
+    currentColor = e.target.value;
+    document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active'));
+    if (currentTool === 'eraser' || currentTool === 'picker') setActiveTool('btn-pencil');
+};
+
+document.getElementById('btn-grid').onclick = (e) => {
+    showGrid = !showGrid;
+    e.target.classList.toggle('active', showGrid);
+    drawGrid();
+};
+
+document.getElementById('btn-bg').onclick = (e) => {
+    canvasWrapper.classList.toggle('solid-bg');
+    e.target.textContent = canvasWrapper.classList.contains('solid-bg') ? '🏁 Sólido' : '🏁 Fundo';
+};
+
+document.getElementById('btn-clear').onclick = () => {
+    if (!confirm('Apagar todo o conteúdo da camada ativa?')) return;
+    pushUndo();
+    curLayer().ctx.clearRect(0, 0, TILE_SIZE, TILE_SIZE);
+    refreshAll();
+};
+
+/* =====================================================================
+   INICIALIZAÇÃO
+   ===================================================================== */
+function initProject() {
+    frames = [{ layers: [newLayerObj('Camada 1')] }];
+    currentFrame = 0;
+    layers = frames[0].layers;
+    activeLayer = 0;
+    undoStack = [];
+    redoStack = [];
+    updateHistoryButtons();
+}
+
+initProject();
+drawGrid();
+refreshAll();
+</script>
+</body>
+</html>
