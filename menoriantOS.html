@@ -1,0 +1,1936 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Menoriant OS</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0; height: 100%;
+    background: #000; color: #fff;
+    font-family: "Courier New", Courier, monospace;
+    overflow: hidden;
+  }
+
+  /* ---------- Bootloader ---------- */
+  #boot {
+    position: fixed; inset: 0; z-index: 10000;
+    background: #000; color: #fff;
+    padding: 20px; font-size: 14px; line-height: 1.5;
+    white-space: pre-wrap; overflow: hidden;
+  }
+
+  /* ---------- Desktop ---------- */
+  #desktop { position: fixed; inset: 0; display: none; }
+  #desktop.visible { display: block; }
+
+  #icons {
+    position: absolute; top: 0; left: 0; right: 0; bottom: 140px;
+    padding: 12px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, 92px);
+    grid-auto-rows: 88px;
+    gap: 8px;
+    align-content: start;
+    overflow: auto;
+  }
+
+  .icon {
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 4px; cursor: pointer;
+    border: 1px solid transparent;
+    font-size: 11px; text-align: center;
+    color: #fff; user-select: none;
+    opacity: 0; transform: scale(0.9);
+    transition: opacity .2s, transform .2s;
+  }
+  .icon.on { opacity: 1; transform: scale(1); }
+  .icon:hover { border: 1px dotted #fff; background: #111; }
+  .icon .ico { font-size: 26px; margin-bottom: 2px; line-height: 1; }
+  .icon .nm { line-height: 1.1; }
+
+  /* ---------- Terminal TUI panel ---------- */
+  #termpanel {
+    position: absolute; left: 0; right: 0; bottom: 32px; height: 108px;
+    background: #000; border-top: 1px solid #444;
+    padding: 4px 8px; font-size: 12px;
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+  #termlog { flex: 1; overflow-y: auto; white-space: pre-wrap; line-height: 1.35; }
+  #termlog .cmd { color: #fff; }
+  #termlog .out { color: #9aa; }
+  #termlog .out .ic { color: #fff; }
+
+  #termprompt {
+    display: flex; align-items: center; gap: 6px;
+    border-top: 1px dashed #333; padding-top: 3px; margin-top: 2px;
+  }
+  #terminput {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: #fff;
+    font-family: inherit;
+    font-size: 12px;
+    padding: 0;
+    caret-color: #8f8;
+    min-width: 0;
+  }
+  #terminput::placeholder { color: #555; }
+
+  .prompt { color: #8f8; white-space: pre; }
+
+  /* ---------- Taskbar ---------- */
+  #taskbar {
+    position: absolute; left: 0; right: 0; bottom: 0; height: 32px;
+    background: #000; border-top: 1px solid #444;
+    display: flex; align-items: center;
+    padding: 0 8px; gap: 10px; font-size: 12px;
+  }
+  #taskbar .brand { font-weight: bold; }
+  #taskbar .spacer { flex: 1; }
+  .muted { color: #888; }
+
+  #taskbar .taskbtn {
+    background: #000; color: #fff;
+    border: 1px solid #444;
+    padding: 2px 7px; cursor: pointer;
+    font-family: inherit; font-size: 12px;
+    line-height: 1;
+  }
+  #taskbar .taskbtn:hover { border-color: #fff; background: #111; }
+
+  /* ---------- Windows ---------- */
+  #windows { position: absolute; inset: 0; pointer-events: none; }
+  .win {
+    position: absolute; background: #000; border: 1px solid #fff;
+    min-width: 260px; min-height: 160px;
+    display: flex; flex-direction: column;
+    box-shadow: 3px 3px 0 #222;
+    pointer-events: auto; font-size: 12px;
+  }
+  .win-title {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 2px 6px; border-bottom: 1px solid #fff;
+    background: #000; cursor: move;
+    user-select: none; font-size: 12px; flex: 0 0 auto;
+  }
+  .win-close { cursor: pointer; padding: 0 4px; }
+  .win-close:hover { background: #fff; color: #000; }
+  .win-body {
+    flex: 1; overflow: auto; padding: 6px;
+    display: flex; flex-direction: column; gap: 4px;
+  }
+
+  /* ---------- Form controls ---------- */
+  .win-body textarea, .win-body input, .win-body select {
+    background: #000; color: #fff;
+    border: 1px solid #666; padding: 3px 4px;
+    font-family: inherit; font-size: 12px; outline: none;
+  }
+  .win-body textarea:focus, .win-body input:focus { border-color: #fff; }
+  .win-body button {
+    background: #000; color: #fff; border: 1px solid #fff;
+    padding: 2px 8px; font-family: inherit; font-size: 12px;
+    cursor: pointer;
+  }
+  .win-body button:hover { background: #fff; color: #000; }
+  .win-body textarea { flex: 1; resize: none; width: 100%; }
+  .row { display: flex; gap: 4px; align-items: center; }
+  .row > input { flex: 1; }
+
+  .tbl { width: 100%; border-collapse: collapse; }
+  .tbl td, .tbl th { border: 1px solid #444; padding: 1px 3px; }
+  .tbl td[contenteditable] { outline: none; }
+  .tbl td[contenteditable]:focus { background: #222; }
+
+  .slide {
+    border: 1px solid #444; padding: 6px;
+    min-height: 60px; white-space: pre-wrap;
+  }
+  .mapgrid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 2px; }
+  .mapgrid .cell {
+    border: 1px solid #444; padding: 6px; text-align: center;
+    cursor: pointer; font-size: 10px;
+  }
+  .mapgrid .cell:hover { background: #222; }
+  .mapgrid .cell.you { background: #fff; color: #000; }
+
+  .list-item {
+    border: 1px solid #444; padding: 3px 5px; cursor: pointer;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .list-item:hover { background: #222; }
+
+  /* ---------- Context menu ---------- */
+  .ctxmenu {
+    position: fixed; z-index: 99999;
+    background: #000; color: #fff;
+    border: 1px solid #fff;
+    padding: 2px 0; min-width: 170px;
+    font-size: 12px; font-family: inherit;
+    box-shadow: 3px 3px 0 #222;
+    user-select: none;
+  }
+  .ctxitem {
+    padding: 3px 14px 3px 10px; cursor: pointer; white-space: nowrap;
+  }
+  .ctxitem:hover { background: #fff; color: #000; }
+  .ctxitem.disabled { color: #555; cursor: default; }
+  .ctxitem.disabled:hover { background: transparent; color: #555; }
+  .ctxsep { height: 1px; background: #444; margin: 3px 0; }
+</style>
+</head>
+<body>
+
+<div id="boot"></div>
+
+<div id="desktop">
+  <div id="icons"></div>
+  <div id="windows"></div>
+
+  <div id="termpanel">
+    <div id="termlog"></div>
+    <div id="termprompt">
+      <span class="prompt">mnrt@menoriant:~$</span>
+      <input id="terminput" type="text" autocomplete="off" spellcheck="false"
+             placeholder="digite JS ou 'help'">
+    </div>
+  </div>
+
+  <div id="taskbar">
+    <span class="brand">▌ MENORIANT OS</span>
+    <span class="muted">v1.1</span>
+    <span class="spacer"></span>
+    <span id="taskinfo" class="muted"></span>
+    <button id="soundtoggle" class="taskbtn" title="Som on/off">🔊</button>
+    <span id="clock">--:--:--</span>
+  </div>
+</div>
+
+<!-- Runtime gráfico (opcional; o OS funciona mesmo se o CDN falhar) -->
+<script async src="https://cdn.jsdelivr.net/npm/pixi.js@7.4.2/dist/pixi.min.js"></script>
+<script async
+        src="https://cdn.jsdelivr.net/gh/aceleradox/Pitangus.js@v2.0.0/pitangus.js"
+        onerror="window.__pitangusFailed = true;"></script>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ============================================================
+     STORAGE
+     ============================================================ */
+  var FS_KEY = 'mnrt_fs_v1';
+  var TRASH_KEY = 'mnrt_trash_v1';
+
+  function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+  function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+  function lsDel(k) { try { localStorage.removeItem(k); } catch (e) {} }
+
+  function fsReadAll() {
+    try {
+      var raw = lsGet(FS_KEY) || '{}';
+      return JSON.parse(raw) || {};
+    } catch (e) { return {}; }
+  }
+  function fsWriteAll(o) { lsSet(FS_KEY, JSON.stringify(o)); }
+  function fsList() { return Object.keys(fsReadAll()); }
+  function fsGet(name) {
+    var fs = fsReadAll();
+    return Object.prototype.hasOwnProperty.call(fs, name) ? fs[name] : undefined;
+  }
+  function fsPut(name, content) {
+    var fs = fsReadAll(); fs[name] = content; fsWriteAll(fs);
+  }
+  function fsDelete(name) {
+    var fs = fsReadAll();
+    if (Object.prototype.hasOwnProperty.call(fs, name)) {
+      var t = getTrash();
+      t.push({ name: name, content: fs[name], deleted: Date.now() });
+      lsSet(TRASH_KEY, JSON.stringify(t));
+      delete fs[name];
+      fsWriteAll(fs);
+    }
+  }
+  function getTrash() {
+    try { return JSON.parse(lsGet(TRASH_KEY) || '[]') || []; } catch (e) { return []; }
+  }
+  function setTrash(t) { lsSet(TRASH_KEY, JSON.stringify(t)); }
+
+  /* ============================================================
+     SOUND EFFECTS (Web Audio API)
+     ============================================================ */
+  var audioCtx = null;
+  var soundOn = (lsGet('mnrt_sound') !== 'off');
+
+  function initAudio() {
+    if (!audioCtx) {
+      try {
+        var AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return;
+        audioCtx = new AC();
+      } catch (e) { audioCtx = null; return; }
+    }
+    if (audioCtx.state === 'suspended') {
+      try { audioCtx.resume().catch(function () {}); } catch (e) {}
+    }
+  }
+
+  function tone(freq, dur, type, vol, delay) {
+    if (!soundOn || !audioCtx) return;
+    try {
+      var t0 = audioCtx.currentTime + (delay || 0);
+      var osc = audioCtx.createOscillator();
+      var g = audioCtx.createGain();
+      osc.type = type || 'square';
+      osc.frequency.value = freq;
+      g.gain.value = 0;
+      osc.connect(g);
+      g.connect(audioCtx.destination);
+      g.gain.setValueAtTime(0, t0);
+      g.gain.linearRampToValueAtTime(vol || 0.04, t0 + 0.005);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+      osc.start(t0);
+      osc.stop(t0 + dur + 0.02);
+    } catch (e) {}
+  }
+
+  var sfx = {
+    boot: function () {
+      tone(523, 0.12, 'sine', 0.05);
+      tone(659, 0.12, 'sine', 0.05, 0.12);
+      tone(784, 0.16, 'sine', 0.05, 0.24);
+      tone(1046, 0.28, 'sine', 0.06, 0.40);
+    },
+    click:  function () { tone(880, 0.040, 'square', 0.03); },
+    open:   function () { tone(660, 0.045, 'sine', 0.05); tone(990, 0.08, 'sine', 0.05, 0.045); },
+    close:  function () { tone(440, 0.045, 'square', 0.04); tone(220, 0.08, 'square', 0.04, 0.045); },
+    save:   function () { tone(880, 0.045, 'sine', 0.05); tone(1320, 0.10, 'sine', 0.05, 0.05); },
+    error:  function () { tone(220, 0.09, 'sawtooth', 0.06); tone(180, 0.14, 'sawtooth', 0.06, 0.09); },
+    del:    function () { tone(330, 0.045, 'triangle', 0.05); tone(220, 0.08, 'triangle', 0.05, 0.045); },
+    menu:   function () { tone(600, 0.025, 'sine', 0.020); },
+    key:    function () { tone(1200, 0.018, 'square', 0.012); }
+  };
+
+  /* Primeiro gesto do usuário destrava o áudio */
+  document.addEventListener('mousedown', function () { initAudio(); }, true);
+  document.addEventListener('keydown',  function () { initAudio(); }, true);
+
+  /* ============================================================
+     TERMINAL LOG (TUI)
+     ============================================================ */
+  function termLog(cmd, out, icon) {
+    var log = document.getElementById('termlog');
+    if (!log) return;
+    var l1 = document.createElement('div');
+    l1.className = 'cmd';
+    l1.textContent = 'mnrt@menoriant:~$ ' + cmd;
+    log.appendChild(l1);
+
+    if (out !== undefined && out !== null) {
+      var l2 = document.createElement('div');
+      l2.className = 'out';
+      if (icon) {
+        var s = document.createElement('span');
+        s.className = 'ic';
+        s.textContent = icon + ' ';
+        l2.appendChild(s);
+      }
+      l2.appendChild(document.createTextNode(String(out)));
+      log.appendChild(l2);
+    }
+    log.scrollTop = log.scrollHeight;
+  }
+
+  /* ============================================================
+     CONTEXT MENU SYSTEM
+     ============================================================ */
+  var ctxMenu = null;
+
+  function showContextMenu(x, y, items) {
+    hideContextMenu();
+    var menu = document.createElement('div');
+    menu.className = 'ctxmenu';
+
+    items.forEach(function (it) {
+      if (it.separator) {
+        var sep = document.createElement('div');
+        sep.className = 'ctxsep';
+        menu.appendChild(sep);
+        return;
+      }
+      var el = document.createElement('div');
+      el.className = 'ctxitem';
+      if (it.disabled) el.classList.add('disabled');
+      el.textContent = it.label;
+      if (!it.disabled && typeof it.action === 'function') {
+        el.addEventListener('click', function (ev) {
+          ev.stopPropagation();
+          hideContextMenu();
+          try { it.action(); }
+          catch (err) { termLog('ctx', 'erro: ' + err.message, '⚠️'); sfx.error(); }
+        });
+      }
+      menu.appendChild(el);
+    });
+
+    document.body.appendChild(menu);
+
+    var r = menu.getBoundingClientRect();
+    if (x + r.width > window.innerWidth - 4)  x = window.innerWidth  - r.width  - 4;
+    if (y + r.height > window.innerHeight - 4) y = window.innerHeight - r.height - 4;
+    if (x < 4) x = 4;
+    if (y < 4) y = 4;
+    menu.style.left = x + 'px';
+    menu.style.top  = y + 'px';
+
+    ctxMenu = menu;
+    sfx.menu();
+  }
+
+  function hideContextMenu() {
+    if (ctxMenu && ctxMenu.parentNode) ctxMenu.parentNode.removeChild(ctxMenu);
+    ctxMenu = null;
+  }
+
+  document.addEventListener('mousedown', function (e) {
+    if (ctxMenu && !ctxMenu.contains(e.target)) hideContextMenu();
+  }, true);
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && ctxMenu) {
+      hideContextMenu();
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  }, true);
+
+  /* ============================================================
+     APPS REGISTRY
+     ============================================================ */
+  var APPS = [
+    { id: 'doc',        name: 'Doc Editor',      icon: '📝', run: openDoc },
+    { id: 'excel',      name: 'Excell',          icon: '📊', run: openExcel },
+    { id: 'powerpoint', name: 'PowerPoint',      icon: '📽️', run: openPowerPoint },
+    { id: 'notepad',    name: 'Notepad',         icon: '📄', run: openNotepad },
+    { id: 'codenet',    name: 'CodeNet',         icon: '💻', run: openCodeNet },
+    { id: 'fantasm',    name: 'fantASM',         icon: '🛠️', run: openFantASM },
+    { id: 'browser',    name: 'Browser',         icon: '🌐', run: openBrowser },
+    { id: 'hex',        name: 'Hex Editor',      icon: '🔢', run: openHex },
+    { id: 'requests',   name: 'Requests',        icon: '📡', run: openRequests },
+    { id: 'ua',         name: 'UA Editor',       icon: '🕵️', run: openUA },
+    { id: 'map',        name: 'Map Navigation',  icon: '🗺️', run: openMap },
+    { id: 'scan',       name: 'Browser Scan',    icon: '🔍', run: openScan },
+    { id: 'system',     name: 'Sistema',         icon: '⚙️', run: openSystem },
+    { id: 'trash',      name: 'Lixeira',         icon: '🗑️', run: openTrash },
+    { id: 'webapps',    name: 'Web Apps',        icon: '🧩', run: openWebApps },
+    { id: 'langedit',   name: 'Web Lang Editor', icon: '🎨', run: openLangEdit }
+  ];
+
+  function findApp(id) {
+    for (var i = 0; i < APPS.length; i++) {
+      if (APPS[i].id === id) return APPS[i];
+    }
+    return null;
+  }
+
+  /* ============================================================
+     WINDOW MANAGEMENT
+     ============================================================ */
+  var zTop = 100;
+  var winCascade = 0;
+  var dragWin = null, dragDX = 0, dragDY = 0;
+
+  document.addEventListener('mousemove', function (e) {
+    if (!dragWin) return;
+    dragWin.style.left = (e.clientX - dragDX) + 'px';
+    dragWin.style.top  = (e.clientY - dragDY) + 'px';
+  });
+  document.addEventListener('mouseup', function () { dragWin = null; });
+
+  function makeDraggable(win, handle) {
+    handle.addEventListener('mousedown', function (e) {
+      if (e.target && e.target.classList && e.target.classList.contains('win-close')) return;
+      dragWin = win;
+      var r = win.getBoundingClientRect();
+      dragDX = e.clientX - r.left;
+      dragDY = e.clientY - r.top;
+      e.preventDefault();
+    });
+  }
+
+  function closeWin(id) {
+    var el = document.getElementById('win-' + id);
+    if (el) { el.remove(); sfx.close(); }
+  }
+
+  function closeAllWins() {
+    var wins = document.querySelectorAll('.win');
+    Array.prototype.forEach.call(wins, function (w) { w.remove(); });
+    if (wins.length) sfx.close();
+  }
+
+  function toggleMaximize(win) {
+    if (win.dataset.maxed === '1') {
+      win.style.left   = win.dataset.prevL;
+      win.style.top    = win.dataset.prevT;
+      win.style.width  = win.dataset.prevW;
+      win.style.height = win.dataset.prevH;
+      win.dataset.maxed = '0';
+    } else {
+      win.dataset.prevL = win.style.left;
+      win.dataset.prevT = win.style.top;
+      win.dataset.prevW = win.style.width;
+      win.dataset.prevH = win.style.height;
+      win.style.left   = '0px';
+      win.style.top    = '0px';
+      win.style.width  = window.innerWidth + 'px';
+      win.style.height = (window.innerHeight - 140) + 'px';
+      win.dataset.maxed = '1';
+    }
+  }
+
+  function openWin(id, title, builder) {
+    var existing = document.getElementById('win-' + id);
+    if (existing) {
+      existing.style.display = 'flex';
+      existing.style.zIndex = ++zTop;
+      sfx.open();
+      return existing;
+    }
+
+    var win = document.createElement('div');
+    win.className = 'win';
+    win.id = 'win-' + id;
+    win.style.zIndex = ++zTop;
+
+    var off = (winCascade++ % 8) * 26;
+    var maxL = Math.max(20, window.innerWidth - 520);
+    var maxT = Math.max(20, window.innerHeight - 400);
+    win.style.left = Math.min(60 + off, maxL) + 'px';
+    win.style.top  = Math.min(40 + off, maxT) + 'px';
+    win.style.width  = '460px';
+    win.style.height = '320px';
+
+    var tb = document.createElement('div');
+    tb.className = 'win-title';
+    var tt = document.createElement('span');
+    tt.textContent = title;
+    var tc = document.createElement('span');
+    tc.className = 'win-close';
+    tc.textContent = 'X';
+    tc.onclick = function () { closeWin(id); };
+    tb.appendChild(tt);
+    tb.appendChild(tc);
+
+    var body = document.createElement('div');
+    body.className = 'win-body';
+
+    win.appendChild(tb);
+    win.appendChild(body);
+    document.getElementById('windows').appendChild(win);
+
+    win.addEventListener('mousedown', function () { win.style.zIndex = ++zTop; });
+    makeDraggable(win, tb);
+
+    /* Right-click na janela (fora de inputs/textarea/editables) */
+    win.addEventListener('contextmenu', function (e) {
+      if (e.target && e.target.closest) {
+        if (e.target.closest('input, textarea, [contenteditable="true"], [contenteditable=""]')) {
+          return; /* deixa o menu nativo */
+        }
+      }
+      e.preventDefault();
+      e.stopPropagation();
+      win.style.zIndex = ++zTop;
+      showContextMenu(e.clientX, e.clientY, [
+        { label: '⬆️ Trazer para frente', action: function () { win.style.zIndex = ++zTop; } },
+        { label: '🔲 Maximizar / restaurar', action: function () { toggleMaximize(win); } },
+        { label: '➖ Minimizar', action: function () {
+            win.style.display = 'none';
+            termLog('min ' + id, 'para reabrir, clique no ícone', '➖');
+          } },
+        { separator: true },
+        { label: '❌ Fechar esta janela', action: function () { closeWin(id); } },
+        { label: '🗙 Fechar todas', action: function () { closeAllWins(); } }
+      ]);
+    });
+
+    try { builder(body); sfx.open(); }
+    catch (err) {
+      body.textContent = 'Erro ao abrir app: ' + err.message;
+      sfx.error();
+    }
+    return win;
+  }
+
+  /* ============================================================
+     DESKTOP ICONS
+     ============================================================ */
+  function buildIcons() {
+    var cont = document.getElementById('icons');
+    cont.innerHTML = '';
+    APPS.forEach(function (app) {
+      var el = document.createElement('div');
+      el.className = 'icon';
+      el.dataset.id = app.id;
+      el.innerHTML = '<div class="ico">' + app.icon + '</div><div class="nm">' + app.name + '</div>';
+
+      el.addEventListener('click', function () { launch(app.id); });
+
+      el.addEventListener('contextmenu', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        var hasWin = !!document.getElementById('win-' + app.id);
+        showContextMenu(e.clientX, e.clientY, [
+          { label: '▶ Abrir ' + app.name, action: function () { launch(app.id); } },
+          { label: '📄 Propriedades', action: function () {
+              termLog('info ' + app.id,
+                      app.name + ' | id=' + app.id + ' | janela=' + (hasWin ? 'aberta' : 'fechada'),
+                      app.icon);
+            } },
+          { separator: true },
+          { label: '🧹 Limpar dados do app', action: function () {
+              var prefix = 'mnrt_' + app.id;
+              var removed = 0;
+              try {
+                Object.keys(localStorage).forEach(function (k) {
+                  if (k === prefix || k.indexOf(prefix + '_') === 0) {
+                    localStorage.removeItem(k); removed++;
+                  }
+                });
+              } catch (err) {}
+              termLog('clean ' + app.id, removed + ' chave(s) removida(s)', '🧹');
+              sfx.del();
+            } },
+          { label: '🗑️ Mover p/ lixeira', disabled: !hasWin, action: function () { closeWin(app.id); } }
+        ]);
+      });
+
+      cont.appendChild(el);
+    });
+
+    /* Right-click no fundo do desktop */
+    cont.addEventListener('contextmenu', function (e) {
+      if (e.target !== cont) return;
+      e.preventDefault();
+      e.stopPropagation();
+      showContextMenu(e.clientX, e.clientY, [
+        { label: '🔄 Atualizar ícones', action: function () {
+            buildIcons();
+            Array.prototype.forEach.call(document.querySelectorAll('#icons .icon'),
+              function (x) { x.classList.add('on'); });
+            termLog('refresh', 'ícones recarregados', '🔄');
+          } },
+        { label: '⚙️ Sistema', action: function () { launch('system'); } },
+        { label: '🧩 Novo Web App', action: function () { launch('webapps'); } },
+        { label: '🖥️ Terminal: focar', action: function () {
+            var inp = document.getElementById('terminput');
+            if (inp) inp.focus();
+          } },
+        { label: '🧹 Limpar terminal', action: function () {
+            var log = document.getElementById('termlog');
+            if (log) log.innerHTML = '';
+          } },
+        { separator: true },
+        { label: (soundOn ? '🔇 Desligar som' : '🔊 Ligar som'), action: toggleSound },
+        { label: '↻ Reiniciar OS', action: function () {
+            if (confirm('Reiniciar Menoriant OS?')) location.reload();
+          } }
+      ]);
+    });
+  }
+
+  function launch(appId) {
+    var app = findApp(appId);
+    if (!app) {
+      termLog('exec ' + appId, 'app não encontrado', '⚠️');
+      sfx.error();
+      return;
+    }
+    termLog('exec ' + app.id, app.name + ' -> window opened', app.icon);
+    try { app.run(); }
+    catch (err) {
+      termLog('exec ' + app.id, 'error: ' + err.message, '⚠️');
+      sfx.error();
+    }
+  }
+
+  /* ============================================================
+     SOUND TOGGLE
+     ============================================================ */
+  function toggleSound() {
+    soundOn = !soundOn;
+    lsSet('mnrt_sound', soundOn ? 'on' : 'off');
+    var btn = document.getElementById('soundtoggle');
+    if (btn) btn.textContent = soundOn ? '🔊' : '🔇';
+    initAudio();
+    if (soundOn) sfx.click();
+    termLog('sound', 'som ' + (soundOn ? 'LIGADO' : 'DESLIGADO'), soundOn ? '🔊' : '🔇');
+  }
+
+  /* ============================================================
+     APPS (todos os originais preservados)
+     ============================================================ */
+
+  function openDoc() {
+    openWin('doc', '📝 Doc Editor', function (body) {
+      var ta = document.createElement('textarea');
+      ta.value = lsGet('mnrt_doc') || 'Escreva seu documento aqui...\n\nMenoriant OS — Doc Editor.';
+      var btn = document.createElement('button');
+      btn.textContent = 'Salvar no localStorage';
+      btn.onclick = function () {
+        lsSet('mnrt_doc', ta.value);
+        btn.textContent = 'Salvo ✓';
+        setTimeout(function () { btn.textContent = 'Salvar no localStorage'; }, 1200);
+      };
+      var row = document.createElement('div');
+      row.className = 'row';
+      row.appendChild(btn);
+      body.appendChild(row);
+      body.appendChild(ta);
+    });
+  }
+
+  function openExcel() {
+    openWin('excel', '📊 Excell', function (body) {
+      var saved = null;
+      try { saved = JSON.parse(lsGet('mnrt_excel') || 'null'); } catch (e) { saved = null; }
+      var rows = 8, cols = 5;
+      var tbl = document.createElement('table');
+      tbl.className = 'tbl';
+      var tbody = document.createElement('tbody');
+      for (var r = 0; r < rows; r++) {
+        var tr = document.createElement('tr');
+        for (var c = 0; c < cols; c++) {
+          var td = document.createElement('td');
+          td.contentEditable = 'true';
+          td.style.minWidth = '50px';
+          td.dataset.r = r;
+          td.dataset.c = c;
+          if (saved && saved[r] && saved[r][c] !== undefined) td.textContent = saved[r][c];
+          tr.appendChild(td);
+        }
+        tbody.appendChild(tr);
+      }
+      tbl.appendChild(tbody);
+
+      var btn = document.createElement('button');
+      btn.textContent = 'Salvar planilha';
+      btn.onclick = function () {
+        var data = [];
+        for (var rr = 0; rr < rows; rr++) data[rr] = [];
+        var cells = tbl.querySelectorAll('td[contenteditable]');
+        for (var k = 0; k < cells.length; k++) {
+          var cell = cells[k];
+          data[Number(cell.dataset.r)][Number(cell.dataset.c)] = cell.textContent;
+        }
+        lsSet('mnrt_excel', JSON.stringify(data));
+        btn.textContent = 'Salvo ✓';
+        setTimeout(function () { btn.textContent = 'Salvar planilha'; }, 1200);
+      };
+      body.appendChild(btn);
+      body.appendChild(tbl);
+    });
+  }
+
+  function openPowerPoint() {
+    openWin('powerpoint', '📽️ PowerPoint', function (body) {
+      var slides = null;
+      try { slides = JSON.parse(lsGet('mnrt_ppt') || 'null'); } catch (e) { slides = null; }
+      if (!slides || !slides.length) slides = ['Slide 1\n\nClique para editar...'];
+      var idx = 0;
+
+      var info = document.createElement('div');
+      info.className = 'muted';
+      var nav = document.createElement('div');
+      nav.className = 'row';
+      var prev = document.createElement('button'); prev.textContent = '◀ Anterior';
+      var next = document.createElement('button'); next.textContent = 'Próximo ▶';
+      var addBtn = document.createElement('button'); addBtn.textContent = '+ Slide';
+      var saveBtn = document.createElement('button'); saveBtn.textContent = 'Salvar';
+      nav.appendChild(prev); nav.appendChild(next); nav.appendChild(addBtn); nav.appendChild(saveBtn);
+
+      var slide = document.createElement('div');
+      slide.className = 'slide';
+      slide.contentEditable = 'true';
+
+      function render() {
+        info.textContent = 'Slide ' + (idx + 1) + ' / ' + slides.length;
+        slide.textContent = slides[idx];
+      }
+      function commit() { slides[idx] = slide.textContent; }
+
+      prev.onclick = function () { commit(); idx = Math.max(0, idx - 1); render(); };
+      next.onclick = function () { commit(); idx = Math.min(slides.length - 1, idx + 1); render(); };
+      addBtn.onclick = function () { commit(); slides.push('Novo slide'); idx = slides.length - 1; render(); };
+      saveBtn.onclick = function () {
+        commit();
+        lsSet('mnrt_ppt', JSON.stringify(slides));
+        saveBtn.textContent = 'Salvo ✓';
+        setTimeout(function () { saveBtn.textContent = 'Salvar'; }, 1200);
+      };
+
+      body.appendChild(info);
+      body.appendChild(nav);
+      body.appendChild(slide);
+      render();
+    });
+  }
+
+  function openNotepad() {
+    openWin('notepad', '📄 Notepad', function (body) {
+      var ta = document.createElement('textarea');
+      ta.value = lsGet('mnrt_notepad') || '';
+      ta.placeholder = 'Bloco de notas...';
+      var btn = document.createElement('button');
+      btn.textContent = 'Salvar';
+      btn.onclick = function () {
+        lsSet('mnrt_notepad', ta.value);
+        btn.textContent = 'Salvo ✓';
+        setTimeout(function () { btn.textContent = 'Salvar'; }, 1200);
+      };
+      var row = document.createElement('div');
+      row.className = 'row';
+      row.appendChild(btn);
+      body.appendChild(row);
+      body.appendChild(ta);
+    });
+  }
+
+  function openCodeNet() {
+    openWin('codenet', '💻 CodeNet', function (body) {
+      var tabs = ['html', 'css', 'js', 'json'];
+      var cur = 'html';
+
+      var sel = document.createElement('select');
+      tabs.forEach(function (t) {
+        var o = document.createElement('option');
+        o.value = t; o.textContent = t.toUpperCase();
+        sel.appendChild(o);
+      });
+
+      var ta = document.createElement('textarea');
+      ta.spellcheck = false;
+
+      var saveBtn = document.createElement('button'); saveBtn.textContent = 'Salvar';
+      var previewBtn = document.createElement('button'); previewBtn.textContent = 'Preview';
+      var runTermBtn = document.createElement('button'); runTermBtn.textContent = 'Rodar no Terminal (JS)';
+
+      var row = document.createElement('div'); row.className = 'row';
+      row.appendChild(sel);
+      row.appendChild(saveBtn);
+      row.appendChild(previewBtn);
+      row.appendChild(runTermBtn);
+
+      function load() { ta.value = lsGet('mnrt_codenet_' + cur) || ''; }
+      sel.onchange = function () { cur = sel.value; load(); };
+
+      saveBtn.onclick = function () {
+        lsSet('mnrt_codenet_' + cur, ta.value);
+        saveBtn.textContent = 'Salvo ✓';
+        setTimeout(function () { saveBtn.textContent = 'Salvar'; }, 1000);
+      };
+
+      previewBtn.onclick = function () {
+        var html = lsGet('mnrt_codenet_html') || '';
+        var css  = lsGet('mnrt_codenet_css')  || '';
+        var js   = lsGet('mnrt_codenet_js')   || '';
+        var w = window.open('', '_blank', 'width=520,height=420');
+        if (!w) { termLog('preview', 'popup bloqueado', '⚠️'); sfx.error(); return; }
+        var doc = '<!doctype html><html><head><meta charset="utf-8"><style>' + css +
+                  '</style></head><body>' + html +
+                  '<script>' + js + '<\/script></body></html>';
+        w.document.open();
+        w.document.write(doc);
+        w.document.close();
+      };
+
+      runTermBtn.onclick = function () {
+        var code = lsGet('mnrt_codenet_js') || ta.value;
+        termLog('codenet.js', 'executando no terminal...', '💻');
+        try { repl(code); } catch (e) {
+          termLog('codenet.js', 'erro: ' + e.message, '⚠️');
+          sfx.error();
+        }
+      };
+
+      body.appendChild(row);
+      body.appendChild(ta);
+      load();
+    });
+  }
+
+  function openFantASM() {
+    openWin('fantasm', '🛠️ fantASM', function (body) {
+      var ta = document.createElement('textarea');
+      ta.spellcheck = false;
+      ta.value = lsGet('mnrt_fantasm') ||
+        '; fantASM demo\nMOV A, 5\nADD A, 3\nHALT\n';
+
+      var runBtn = document.createElement('button');
+      runBtn.textContent = 'Assemble & Run';
+
+      var out = document.createElement('div');
+      out.style.whiteSpace = 'pre-wrap';
+      out.style.border = '1px solid #444';
+      out.style.padding = '4px';
+      out.style.marginTop = '4px';
+      out.style.maxHeight = '120px';
+      out.style.overflow = 'auto';
+      out.textContent = 'Saída do assembler...';
+
+      function assemble(src) {
+        var regs = { A: 0, B: 0, C: 0, D: 0 };
+        var lines = src.split('\n');
+        var log = [];
+        for (var i = 0; i < lines.length; i++) {
+          var line = lines[i].replace(/;.*$/, '').trim();
+          if (!line) continue;
+          var parts = line.split(/\s+/);
+          var op = parts[0].toUpperCase();
+          try {
+            if (op === 'MOV' && parts[1] && parts[2] !== undefined) {
+              var r1 = parts[1].replace(',', '').toUpperCase();
+              var v1 = Number(parts[2].replace(',', ''));
+              if (!isNaN(v1)) { regs[r1] = v1; log.push(line + '  ; ' + r1 + '=' + v1); }
+              else log.push(line + '  ; warn: valor inválido');
+            } else if (op === 'ADD' && parts[1] && parts[2] !== undefined) {
+              var r2 = parts[1].replace(',', '').toUpperCase();
+              var v2 = Number(parts[2].replace(',', ''));
+              if (!isNaN(v2) && regs[r2] !== undefined) { regs[r2] += v2; log.push(line + '  ; ' + r2 + '=' + regs[r2]); }
+              else log.push(line + '  ; warn: valor inválido');
+            } else if (op === 'SUB' && parts[1] && parts[2] !== undefined) {
+              var r3 = parts[1].replace(',', '').toUpperCase();
+              var v3 = Number(parts[2].replace(',', ''));
+              if (!isNaN(v3) && regs[r3] !== undefined) { regs[r3] -= v3; log.push(line + '  ; ' + r3 + '=' + regs[r3]); }
+              else log.push(line + '  ; warn: valor inválido');
+            } else if (op === 'HALT') {
+              log.push(line + '  ; stop');
+              break;
+            } else {
+              log.push(line + '  ; op desconhecida');
+            }
+          } catch (err) {
+            log.push(line + '  ; erro: ' + err.message);
+          }
+        }
+        log.push('');
+        log.push('REG A=' + regs.A + ' B=' + regs.B + ' C=' + regs.C + ' D=' + regs.D);
+        return log.join('\n');
+      }
+
+      runBtn.onclick = function () {
+        lsSet('mnrt_fantasm', ta.value);
+        out.textContent = assemble(ta.value);
+        termLog('fantasm run', 'assemble ok', '🛠️');
+      };
+
+      body.appendChild(runBtn);
+      body.appendChild(ta);
+      body.appendChild(out);
+    });
+  }
+
+  function openBrowser() {
+    openWin('browser', '🌐 Browser', function (body) {
+      var row = document.createElement('div');
+      row.className = 'row';
+      var input = document.createElement('input');
+      input.value = lsGet('mnrt_browser_url') || 'https://example.com';
+      var goBtn = document.createElement('button'); goBtn.textContent = 'Ir';
+      var homeBtn = document.createElement('button'); homeBtn.textContent = 'Home';
+      row.appendChild(input);
+      row.appendChild(goBtn);
+      row.appendChild(homeBtn);
+
+      var warn = document.createElement('div');
+      warn.className = 'muted';
+      warn.textContent = 'Muitos sites bloqueiam iframe (X-Frame-Options). Use para testes simples.';
+
+      var frame = document.createElement('iframe');
+      frame.style.width = '100%';
+      frame.style.flex = '1';
+      frame.style.border = '1px solid #444';
+      frame.style.background = '#fff';
+      frame.style.minHeight = '150px';
+      frame.srcdoc = '<html><body style="font-family:monospace;background:#000;color:#fff;padding:10px">' +
+                      '<h3>Menoriant Browser</h3><p>Digite uma URL acima e clique em Ir.</p>' +
+                      '</body></html>';
+
+      goBtn.onclick = function () {
+        var url = input.value.trim();
+        if (!url) return;
+        lsSet('mnrt_browser_url', url);
+        try { frame.src = url; }
+        catch (e) {
+          frame.srcdoc = '<p style="color:#f00">Erro: ' + e.message + '</p>';
+        }
+        termLog('browser ' + url, 'navegando...', '🌐');
+      };
+      homeBtn.onclick = function () {
+        frame.srcdoc = '<html><body style="font-family:monospace;background:#000;color:#fff;padding:10px">' +
+                       '<h3>Home</h3><p>Menoriant Browser</p></body></html>';
+      };
+
+      body.appendChild(row);
+      body.appendChild(warn);
+      body.appendChild(frame);
+    });
+  }
+
+  function openHex() {
+    openWin('hex', '🔢 Hex Editor', function (body) {
+      var ta = document.createElement('textarea');
+      ta.value = lsGet('mnrt_hex') || 'Hello Menoriant OS';
+
+      var row = document.createElement('div');
+      row.className = 'row';
+      var toHex = document.createElement('button'); toHex.textContent = 'Texto → Hex';
+      var toTxt = document.createElement('button'); toTxt.textContent = 'Hex → Texto';
+      var saveBtn = document.createElement('button'); saveBtn.textContent = 'Salvar';
+      row.appendChild(toHex);
+      row.appendChild(toTxt);
+      row.appendChild(saveBtn);
+
+      var view = document.createElement('pre');
+      view.style.border = '1px solid #444';
+      view.style.padding = '4px';
+      view.style.overflow = 'auto';
+      view.style.maxHeight = '120px';
+      view.style.margin = '0';
+
+      function dump(s) {
+        var out = '';
+        var bytes = [];
+        for (var i = 0; i < s.length; i++) bytes.push(s.charCodeAt(i) & 0xff);
+        for (var j = 0; j < bytes.length; j += 16) {
+          var hex = '', asc = '';
+          for (var k = 0; k < 16; k++) {
+            if (j + k < bytes.length) {
+              var b = bytes[j + k];
+              hex += ('0' + b.toString(16)).slice(-2) + ' ';
+              asc += (b >= 32 && b < 127) ? String.fromCharCode(b) : '.';
+            } else {
+              hex += '   ';
+              asc += ' ';
+            }
+          }
+          out += ('00000000' + j.toString(16)).slice(-8) + '  ' + hex + ' |' + asc + '|\n';
+        }
+        return out;
+      }
+
+      toHex.onclick = function () { view.textContent = dump(ta.value); };
+
+      toTxt.onclick = function () {
+        var txt = view.textContent;
+        var lines = txt.split('\n');
+        var out = '';
+        for (var i = 0; i < lines.length; i++) {
+          var m = lines[i].match(/^\S+\s+(.*?)\s*\|/);
+          if (m) {
+            var parts = m[1].trim().split(/\s+/);
+            for (var j = 0; j < parts.length; j++) {
+              if (/^[0-9a-f]{2}$/i.test(parts[j])) out += String.fromCharCode(parseInt(parts[j], 16));
+            }
+          }
+        }
+        ta.value = out;
+      };
+
+      saveBtn.onclick = function () {
+        lsSet('mnrt_hex', ta.value);
+        saveBtn.textContent = 'Salvo ✓';
+        setTimeout(function () { saveBtn.textContent = 'Salvar'; }, 1200);
+      };
+
+      view.textContent = dump(ta.value);
+      body.appendChild(row);
+      body.appendChild(view);
+      body.appendChild(ta);
+    });
+  }
+
+  function openRequests() {
+    openWin('requests', '📡 Requests', function (body) {
+      var row1 = document.createElement('div');
+      row1.className = 'row';
+
+      var method = document.createElement('select');
+      ['GET', 'POST', 'PUT', 'DELETE', 'HEAD'].forEach(function (m) {
+        var o = document.createElement('option');
+        o.value = m; o.textContent = m;
+        method.appendChild(o);
+      });
+
+      var url = document.createElement('input');
+      url.value = lsGet('mnrt_requests_url') || 'https://httpbin.org/get';
+
+      var send = document.createElement('button');
+      send.textContent = 'Enviar';
+
+      row1.appendChild(method);
+      row1.appendChild(url);
+      row1.appendChild(send);
+
+      var out = document.createElement('pre');
+      out.style.border = '1px solid #444';
+      out.style.padding = '4px';
+      out.style.overflow = 'auto';
+      out.style.flex = '1';
+      out.style.minHeight = '80px';
+      out.style.margin = '0';
+      out.style.whiteSpace = 'pre-wrap';
+      out.textContent = 'Resposta aparecerá aqui...';
+
+      send.onclick = function () {
+        var u = url.value.trim();
+        if (!u) return;
+        lsSet('mnrt_requests_url', u);
+        out.textContent = 'Carregando...';
+        termLog('requests ' + method.value + ' ' + u, 'fetching...', '📡');
+
+        var ua = lsGet('mnrt_ua') || '';
+        var opts = { method: method.value };
+        if (ua) opts.headers = { 'User-Agent': ua };
+
+        fetch(u, opts).then(function (r) {
+          return r.text().then(function (text) {
+            return 'Status: ' + r.status + ' ' + r.statusText + '\n\n' + text;
+          });
+        }).then(function (t) {
+          out.textContent = t;
+        }).catch(function (e) {
+          out.textContent = 'Erro (CORS/rede): ' + e.message;
+        });
+      };
+
+      body.appendChild(row1);
+      body.appendChild(out);
+    });
+  }
+
+  function openUA() {
+    openWin('ua', '🕵️ User Agent Editor', function (body) {
+      var info = document.createElement('div');
+      info.className = 'muted';
+      info.textContent = 'UA atual do navegador: ' + navigator.userAgent;
+
+      var input = document.createElement('input');
+      input.value = lsGet('mnrt_ua') || '';
+      input.placeholder = 'User-Agent customizado (usado em Requests)';
+
+      var row = document.createElement('div');
+      row.className = 'row';
+      var save = document.createElement('button'); save.textContent = 'Salvar UA';
+      var clear = document.createElement('button'); clear.textContent = 'Limpar';
+      row.appendChild(save);
+      row.appendChild(clear);
+
+      save.onclick = function () {
+        lsSet('mnrt_ua', input.value);
+        save.textContent = 'Salvo ✓';
+        setTimeout(function () { save.textContent = 'Salvar UA'; }, 1200);
+      };
+      clear.onclick = function () { input.value = ''; lsDel('mnrt_ua'); };
+
+      body.appendChild(info);
+      body.appendChild(input);
+      body.appendChild(row);
+    });
+  }
+
+  function openMap() {
+    openWin('map', '🗺️ Map Navigation', function (body) {
+      var desc = document.createElement('div');
+      desc.className = 'muted';
+      desc.textContent = 'Clique em qualquer célula para se mover.';
+
+      var grid = document.createElement('div');
+      grid.className = 'mapgrid';
+
+      var W = 5, H = 5;
+      var pos = null;
+      try { pos = JSON.parse(lsGet('mnrt_map_pos') || 'null'); } catch (e) { pos = null; }
+      if (!pos || typeof pos.x !== 'number' || typeof pos.y !== 'number') pos = { x: 2, y: 2 };
+
+      var rooms = ['Sala', 'Corredor', 'Cozinha', 'Quarto', 'Sala',
+                   'Banheiro', 'Biblioteca', 'Lab', 'Depósito', 'Entrada',
+                   'Escritório', 'Servidor', 'Recepção', 'Arquivo', 'Sala'];
+
+      function render() {
+        grid.innerHTML = '';
+        for (var y = 0; y < H; y++) {
+          for (var x = 0; x < W; x++) {
+            var c = document.createElement('div');
+            c.className = 'cell';
+            var isYou = (x === pos.x && y === pos.y);
+            if (isYou) c.classList.add('you');
+            c.textContent = isYou ? '●' : '';
+            (function (xx, yy, cellEl) {
+              cellEl.title = rooms[(yy * W + xx) % rooms.length];
+              cellEl.onclick = function () {
+                pos = { x: xx, y: yy };
+                lsSet('mnrt_map_pos', JSON.stringify(pos));
+                render();
+                termLog('map move', 'você está em ' + rooms[(yy * W + xx) % rooms.length], '🗺️');
+              };
+            })(x, y, c);
+            grid.appendChild(c);
+          }
+        }
+      }
+
+      body.appendChild(desc);
+      body.appendChild(grid);
+      render();
+    });
+  }
+
+  function openScan() {
+    openWin('scan', '🔍 Browser Scan', function (body) {
+      var lsStatus;
+      try {
+        localStorage.setItem('_mnrt_test', '1');
+        localStorage.removeItem('_mnrt_test');
+        lsStatus = 'sim';
+      } catch (e) { lsStatus = 'não'; }
+
+      var rows = [
+        ['User Agent', navigator.userAgent],
+        ['Platform', navigator.platform],
+        ['Language', navigator.language],
+        ['Cores', String(navigator.hardwareConcurrency || 'n/d')],
+        ['Screen', screen.width + 'x' + screen.height],
+        ['Color Depth', String(screen.colorDepth) + '-bit'],
+        ['Pixel Ratio', String(window.devicePixelRatio || 1)],
+        ['Online', String(navigator.onLine)],
+        ['Cookie Enabled', String(navigator.cookieEnabled)],
+        ['localStorage', lsStatus]
+      ];
+
+      var t = document.createElement('table');
+      t.className = 'tbl';
+      rows.forEach(function (r) {
+        var tr = document.createElement('tr');
+        var td1 = document.createElement('td');
+        td1.textContent = r[0];
+        td1.style.width = '40%';
+        td1.style.color = '#9aa';
+        var td2 = document.createElement('td');
+        td2.textContent = r[1];
+        tr.appendChild(td1);
+        tr.appendChild(td2);
+        t.appendChild(tr);
+      });
+
+      body.appendChild(t);
+    });
+  }
+
+  function openSystem() {
+    openWin('system', '⚙️ Sistema', function (body) {
+      var info = document.createElement('div');
+      info.style.whiteSpace = 'pre-wrap';
+      info.textContent = [
+        'Menoriant OS v1.1',
+        'Modo: TUI + GUI híbrido',
+        'Runtime: DOM + localStorage',
+        'Pitangus.js: ' + (typeof window.Pitangus !== 'undefined' ? 'carregado' : 'não detectado'),
+        'PixiJS: ' + (typeof window.PIXI !== 'undefined' ? 'carregado' : 'não detectado'),
+        'Som: ' + (soundOn ? 'ligado' : 'desligado'),
+        'Arquivos salvos: ' + fsList().length,
+        'Itens na lixeira: ' + getTrash().length,
+        ''
+      ].join('\n');
+
+      var row = document.createElement('div');
+      row.className = 'row';
+      var clearFs = document.createElement('button'); clearFs.textContent = 'Limpar arquivos';
+      var clearAll = document.createElement('button'); clearAll.textContent = 'Reset total';
+      var reboot = document.createElement('button'); reboot.textContent = 'Reboot';
+      row.appendChild(clearFs);
+      row.appendChild(clearAll);
+      row.appendChild(reboot);
+
+      clearFs.onclick = function () {
+        if (!confirm('Apagar todos os arquivos salvos?')) return;
+        lsDel(FS_KEY);
+        info.textContent = info.textContent.replace(/Arquivos salvos: \d+/, 'Arquivos salvos: 0');
+        termLog('system', 'arquivos apagados', '⚙️');
+      };
+      clearAll.onclick = function () {
+        if (!confirm('Reset total: apagar TUDO do localStorage?')) return;
+        try {
+          Object.keys(localStorage).forEach(function (k) {
+            if (k.indexOf('mnrt_') === 0) localStorage.removeItem(k);
+          });
+        } catch (e) {}
+        termLog('system', 'reset completo', '⚙️');
+        alert('Reset feito. Recarregando...');
+        location.reload();
+      };
+      reboot.onclick = function () { location.reload(); };
+
+      body.appendChild(info);
+      body.appendChild(row);
+    });
+  }
+
+  function openTrash() {
+    openWin('trash', '🗑️ Lixeira', function (body) {
+      function renderList() {
+        body.innerHTML = '';
+        var list = getTrash();
+
+        var info = document.createElement('div');
+        info.className = 'muted';
+        info.textContent = 'Itens na lixeira: ' + list.length;
+        body.appendChild(info);
+
+        if (!list.length) {
+          var e = document.createElement('div');
+          e.className = 'muted';
+          e.textContent = 'Lixeira vazia.';
+          body.appendChild(e);
+        } else {
+          list.forEach(function (it) {
+            var row = document.createElement('div');
+            row.className = 'list-item';
+            var name = document.createElement('span');
+            name.textContent = it.name + ' (' + new Date(it.deleted).toLocaleString() + ')';
+            var btn = document.createElement('button');
+            btn.textContent = 'Restaurar';
+            btn.onclick = function () {
+              fsPut(it.name, it.content);
+              var t = getTrash();
+              var idx = -1;
+              for (var i = 0; i < t.length; i++) {
+                if (t[i].name === it.name && t[i].deleted === it.deleted) { idx = i; break; }
+              }
+              if (idx !== -1) t.splice(idx, 1);
+              setTrash(t);
+              termLog('trash', 'restaurado ' + it.name, '♻️');
+              renderList();
+            };
+            row.appendChild(name);
+            row.appendChild(btn);
+            body.appendChild(row);
+          });
+        }
+
+        var clearBtn = document.createElement('button');
+        clearBtn.textContent = 'Esvaziar lixeira';
+        clearBtn.onclick = function () {
+          setTrash([]);
+          renderList();
+        };
+        body.appendChild(clearBtn);
+      }
+      renderList();
+    });
+  }
+
+  function openWebApps() {
+    openWin('webapps', '🧩 Web Apps', function (body) {
+      var listWrap = document.createElement('div');
+      listWrap.style.maxHeight = '80px';
+      listWrap.style.overflow = 'auto';
+      listWrap.style.border = '1px solid #444';
+
+      function renderList() {
+        listWrap.innerHTML = '';
+        var files = fsList();
+        if (!files.length) {
+          listWrap.className = 'muted';
+          listWrap.textContent = 'Nenhum app salvo. Crie um abaixo.';
+          return;
+        }
+        listWrap.className = '';
+        files.forEach(function (name) {
+          var row = document.createElement('div');
+          row.className = 'list-item';
+          var n = document.createElement('span');
+          n.textContent = name;
+          var right = document.createElement('div');
+          var runB = document.createElement('button');
+          runB.textContent = 'Abrir';
+          runB.style.marginRight = '4px';
+          var delB = document.createElement('button');
+          delB.textContent = 'Excluir';
+          runB.onclick = function () {
+            var content = fsGet(name) || '';
+            var w = window.open('', '_blank', 'width=600,height=500');
+            if (!w) { termLog('webapp', 'popup bloqueado', '⚠️'); sfx.error(); return; }
+            w.document.open();
+            w.document.write(content);
+            w.document.close();
+          };
+          delB.onclick = function () {
+            if (!confirm('Mover "' + name + '" para a lixeira?')) return;
+            fsDelete(name);
+            renderList();
+            termLog('webapps', 'excluído ' + name, '🗑️');
+          };
+          right.appendChild(runB);
+          right.appendChild(delB);
+          row.appendChild(n);
+          row.appendChild(right);
+          listWrap.appendChild(row);
+        });
+      }
+
+      var nameRow = document.createElement('div');
+      nameRow.className = 'row';
+      var nameIn = document.createElement('input');
+      nameIn.placeholder = 'nome-do-app.html';
+      nameRow.appendChild(nameIn);
+
+      var ta = document.createElement('textarea');
+      ta.spellcheck = false;
+      ta.value = '<!doctype html>\n<html>\n<head><meta charset="utf-8"><title>Meu App</title></head>\n' +
+                 '<body style="background:#000;color:#fff;font-family:monospace">\n' +
+                 '<h1>Olá, Menoriant!</h1>\n<script>console.log("app carregado");<\/script>\n' +
+                 '</body>\n</html>';
+
+      var row = document.createElement('div');
+      row.className = 'row';
+      var saveB = document.createElement('button');
+      saveB.textContent = 'Salvar app';
+      saveB.onclick = function () {
+        var nm = nameIn.value.trim();
+        if (!nm) { termLog('webapps', 'nome vazio', '⚠️'); sfx.error(); return; }
+        fsPut(nm, ta.value);
+        renderList();
+        termLog('webapps', 'salvo ' + nm, '🧩');
+        saveB.textContent = 'Salvo ✓';
+        setTimeout(function () { saveB.textContent = 'Salvar app'; }, 1200);
+      };
+      row.appendChild(saveB);
+
+      body.appendChild(listWrap);
+      body.appendChild(nameRow);
+      body.appendChild(row);
+      body.appendChild(ta);
+      renderList();
+    });
+  }
+
+  function openLangEdit() {
+    openWin('langedit', '🎨 Web Lang Editor', function (body) {
+      var row = document.createElement('div');
+      row.className = 'row';
+      var sel = document.createElement('select');
+      ['html', 'css', 'js', 'json', 'svg', 'md', 'xml'].forEach(function (t) {
+        var o = document.createElement('option');
+        o.value = t; o.textContent = t.toUpperCase();
+        sel.appendChild(o);
+      });
+      var btn = document.createElement('button'); btn.textContent = 'Salvar';
+      var delBtn = document.createElement('button'); delBtn.textContent = 'Excluir';
+      var listBtn = document.createElement('button'); listBtn.textContent = 'Listar';
+      row.appendChild(sel);
+      row.appendChild(btn);
+      row.appendChild(delBtn);
+      row.appendChild(listBtn);
+
+      var nameIn = document.createElement('input');
+      nameIn.placeholder = 'nome.ext';
+
+      var ta = document.createElement('textarea');
+      ta.spellcheck = false;
+
+      var status = document.createElement('div');
+      status.className = 'muted';
+      status.textContent = '';
+
+      function fileName() { return nameIn.value.trim(); }
+
+      btn.onclick = function () {
+        var nm = fileName();
+        if (!nm) { status.textContent = 'Informe o nome do arquivo.'; return; }
+        var ext = nm.split('.').pop().toLowerCase();
+        var allowed = ['html', 'css', 'js', 'json', 'svg', 'md', 'xml', 'txt'];
+        if (allowed.indexOf(ext) === -1) {
+          status.textContent = 'Extensão não suportada.';
+          sfx.error();
+          return;
+        }
+        fsPut(nm, ta.value);
+        status.textContent = 'Salvo: ' + nm;
+        termLog('langedit', 'salvo ' + nm, '🎨');
+      };
+
+      delBtn.onclick = function () {
+        var nm = fileName();
+        if (!nm) return;
+        if (!confirm('Mover ' + nm + ' para a lixeira?')) return;
+        fsDelete(nm);
+        status.textContent = 'Excluído: ' + nm;
+        termLog('langedit', 'excluído ' + nm, '🗑️');
+      };
+
+      listBtn.onclick = function () {
+        var existing = body.querySelector('.file-list-popup');
+        if (existing) existing.remove();
+
+        var w = document.createElement('div');
+        w.className = 'file-list-popup';
+        w.style.border = '1px solid #fff';
+        w.style.padding = '4px';
+        w.style.maxHeight = '140px';
+        w.style.overflow = 'auto';
+
+        var names = fsList();
+        if (!names.length) {
+          w.textContent = 'Nenhum arquivo salvo.';
+        } else {
+          names.forEach(function (n) {
+            var it = document.createElement('div');
+            it.className = 'list-item';
+            it.textContent = n;
+            it.onclick = function () {
+              nameIn.value = n;
+              ta.value = fsGet(n) || '';
+              w.remove();
+            };
+            w.appendChild(it);
+          });
+        }
+        var closeB = document.createElement('button');
+        closeB.textContent = 'Fechar';
+        closeB.onclick = function () { w.remove(); };
+        w.appendChild(closeB);
+        body.insertBefore(w, body.firstChild);
+      };
+
+      sel.onchange = function () {
+        var ext = sel.value;
+        var nm = fileName() || ('arquivo.' + ext);
+        var v = fsGet(nm);
+        if (v !== undefined) ta.value = v;
+      };
+
+      nameIn.addEventListener('blur', function () {
+        if (!nameIn.value) return;
+        var v = fsGet(nameIn.value);
+        if (v !== undefined) ta.value = v;
+      });
+
+      body.appendChild(row);
+      body.appendChild(nameIn);
+      body.appendChild(status);
+      body.appendChild(ta);
+    });
+  }
+
+  /* ============================================================
+     JS REPL (modo texto)
+     ============================================================ */
+  function stringify(v) {
+    if (v === undefined) return 'undefined';
+    if (v === null) return 'null';
+    if (typeof v === 'function') return '[Function: ' + (v.name || 'anonymous') + ']';
+    if (typeof v === 'string') return JSON.stringify(v);
+    if (typeof v === 'object') {
+      try { return JSON.stringify(v); } catch (e) { return String(v); }
+    }
+    return String(v);
+  }
+
+  function runInScope(code, expression) {
+    var scope = {
+      fs: {
+        list: fsList,
+        get: fsGet,
+        put: fsPut,
+        del: fsDelete,
+        trash: getTrash,
+        emptyTrash: function () { setTrash([]); }
+      },
+      launch: launch,
+      close: closeWin,
+      closeAll: closeAllWins,
+      apps: APPS,
+      term: termLog,
+      sfx: sfx,
+      lsGet: lsGet,
+      lsSet: lsSet,
+      lsDel: lsDel,
+      MNRT: {
+        version: '1.1',
+        fs: { list: fsList, get: fsGet, put: fsPut, del: fsDelete },
+        apps: APPS,
+        launch: launch
+      }
+    };
+    var keys = Object.keys(scope);
+    var vals = keys.map(function (k) { return scope[k]; });
+    var src = expression ? ('return (' + code + ');') : code;
+    var fn = Function.apply(null, keys.concat([src]));
+    return fn.apply(null, vals);
+  }
+
+  function repl(rawCode) {
+    var code = String(rawCode || '').trim();
+    if (!code) return;
+
+    termLog(code, null);
+
+    var lower = code.toLowerCase();
+
+    /* Comandos shell simples */
+    if (lower === 'help' || lower === '?') {
+      termLog('help',
+        'comandos: help | clear | apps | open <id> | close <id> | closeall | ' +
+        'ls | cat <arq> | rm <arq> | sound on|off | trash | reset\n' +
+        'ou qualquer expressao JS. Ex: 1+1, fs.put("a.txt","oi"), launch("notepad")',
+        '?');
+      return;
+    }
+    if (lower === 'clear') {
+      var log = document.getElementById('termlog');
+      if (log) log.innerHTML = '';
+      return;
+    }
+    if (lower === 'apps') {
+      var names = APPS.map(function (a) { return a.id + ' (' + a.name + ')'; }).join(', ');
+      termLog('apps', names, '📦');
+      return;
+    }
+    if (lower === 'closeall') { closeAllWins(); termLog('closeall', 'todas as janelas fechadas', '🗙'); return; }
+    if (lower === 'trash') {
+      var t = getTrash();
+      termLog('trash', t.length + ' item(s): ' + t.map(function (x) { return x.name; }).join(', '), '🗑️');
+      return;
+    }
+    if (lower === 'reset') {
+      if (confirm('Reset total do localStorage (mnrt_*)?')) {
+        try {
+          Object.keys(localStorage).forEach(function (k) {
+            if (k.indexOf('mnrt_') === 0) localStorage.removeItem(k);
+          });
+        } catch (e) {}
+        location.reload();
+      }
+      return;
+    }
+
+    var parts = code.split(/\s+/);
+    var cmd = parts[0].toLowerCase();
+    var arg = code.substring(parts[0].length).trim();
+
+    if (cmd === 'open' && arg) { launch(arg); return; }
+    if (cmd === 'close' && arg) { closeWin(arg); termLog('close', arg, '🗙'); return; }
+    if (cmd === 'ls') {
+      var files = fsList();
+      termLog('ls', files.length ? files.join('  ') : '(vazio)', '📁');
+      return;
+    }
+    if (cmd === 'cat' && arg) {
+      var v = fsGet(arg);
+      termLog('cat ' + arg, v === undefined ? '(não existe)' : String(v), '📄');
+      return;
+    }
+    if (cmd === 'rm' && arg) {
+      if (fsGet(arg) === undefined) { termLog('rm ' + arg, 'não existe', '⚠️'); sfx.error(); return; }
+      fsDelete(arg);
+      termLog('rm ' + arg, 'movido para a lixeira', '🗑️');
+      return;
+    }
+    if (cmd === 'sound') {
+      if (arg === 'on' && !soundOn) toggleSound();
+      else if (arg === 'off' && soundOn) toggleSound();
+      else termLog('sound', 'estado atual: ' + (soundOn ? 'on' : 'off'), '🔊');
+      return;
+    }
+
+    /* Avaliação JS: tenta expressão, depois statement */
+    try {
+      var result = runInScope(code, true);
+      if (result && typeof result.then === 'function') {
+        termLog(code, '=> [Promise]', '💡');
+        result.then(function (r) { termLog('=>', stringify(r), '💡'); })
+              .catch(function (e) { termLog('!', 'async error: ' + e.message, '⚠️'); sfx.error(); });
+        return;
+      }
+      termLog('=>', stringify(result), '💡');
+    } catch (e1) {
+      try {
+        var r2 = runInScope(code, false);
+        if (r2 && typeof r2.then === 'function') {
+          termLog(code, '=> [Promise]', '💡');
+          r2.then(function (r) { termLog('=>', stringify(r), '💡'); })
+            .catch(function (e) { termLog('!', 'async error: ' + e.message, '⚠️'); sfx.error(); });
+          return;
+        }
+        if (r2 !== undefined) termLog('=>', stringify(r2), '💡');
+        else termLog(code, 'ok', '✓');
+      } catch (e2) {
+        termLog('!', 'error: ' + e2.message, '⚠️');
+        sfx.error();
+      }
+    }
+  }
+
+  /* ============================================================
+     TERMINAL INPUT + HISTORY
+     ============================================================ */
+  var termHistory = [];
+  var termHistIdx = -1;
+
+  function bindTerminal() {
+    var input = document.getElementById('terminput');
+    var panel = document.getElementById('termpanel');
+    if (!input || !panel) return;
+
+    input.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') {
+        var code = input.value;
+        input.value = '';
+        termHistIdx = -1;
+        if (code.trim()) {
+          termHistory.push(code);
+          if (termHistory.length > 100) termHistory.shift();
+        }
+        sfx.key();
+        repl(code);
+        e.preventDefault();
+      } else if (e.key === 'ArrowUp') {
+        if (!termHistory.length) return;
+        if (termHistIdx === -1) termHistIdx = termHistory.length - 1;
+        else if (termHistIdx > 0) termHistIdx--;
+        input.value = termHistory[termHistIdx] || '';
+        setTimeout(function () {
+          try { input.setSelectionRange(input.value.length, input.value.length); } catch (er) {}
+        }, 0);
+        e.preventDefault();
+      } else if (e.key === 'ArrowDown') {
+        if (termHistIdx === -1) return;
+        if (termHistIdx < termHistory.length - 1) termHistIdx++;
+        else { termHistIdx = -1; input.value = ''; e.preventDefault(); return; }
+        input.value = termHistory[termHistIdx] || '';
+        e.preventDefault();
+      } else if (e.key === 'Escape') {
+        input.value = '';
+        termHistIdx = -1;
+      } else {
+        sfx.key();
+      }
+    });
+
+    panel.addEventListener('click', function (e) {
+      if (e.target === input) return;
+      if (e.target.closest && e.target.closest('button')) return;
+      var sel = window.getSelection ? String(window.getSelection()) : '';
+      if (sel && sel.length > 0) return;
+      input.focus();
+    });
+
+    panel.addEventListener('contextmenu', function (e) {
+      if (e.target && e.target.closest && e.target.closest('input, textarea')) return;
+      e.preventDefault();
+      showContextMenu(e.clientX, e.clientY, [
+        { label: '🧹 Limpar terminal', action: function () {
+            var log = document.getElementById('termlog');
+            if (log) log.innerHTML = '';
+          } },
+        { label: '📋 Copiar histórico', action: function () {
+            var log = document.getElementById('termlog');
+            var txt = log ? log.textContent : '';
+            try {
+              if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(txt).then(function () {
+                  termLog('clipboard', 'copiado (' + txt.length + ' chars)', '📋');
+                }).catch(function () { termLog('clipboard', 'falhou', '⚠️'); });
+              } else {
+                var t = document.createElement('textarea');
+                t.value = txt; document.body.appendChild(t); t.select();
+                document.execCommand('copy'); t.remove();
+                termLog('clipboard', 'copiado (' + txt.length + ' chars)', '📋');
+              }
+            } catch (er) { termLog('clipboard', 'erro: ' + er.message, '⚠️'); }
+          } },
+        { label: '💡 Mostrar ajuda', action: function () { repl('help'); } },
+        { separator: true },
+        { label: (soundOn ? '🔇 Desligar som' : '🔊 Ligar som'), action: toggleSound },
+        { label: '🎯 Focar prompt', action: function () { input.focus(); } }
+      ]);
+    });
+
+    /* Foco inicial no prompt */
+    setTimeout(function () { try { input.focus(); } catch (e) {} }, 100);
+  }
+
+  /* ============================================================
+     FEEDBACK SONORO GENÉRICO DE BOTÕES (sem tocar nos apps)
+     ============================================================ */
+  document.addEventListener('click', function (e) {
+    var t = e.target;
+    if (!t || t.tagName !== 'BUTTON') return;
+    if (!t.closest || !t.closest('.win-body')) return;
+    var txt = (t.textContent || '').toLowerCase();
+    if (/salv|save/.test(txt)) sfx.save();
+    else if (/exclu|lixeira|apagar|limpar|esvaziar/.test(txt)) sfx.del();
+    else if (/fechar|close/.test(txt)) sfx.close();
+    else sfx.click();
+  }, true);
+
+  /* ============================================================
+     BOOT SEQUENCE
+     ============================================================ */
+  var BOOT_LINES = [
+    'Menoriant BIOS v1.1  (C) Menoriant Systems',
+    '',
+    'CPU detect ......... 1x virtual ok',
+    'Mem check .......... 640K ok',
+    'PixiJS runtime ..... checking...',
+    'Pitangus.js ........ loading...',
+    'Audio subsystem .... init',
+    'TUI layer .......... ok',
+    'JS REPL ............ ok',
+    'Context menu layer . ok',
+    'Virtual filesystem . ok',
+    'localStorage driver  ok',
+    'Network stack ...... ok',
+    'Desktop shell ...... starting...',
+    '',
+    '  ███ MENORIANT OS v1.1 ███',
+    '  Hybrid Text + GUI Environment',
+    '',
+    'Booting user session...'
+  ];
+
+  function boot() {
+    var bootEl = document.getElementById('boot');
+    bootEl.textContent = '';
+    var i = 0;
+
+    function step() {
+      if (i >= BOOT_LINES.length) {
+        bootEl.textContent += '\nLoading apps:\n';
+        var k = 0;
+
+        function loadIcon() {
+          if (k >= APPS.length) {
+            setTimeout(function () {
+              bootEl.style.display = 'none';
+              document.getElementById('desktop').classList.add('visible');
+              initAudio();
+              sfx.boot();
+              revealIcons();
+            }, 300);
+            return;
+          }
+          var app = APPS[k++];
+          bootEl.textContent += '[ OK ] ' + app.icon + ' ' + app.name + ' loaded\n';
+          setTimeout(loadIcon, 40);
+        }
+        loadIcon();
+        return;
+      }
+      bootEl.textContent += BOOT_LINES[i] + '\n';
+      i++;
+      setTimeout(step, 90);
+    }
+    step();
+  }
+
+  function revealIcons() {
+    var icons = document.querySelectorAll('#icons .icon');
+    Array.prototype.forEach.call(icons, function (el, idx) {
+      setTimeout(function () {
+        el.classList.add('on');
+        var appId = el.dataset.id;
+        var app = findApp(appId);
+        if (app) termLog('load ' + app.id, app.name + ' ready', app.icon);
+      }, idx * 60);
+    });
+  }
+
+  /* ============================================================
+     CLOCK
+     ============================================================ */
+  function pad(n) { return (n < 10 ? '0' : '') + n; }
+  function tickClock() {
+    var el = document.getElementById('clock');
+    if (!el) return;
+    var d = new Date();
+    el.textContent = pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
+  }
+
+  /* ============================================================
+     GLOBAL KEYS
+     ============================================================ */
+  document.addEventListener('keydown', function (e) {
+    var desktop = document.getElementById('desktop');
+    if (!desktop.classList.contains('visible')) return;
+
+    if (e.key === 'Escape') {
+      if (ctxMenu) return; /* menu tem prioridade (handler de captura) */
+      var focused = document.activeElement;
+      if (focused && (focused.tagName === 'INPUT' || focused.tagName === 'TEXTAREA' || focused.isContentEditable)) {
+        focused.blur();
+        return;
+      }
+      var wins = document.querySelectorAll('.win');
+      if (!wins.length) return;
+      var topWin = null, topZ = -1;
+      Array.prototype.forEach.call(wins, function (w) {
+        var z = parseInt(w.style.zIndex || '0', 10);
+        if (z > topZ) { topZ = z; topWin = w; }
+      });
+      if (topWin) topWin.remove();
+      sfx.close();
+    }
+  });
+
+  /* ============================================================
+     INIT
+     ============================================================ */
+  function init() {
+    buildIcons();
+    tickClock();
+    setInterval(tickClock, 1000);
+
+    var ti = document.getElementById('taskinfo');
+    if (ti) ti.textContent = 'apps: ' + APPS.length + ' | fs: ' + fsList().length;
+
+    var soundBtn = document.getElementById('soundtoggle');
+    if (soundBtn) {
+      soundBtn.textContent = soundOn ? '🔊' : '🔇';
+      soundBtn.onclick = toggleSound;
+    }
+
+    bindTerminal();
+
+    setTimeout(function () {
+      if (typeof window.Pitangus !== 'undefined') {
+        termLog('runtime', 'Pitangus.js + PixiJS detectados', '📦');
+      } else if (window.__pitangusFailed) {
+        termLog('runtime', 'Pitangus.js falhou (seguindo com DOM)', '⚠️');
+      } else {
+        termLog('runtime', 'Pitangus.js aguardando CDN...', '⏳');
+      }
+      termLog('dica', 'use o prompt abaixo para rodar JS, ou digite "help"', '💡');
+      termLog('dica', 'clique com botão direito nos ícones, janelas e no terminal', '💡');
+    }, 1800);
+
+    boot();
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+
+})();
+</script>
+</body>
+</html>
