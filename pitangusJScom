@@ -1,0 +1,1589 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pitangus JS Shell Socket</title>
+
+  <!-- Engine Pitangus.js -->
+  <script src="https://cdn.jsdelivr.net/gh/aceleradox/Pitangus.js@v2.0.0/pitangus.js"></script>
+
+  <!-- Socket.IO -->
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: #0a0a0a;
+      color: #c0c0c0;
+      font-family: 'Courier New', Courier, monospace;
+      height: 100vh;
+      display: flex;
+      overflow: hidden;
+    }
+
+    /* ---------- SIDEBAR (MENU) ---------- */
+    #sidebar {
+      width: 260px;
+      flex-shrink: 0;
+      background-color: #111;
+      border-right: 2px solid #333;
+      display: flex;
+      flex-direction: column;
+      padding: 16px 8px;
+    }
+
+    #sidebar h1 {
+      color: #ffcc00;
+      font-size: 18px;
+      text-align: center;
+      margin-bottom: 20px;
+      letter-spacing: 2px;
+      border-bottom: 1px dashed #ffcc00;
+      padding-bottom: 8px;
+    }
+
+    #menu {
+      list-style: none;
+      flex: 1;
+      overflow-y: auto;
+    }
+
+    #menu li {
+      padding: 10px 14px;
+      margin-bottom: 4px;
+      cursor: pointer;
+      border-left: 4px solid transparent;
+      transition: background 0.15s, border-color 0.15s;
+      font-size: 14px;
+      user-select: none;
+    }
+
+    #menu li:hover {
+      background-color: #1a1a1a;
+    }
+
+    #menu li.selected {
+      background-color: #222;
+      border-left-color: #ffcc00;
+      color: #ffcc00;
+      font-weight: bold;
+    }
+
+    #sidebar .hint {
+      font-size: 11px;
+      color: #666;
+      text-align: center;
+      padding-top: 12px;
+      border-top: 1px dashed #333;
+      margin-top: auto;
+    }
+
+    /* ---------- ÁREA DE CONTEÚDO ---------- */
+    #content {
+      flex: 1;
+      min-width: 0;
+      padding: 24px 32px;
+      overflow-y: auto;
+    }
+
+    #content h2 {
+      color: #ffcc00;
+      font-size: 20px;
+      margin-bottom: 16px;
+      border-bottom: 1px solid #333;
+      padding-bottom: 6px;
+    }
+
+    #content p {
+      margin-bottom: 12px;
+      line-height: 1.5;
+    }
+
+    #content input,
+    #content button,
+    #content textarea {
+      background-color: #1a1a1a;
+      border: 1px solid #444;
+      color: #c0c0c0;
+      padding: 8px 12px;
+      font-family: inherit;
+      font-size: 14px;
+      margin-right: 8px;
+      margin-bottom: 8px;
+      border-radius: 2px;
+    }
+
+    #content input:focus,
+    #content textarea:focus {
+      outline: 1px solid #ffcc00;
+    }
+
+    #content button {
+      background-color: #222;
+      cursor: pointer;
+      border-color: #555;
+    }
+
+    #content button:hover {
+      background-color: #333;
+      border-color: #ffcc00;
+    }
+
+    #content button:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    #content pre {
+      background-color: #111;
+      border: 1px solid #333;
+      padding: 14px;
+      overflow-x: auto;
+      font-size: 13px;
+      line-height: 1.4;
+      margin-bottom: 16px;
+      white-space: pre-wrap;
+    }
+
+    #content .log {
+      background-color: #000;
+      border: 1px solid #333;
+      padding: 10px;
+      font-size: 13px;
+      max-height: 200px;
+      overflow-y: auto;
+      margin-top: 12px;
+      white-space: pre-wrap;
+    }
+
+    #content .log .error {
+      color: #ff5555;
+    }
+
+    #content .log .ok {
+      color: #55ff55;
+    }
+
+    /* ---------- CANVAS DO JOGO (OCULTO ATÉ CONECTAR) ---------- */
+    #game-wrapper {
+      display: none;
+      margin-top: 16px;
+      border: 2px solid #00e5ff;
+      background: #0a0a0a;
+      width: fit-content;
+      max-width: 100%;
+      box-shadow: 0 0 30px rgba(0, 229, 255, 0.15);
+    }
+
+    #game-wrapper.connected {
+      display: block;
+    }
+
+    #game-container canvas {
+      display: block;
+      max-width: 100%;
+      height: auto;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ========== SIDEBAR ========== -->
+  <aside id="sidebar">
+    <h1>PITANGUS<br>SHELL</h1>
+    <ul id="menu"></ul>
+    <div class="hint">↑ ↓ para navegar<br>Enter para selecionar</div>
+  </aside>
+
+  <!-- ========== CONTEÚDO ========== -->
+  <main id="content"></main>
+
+  <script>
+    // ============================================================
+    // 1. DEFINIÇÃO DAS OPÇÕES DO MENU
+    // ============================================================
+    const MENU_ITEMS = [
+      { id: 'socket-play',      label: '🔌 Socket Play (WebSocket)' },
+      { id: 'socket-io',        label: '📡 Socket.IO (Servidor)' },
+      { id: 'irc-chat',         label: '💬 IRC Chat (WebSocket)' },
+      { id: 'stream',           label: '🎮 Stream (2 Players)' },
+      { id: 'manual',           label: '📖 Manual (Node.js)' },
+      { id: 'pitangus-request', label: '📨 Pitangus Request' },
+      { id: 'pitangus-party',   label: '🎉 Pitangus Party' },
+      { id: 'pitangus-view',    label: '👁️ Pitangus View (Código)' },
+      { id: 'pitangus-admin',   label: '⚙️ Pitangus Admin' },
+    ];
+
+    const menuEl = document.getElementById('menu');
+    const contentEl = document.getElementById('content');
+    let selectedIndex = 0;
+
+    // Garante que qualquer canvas criado pelo Pitangus.js fora do container seja limpo ao trocar de aba
+    function cleanupOrphanCanvases() {
+      document.querySelectorAll('body > canvas').forEach(c => c.remove());
+      window.gamemode = null;
+    }
+
+    // ============================================================
+    // 2. RENDERIZAÇÃO E NAVEGAÇÃO DO MENU
+    // ============================================================
+    function renderMenu() {
+      menuEl.innerHTML = '';
+      MENU_ITEMS.forEach((item, index) => {
+        const li = document.createElement('li');
+        li.textContent = item.label;
+        li.dataset.id = item.id;
+        li.dataset.index = index;
+        if (index === selectedIndex) li.classList.add('selected');
+
+        li.addEventListener('click', () => {
+          selectItem(index);
+          activateItem(item.id);
+        });
+
+        menuEl.appendChild(li);
+      });
+    }
+
+    function selectItem(index) {
+      menuEl.querySelectorAll('li').forEach(li => li.classList.remove('selected'));
+      const newLi = menuEl.querySelector(`li[data-index="${index}"]`);
+      if (newLi) {
+        newLi.classList.add('selected');
+        selectedIndex = index;
+      }
+    }
+
+    function activateItem(id) {
+      cleanupOrphanCanvases();
+      contentEl.innerHTML = '';
+      switch (id) {
+        case 'socket-play':      renderSocketPlay(); break;
+        case 'socket-io':        renderSocketIO(); break;
+        case 'irc-chat':         renderIRCChat(); break;
+        case 'stream':           renderStream(); break;
+        case 'manual':           renderManual(); break;
+        case 'pitangus-request': renderPitangusRequest(); break;
+        case 'pitangus-party':   renderPitangusParty(); break;
+        case 'pitangus-view':    renderPitangusView(); break;
+        case 'pitangus-admin':   renderPitangusAdmin(); break;
+        default: contentEl.innerHTML = '<p>Opção desconhecida.</p>';
+      }
+    }
+
+    document.addEventListener('keydown', (e) => {
+      // Evita navegar no menu quando o usuário está digitando em inputs
+      if (document.activeElement && ['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) {
+        return;
+      }
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        const next = (selectedIndex + 1) % MENU_ITEMS.length;
+        selectItem(next);
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        const prev = (selectedIndex - 1 + MENU_ITEMS.length) % MENU_ITEMS.length;
+        selectItem(prev);
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        const item = MENU_ITEMS[selectedIndex];
+        if (item) activateItem(item.id);
+      }
+    });
+
+    // ============================================================
+    // 3. ÁUDIO E MODO DE JOGO (INICIALIZADO APENAS APÓS CONEXÃO)
+    // ============================================================
+    let audioCtx = null;
+    function initAudio() {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+    }
+
+    function sfx(type) {
+      try {
+        initAudio();
+        const now = audioCtx.currentTime;
+        if (type === 'success') {
+          [523, 659, 784, 1047].forEach((f, i) => {
+            const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+            o.connect(g); g.connect(audioCtx.destination);
+            o.type = 'sine'; o.frequency.setValueAtTime(f, now + i * 0.1);
+            g.gain.setValueAtTime(0.1, now + i * 0.1);
+            g.gain.exponentialRampToValueAtTime(0.001, now + i * 0.1 + 0.15);
+            o.start(now + i * 0.1); o.stop(now + i * 0.1 + 0.15);
+          });
+          return;
+        }
+        const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+        o.connect(g); g.connect(audioCtx.destination);
+        switch (type) {
+          case 'click':
+            o.type = 'square'; o.frequency.setValueAtTime(800, now);
+            o.frequency.exponentialRampToValueAtTime(600, now + 0.05);
+            g.gain.setValueAtTime(0.06, now); g.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+            o.start(now); o.stop(now + 0.08); break;
+          case 'select':
+            o.type = 'sine'; o.frequency.setValueAtTime(520, now);
+            o.frequency.exponentialRampToValueAtTime(880, now + 0.1);
+            g.gain.setValueAtTime(0.09, now); g.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+            o.start(now); o.stop(now + 0.12); break;
+          case 'pickup':
+            o.type = 'triangle'; o.frequency.setValueAtTime(440, now);
+            o.frequency.exponentialRampToValueAtTime(1320, now + 0.15);
+            g.gain.setValueAtTime(0.1, now); g.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+            o.start(now); o.stop(now + 0.2); break;
+          case 'error':
+            o.type = 'sawtooth'; o.frequency.setValueAtTime(200, now);
+            o.frequency.exponentialRampToValueAtTime(80, now + 0.3);
+            g.gain.setValueAtTime(0.12, now); g.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+            o.start(now); o.stop(now + 0.35); break;
+          case 'bsod':
+            o.type = 'sawtooth'; o.frequency.setValueAtTime(120, now);
+            o.frequency.exponentialRampToValueAtTime(40, now + 0.8);
+            g.gain.setValueAtTime(0.18, now); g.gain.exponentialRampToValueAtTime(0.001, now + 0.9);
+            o.start(now); o.stop(now + 0.9); break;
+        }
+      } catch (e) {}
+    }
+
+    function startPitangusGame(wrapperEl, containerEl) {
+      wrapperEl.classList.add('connected');
+      containerEl.innerHTML = '';
+
+      window.gamemode = function(engine, PIXI) {
+        // Garante que o canvas fique dentro de #game-container e não solto no body
+        if (engine.app && engine.app.canvas && engine.app.canvas.parentElement !== containerEl) {
+          containerEl.appendChild(engine.app.canvas);
+        }
+
+        const W = engine.app.screen.width;
+        const H = engine.app.screen.height;
+        engine.Save.init('donetrino_save');
+
+        // ---------------- MENU PRINCIPAL ----------------
+        class MenuScene extends engine.Scene {
+          create() {
+            const bg = new PIXI.Graphics();
+            bg.rect(0, 0, W, H).fill(0x0f172a);
+            for (let x = 0; x < W; x += 60) bg.moveTo(x, 0).lineTo(x, H).stroke({ width: 1, color: 0x1e293b, alpha: 0.3 });
+            for (let y = 0; y < H; y += 60) bg.moveTo(0, y).lineTo(W, y).stroke({ width: 1, color: 0x1e293b, alpha: 0.3 });
+            this.container.addChild(bg);
+
+            const title = new PIXI.Text({
+              text: 'DONETRINO CASE',
+              style: {
+                fontFamily: 'Courier New', fontSize: 64, fontWeight: 'bold',
+                fill: 0x00e5ff, stroke: 0x004d40, strokeThickness: 4, letterSpacing: 8,
+                dropShadow: { color: 0x00e5ff, blur: 20, distance: 0, alpha: 0.5 }
+              }
+            });
+            title.anchor.set(0.5); title.x = W / 2; title.y = 180;
+            this.container.addChild(title);
+
+            const sub = new PIXI.Text({
+              text: '— INVESTIGAÇÃO CRIMINAL DIGITAL —',
+              style: { fontFamily: 'Courier New', fontSize: 18, fill: 0x64748b, letterSpacing: 4 }
+            });
+            sub.anchor.set(0.5); sub.x = W / 2; sub.y = 240;
+            this.container.addChild(sub);
+
+            this.options = ['NEW GAME', 'SAVE GAME', 'OPTIONS'];
+            this.selected = 0;
+            this.menuTexts = [];
+            this.options.forEach((label, i) => {
+              const t = new PIXI.Text({
+                text: label,
+                style: { fontFamily: 'Courier New', fontSize: 32, fill: 0x94a3b8, letterSpacing: 6 }
+              });
+              t.anchor.set(0.5); t.x = W / 2; t.y = 360 + i * 70;
+              t.eventMode = 'static'; t.cursor = 'pointer';
+              t.on('pointerover', () => { this.selected = i; this.updateMenu(); });
+              t.on('pointerdown', () => { this.confirm(); });
+              this.container.addChild(t);
+              this.menuTexts.push(t);
+            });
+            this.updateMenu();
+
+            const footer = new PIXI.Text({
+              text: '© 2026 Donetrino Case — Pitangus.js v2.0.0',
+              style: { fontFamily: 'Courier New', fontSize: 12, fill: 0x334155 }
+            });
+            footer.anchor.set(0.5); footer.x = W / 2; footer.y = H - 30;
+            this.container.addChild(footer);
+          }
+          updateMenu() {
+            this.menuTexts.forEach((t, i) => {
+              const a = i === this.selected;
+              t.style.fill = a ? 0x00e5ff : 0x94a3b8;
+              t.style.fontSize = a ? 36 : 32;
+              t.style.dropShadow = a
+                ? { color: 0x00e5ff, blur: 15, distance: 0, alpha: 0.6 }
+                : { color: 0x000000, blur: 0, distance: 0, alpha: 0 };
+            });
+          }
+          update() {
+            if (engine.Input.pressed('ArrowUp') || engine.Input.pressed('KeyW')) {
+              this.selected = (this.selected - 1 + 3) % 3; sfx('click'); this.updateMenu();
+            }
+            if (engine.Input.pressed('ArrowDown') || engine.Input.pressed('KeyS')) {
+              this.selected = (this.selected + 1) % 3; sfx('click'); this.updateMenu();
+            }
+            if (engine.Input.pressed('Enter') || engine.Input.pressed('Space')) this.confirm();
+          }
+          confirm() {
+            sfx('select');
+            if (this.selected === 0) engine.start('level1');
+            else if (this.selected === 1) engine.start('save');
+            else engine.start('options');
+          }
+        }
+
+        // ---------------- SAVE GAME ----------------
+        class SaveScene extends engine.Scene {
+          create() {
+            const bg = new PIXI.Graphics();
+            bg.rect(0, 0, W, H).fill(0x0f172a);
+            this.container.addChild(bg);
+
+            const title = new PIXI.Text({
+              text: 'SAVE GAME',
+              style: { fontFamily: 'Courier New', fontSize: 48, fontWeight: 'bold', fill: 0x00e5ff, letterSpacing: 6 }
+            });
+            title.anchor.set(0.5); title.x = W / 2; title.y = 80;
+            this.container.addChild(title);
+
+            this.slots = engine.Save.get('slots', Array(8).fill(null));
+            if (!Array.isArray(this.slots) || this.slots.length !== 8) this.slots = Array(8).fill(null);
+            this.selected = 0;
+            this.slotRects = [];
+            this.slotTexts = [];
+
+            for (let i = 0; i < 8; i++) {
+              const col = i % 2, row = Math.floor(i / 2);
+              const x = W / 2 - 300 + col * 320;
+              const y = 160 + row * 110;
+
+              const r = new PIXI.Graphics();
+              r.roundRect(x, y, 280, 80, 8);
+              r.fill(this.slots[i] ? 0x1e293b : 0x0f172a);
+              r.stroke({ width: 2, color: 0x334155 });
+              r.eventMode = 'static'; r.cursor = 'pointer';
+              r.on('pointerdown', () => { this.selected = i; this.refresh(); });
+              this.container.addChild(r);
+              this.slotRects.push({ g: r, x, y });
+
+              const lbl = new PIXI.Text({
+                text: `SLOT ${i + 1}`,
+                style: { fontFamily: 'Courier New', fontSize: 16, fill: 0x64748b, fontWeight: 'bold' }
+              });
+              lbl.x = x + 15; lbl.y = y + 12;
+              this.container.addChild(lbl);
+
+              const info = new PIXI.Text({
+                text: this.slots[i] ? `Fase 1 — ${this.slots[i].timestamp}` : '— vazio —',
+                style: { fontFamily: 'Courier New', fontSize: 13, fill: this.slots[i] ? 0x94a3b8 : 0x475569 }
+              });
+              info.x = x + 15; info.y = y + 45;
+              this.container.addChild(info);
+              this.slotTexts.push(info);
+            }
+
+            const hint = new PIXI.Text({
+              text: 'ENTER: salvar  |  C: carregar  |  ESC: voltar',
+              style: { fontFamily: 'Courier New', fontSize: 14, fill: 0x64748b }
+            });
+            hint.anchor.set(0.5); hint.x = W / 2; hint.y = H - 60;
+            this.container.addChild(hint);
+
+            this.refresh();
+          }
+          refresh() {
+            this.slotRects.forEach((s, i) => {
+              s.g.clear();
+              s.g.roundRect(s.x, s.y, 280, 80, 8);
+              s.g.fill(this.slots[i] ? 0x1e293b : 0x0f172a);
+              s.g.stroke({ width: i === this.selected ? 3 : 2, color: i === this.selected ? 0x00e5ff : 0x334155 });
+            });
+          }
+          update() {
+            if (engine.Input.pressed('ArrowUp') || engine.Input.pressed('KeyW')) { this.selected = (this.selected - 2 + 8) % 8; sfx('click'); this.refresh(); }
+            if (engine.Input.pressed('ArrowDown') || engine.Input.pressed('KeyS')) { this.selected = (this.selected + 2) % 8; sfx('click'); this.refresh(); }
+            if (engine.Input.pressed('ArrowLeft') || engine.Input.pressed('KeyA')) { this.selected = (this.selected - 1 + 8) % 8; sfx('click'); this.refresh(); }
+            if (engine.Input.pressed('ArrowRight') || engine.Input.pressed('KeyD')) { this.selected = (this.selected + 1) % 8; sfx('click'); this.refresh(); }
+            if (engine.Input.pressed('Enter')) {
+              const now = new Date();
+              const ts = `${now.getDate().toString().padStart(2, '0')}/${(now.getMonth() + 1).toString().padStart(2, '0')} ${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+              this.slots[this.selected] = { level: 1, timestamp: ts, data: { phase: 'level1' } };
+              engine.Save.set('slots', this.slots);
+              this.slotTexts[this.selected].text = `Fase 1 — ${ts}`;
+              this.slotTexts[this.selected].style.fill = 0x94a3b8;
+              sfx('success'); this.refresh();
+            }
+            if (engine.Input.pressed('KeyC') && this.slots[this.selected]) { sfx('success'); engine.start('level1'); }
+            if (engine.Input.pressed('Escape')) { sfx('select'); engine.start('menu'); }
+          }
+        }
+
+        // ---------------- OPTIONS ----------------
+        class OptionsScene extends engine.Scene {
+          create() {
+            const bg = new PIXI.Graphics();
+            bg.rect(0, 0, W, H).fill(0x0f172a);
+            this.container.addChild(bg);
+            const title = new PIXI.Text({
+              text: 'OPTIONS',
+              style: { fontFamily: 'Courier New', fontSize: 48, fontWeight: 'bold', fill: 0x00e5ff, letterSpacing: 6 }
+            });
+            title.anchor.set(0.5); title.x = W / 2; title.y = 100;
+            this.container.addChild(title);
+            [
+              'Volume Master ............ [ 100% ]',
+              'Efeitos Sonoros ........... [ ON  ]',
+              'Velocidade do Texto ....... [ NORMAL ]',
+              '',
+              'Pressione ESC para voltar'
+            ].forEach((line, i) => {
+              const t = new PIXI.Text({
+                text: line,
+                style: { fontFamily: 'Courier New', fontSize: 22, fill: 0x94a3b8 }
+              });
+              t.anchor.set(0.5); t.x = W / 2; t.y = 240 + i * 55;
+              this.container.addChild(t);
+            });
+          }
+          update() { if (engine.Input.pressed('Escape')) { sfx('select'); engine.start('menu'); } }
+        }
+
+        // ---------------- LEVEL 1 ----------------
+        class Level1Scene extends engine.Scene {
+          create() {
+            this.progress = {
+              hdPicked: false, hdConnected: false, pcOn: false,
+              explorerOpened: false, dViewed: false, filesSelected: false,
+              filesCopied: false, pendrivePicked: false, pendriveInserted: false,
+              filesPasted: false, pendriveReturned: false, delivered: false
+            };
+            this.state = {
+              explorerOpen: false, viewingDrive: null,
+              pendriveLocation: 'table'
+            };
+            this.bsodRisk = 0;
+            this.bsodActive = false;
+            this.osOpen = false;
+            this.clipboard = null;
+            this.usbFiles = [];
+            this.messageTimer = 0;
+            this.endingActive = false;
+            this.endingIndex = 0;
+
+            this.hdFiles = [
+              { name: 'extrato_oculto.pdf', correct: true, selected: false },
+              { name: 'logs_acesso.txt', correct: true, selected: false },
+              { name: 'planilha_fraude.xlsx', correct: true, selected: false },
+              { name: 'nao_clique.exe', correct: false, selected: false },
+              { name: 'definitivamente_nao_e_virus.exe', correct: false, selected: false },
+              { name: 'backup_corrompido.zip', correct: false, selected: false }
+            ];
+
+            this.buildRoom();
+            this.buildHUD();
+            this.osContainer = new PIXI.Container();
+            this.container.addChild(this.osContainer);
+            this.buildBSOD();
+            this.rebuildOS();
+            this.updateHUD();
+          }
+
+          buildRoom() {
+            const room = new PIXI.Container();
+            this.container.addChild(room);
+            this.roomContainer = room;
+
+            const wall = new PIXI.Graphics();
+            wall.rect(0, 0, W, 450).fill(0x1a1a2e);
+            room.addChild(wall);
+
+            const floor = new PIXI.Graphics();
+            floor.rect(0, 450, W, H - 450).fill(0x0f172a);
+            for (let x = 0; x < W; x += 100) floor.moveTo(x, 450).lineTo(x - 50, H).stroke({ width: 1, color: 0x16213e });
+            room.addChild(floor);
+
+            const table = new PIXI.Graphics();
+            table.rect(30, 430, 280, 20).fill(0x5c3a21);
+            table.rect(40, 450, 15, 90).fill(0x3d2b1f);
+            table.rect(285, 450, 15, 90).fill(0x3d2b1f);
+            room.addChild(table);
+
+            this.pendriveSprite = new PIXI.Graphics();
+            this.pendriveSprite.roundRect(150, 405, 50, 20, 4).fill(0x0066ff);
+            this.pendriveSprite.roundRect(195, 410, 12, 10, 2).fill(0xcccccc);
+            this.pendriveSprite.eventMode = 'static'; this.pendriveSprite.cursor = 'pointer';
+            this.pendriveSprite.on('pointerdown', () => this.clickPendrive());
+            room.addChild(this.pendriveSprite);
+
+            this.hdSprite = new PIXI.Graphics();
+            this.hdSprite.roundRect(80, 630, 80, 55, 6).fill(0x555555);
+            this.hdSprite.roundRect(90, 640, 60, 35, 3).fill(0x333333);
+            this.hdSprite.circle(120, 660, 8).fill(0x888888);
+            this.hdSprite.eventMode = 'static'; this.hdSprite.cursor = 'pointer';
+            this.hdSprite.on('pointerdown', () => this.clickHD());
+            room.addChild(this.hdSprite);
+
+            this.pcTower = new PIXI.Graphics();
+            this.pcTower.roundRect(1160, 350, 90, 250, 4).fill(0x2d2d2d);
+            this.pcTower.stroke({ width: 2, color: 0x444444 });
+            for (let i = 0; i < 5; i++) this.pcTower.rect(1170, 370 + i * 12, 70, 4).fill(0x1a1a1a);
+            this.pcTower.eventMode = 'static'; this.pcTower.cursor = 'pointer';
+            this.pcTower.on('pointerdown', () => this.clickPC());
+            room.addChild(this.pcTower);
+            this.pcLed = new PIXI.Graphics();
+            this.pcLed.circle(1175, 500, 4).fill(0x333333);
+            room.addChild(this.pcLed);
+
+            const powerBtn = new PIXI.Graphics();
+            powerBtn.circle(1225, 380, 12).fill(0x444444);
+            powerBtn.stroke({ width: 2, color: 0x00e5ff });
+            powerBtn.eventMode = 'static'; powerBtn.cursor = 'pointer';
+            powerBtn.on('pointerdown', () => this.clickPower());
+            room.addChild(powerBtn);
+
+            const usbPort = new PIXI.Graphics();
+            usbPort.rect(1215, 450, 20, 10).fill(0x111111);
+            usbPort.stroke({ width: 1, color: 0x00e5ff });
+            usbPort.eventMode = 'static'; usbPort.cursor = 'pointer';
+            usbPort.on('pointerdown', () => this.clickUSB());
+            room.addChild(usbPort);
+
+            const usbLbl = new PIXI.Text({ text: 'USB', style: { fontFamily: 'Courier New', fontSize: 10, fill: 0x00e5ff } });
+            usbLbl.x = 1215; usbLbl.y = 435;
+            room.addChild(usbLbl);
+
+            const monitor = new PIXI.Graphics();
+            monitor.rect(1150, 250, 110, 80).fill(0x1a1a1a);
+            monitor.rect(1158, 258, 94, 64).fill(0x001a1a);
+            monitor.rect(1195, 330, 20, 20).fill(0x1a1a1a);
+            room.addChild(monitor);
+
+            const door = new PIXI.Graphics();
+            door.rect(1245, 180, 35, 240).fill(0x3d2b1f);
+            door.rect(1250, 185, 25, 230).fill(0x5c3a21);
+            room.addChild(door);
+
+            const delegado = new PIXI.Graphics();
+            delegado.roundRect(1230, 200, 35, 70, 6).fill(0x1a1a1a);
+            delegado.circle(1247, 185, 15).fill(0x2d2d2d);
+            delegado.rect(1237, 165, 20, 12).fill(0x111111);
+            delegado.eventMode = 'static'; delegado.cursor = 'pointer';
+            delegado.on('pointerdown', () => this.clickDelegado());
+            room.addChild(delegado);
+
+            const delLbl = new PIXI.Text({ text: 'Delegado', style: { fontFamily: 'Courier New', fontSize: 10, fill: 0x94a3b8 } });
+            delLbl.x = 1215; delLbl.y = 280;
+            room.addChild(delLbl);
+
+            const player = new PIXI.Graphics();
+            player.roundRect(50, 550, 40, 70, 6).fill(0x00e5ff);
+            player.circle(70, 535, 15).fill(0x00e5ff);
+            room.addChild(player);
+
+            const plLbl = new PIXI.Text({ text: 'Oficial Conor', style: { fontFamily: 'Courier New', fontSize: 11, fill: 0x00e5ff } });
+            plLbl.x = 30; plLbl.y = 625;
+            room.addChild(plLbl);
+          }
+
+          buildHUD() {
+            this.hud = new PIXI.Container();
+            this.container.addChild(this.hud);
+
+            const objBox = new PIXI.Graphics();
+            objBox.rect(0, 0, W, 80).fill({ color: 0x0f172a, alpha: 0.92 });
+            objBox.moveTo(0, 80).lineTo(W, 80).stroke({ width: 2, color: 0x00e5ff });
+            this.hud.addChild(objBox);
+
+            this.objText = new PIXI.Text({ text: '', style: { fontFamily: 'Courier New', fontSize: 16, fill: 0x00e5ff } });
+            this.objText.x = 20; this.objText.y = 14;
+            this.hud.addChild(this.objText);
+
+            this.objProg = new PIXI.Text({ text: '', style: { fontFamily: 'Courier New', fontSize: 12, fill: 0x64748b } });
+            this.objProg.x = 20; this.objProg.y = 48;
+            this.hud.addChild(this.objProg);
+
+            this.invText = new PIXI.Text({ text: 'Inventário: vazio', style: { fontFamily: 'Courier New', fontSize: 12, fill: 0x94a3b8 } });
+            this.invText.x = W - 300; this.invText.y = 14;
+            this.hud.addChild(this.invText);
+
+            this.riskBg = new PIXI.Graphics();
+            this.riskBg.rect(W - 300, 38, 280, 15).fill(0x1e293b);
+            this.riskBg.stroke({ width: 1, color: 0x334155 });
+            this.hud.addChild(this.riskBg);
+
+            this.riskFill = new PIXI.Graphics();
+            this.hud.addChild(this.riskFill);
+
+            this.riskLbl = new PIXI.Text({ text: 'Risco BSOD: 0%', style: { fontFamily: 'Courier New', fontSize: 10, fill: 0x94a3b8 } });
+            this.riskLbl.x = W - 300; this.riskLbl.y = 56;
+            this.hud.addChild(this.riskLbl);
+
+            this.msgText = new PIXI.Text({
+              text: '',
+              style: { fontFamily: 'Courier New', fontSize: 15, fill: 0xfbbf24, wordWrap: true, wordWrapWidth: 800, align: 'center' }
+            });
+            this.msgText.anchor.set(0.5); this.msgText.x = W / 2; this.msgText.y = 100;
+            this.hud.addChild(this.msgText);
+          }
+
+          buildBSOD() {
+            this.bsodContainer = new PIXI.Container();
+            this.bsodContainer.visible = false;
+            this.container.addChild(this.bsodContainer);
+            const bg = new PIXI.Graphics();
+            bg.rect(0, 0, W, H).fill(0x0000aa);
+            bg.eventMode = 'static';
+            this.bsodContainer.addChild(bg);
+            this.bsodText = new PIXI.Text({
+              text: '',
+              style: { fontFamily: 'Courier New', fontSize: 20, fill: 0xffffff, wordWrap: true, wordWrapWidth: W - 200, lineHeight: 30 }
+            });
+            this.bsodText.x = 100; this.bsodText.y = 200;
+            this.bsodContainer.addChild(this.bsodText);
+          }
+
+          rebuildOS() {
+            this.osContainer.removeChildren().forEach(c => c.destroy({ children: true }));
+            if (!this.osOpen) return;
+
+            const ox = 350, oy = 100, ow = 800, oh = 500;
+
+            const bg = new PIXI.Graphics();
+            bg.rect(ox, oy, ow, oh).fill(0x0a0a1a);
+            bg.stroke({ width: 2, color: 0x00e5ff });
+            bg.eventMode = 'static';
+            this.osContainer.addChild(bg);
+
+            const tb = new PIXI.Graphics();
+            tb.rect(ox, oy, ow, 35).fill(0x0f3460);
+            this.osContainer.addChild(tb);
+
+            const titleTxt = new PIXI.Text({ text: '🖥 DonetrinoOS — Análise Forense', style: { fontFamily: 'Courier New', fontSize: 14, fill: 0x00e5ff } });
+            titleTxt.x = ox + 15; titleTxt.y = oy + 10;
+            this.osContainer.addChild(titleTxt);
+
+            const taskbar = new PIXI.Graphics();
+            taskbar.rect(ox, oy + oh - 35, ow, 35).fill(0x0f3460);
+            this.osContainer.addChild(taskbar);
+
+            const expBtn = new PIXI.Graphics();
+            expBtn.roundRect(ox + 10, oy + oh - 30, 150, 25, 4).fill(this.state.explorerOpen ? 0x00e5ff : 0x1a1a2e);
+            expBtn.stroke({ width: 1, color: 0x00e5ff });
+            expBtn.eventMode = 'static'; expBtn.cursor = 'pointer';
+            expBtn.on('pointerdown', () => {
+              this.state.explorerOpen = true;
+              this.progress.explorerOpened = true;
+              sfx('click'); this.rebuildOS(); this.updateHUD();
+            });
+            this.osContainer.addChild(expBtn);
+
+            const expBtnTxt = new PIXI.Text({
+              text: '📁 File Explorer',
+              style: { fontFamily: 'Courier New', fontSize: 12, fill: this.state.explorerOpen ? 0x0a0a1a : 0x00e5ff }
+            });
+            expBtnTxt.x = ox + 18; expBtnTxt.y = oy + oh - 26;
+            this.osContainer.addChild(expBtnTxt);
+
+            const cx = ox, cy = oy + 35, cw = ow, ch = oh - 70;
+            if (!this.state.explorerOpen) this.drawDesktop(cx, cy, cw, ch);
+            else this.drawExplorer(cx, cy, cw, ch);
+          }
+
+          drawDesktop(x, y, w, h) {
+            const bg = new PIXI.Graphics();
+            bg.rect(x, y, w, h).fill(0x0f172a);
+            this.osContainer.addChild(bg);
+
+            const hint = new PIXI.Text({
+              text: 'Bem-vindo ao DonetrinoOS\n\nClique no ícone abaixo ou na barra de tarefas\npara abrir o File Explorer.',
+              style: { fontFamily: 'Courier New', fontSize: 14, fill: 0x64748b, align: 'center' }
+            });
+            hint.anchor.set(0.5); hint.x = x + w / 2; hint.y = y + h / 2 - 70;
+            this.osContainer.addChild(hint);
+
+            const iconX = x + w / 2 - 40, iconY = y + h / 2 + 10;
+            const icon = new PIXI.Graphics();
+            icon.roundRect(iconX, iconY, 80, 80, 8).fill(0x1a1a2e);
+            icon.stroke({ width: 2, color: 0x00e5ff });
+            icon.eventMode = 'static'; icon.cursor = 'pointer';
+            icon.on('pointerdown', () => {
+              this.state.explorerOpen = true;
+              this.progress.explorerOpened = true;
+              sfx('click'); this.rebuildOS(); this.updateHUD();
+            });
+            this.osContainer.addChild(icon);
+
+            const it = new PIXI.Text({ text: '📁', style: { fontSize: 40 } });
+            it.x = iconX + 18; it.y = iconY + 10;
+            this.osContainer.addChild(it);
+
+            const il = new PIXI.Text({ text: 'Explorer', style: { fontFamily: 'Courier New', fontSize: 11, fill: 0x00e5ff } });
+            il.anchor.set(0.5); il.x = iconX + 40; il.y = iconY + 90;
+            this.osContainer.addChild(il);
+          }
+
+          drawExplorer(x, y, w, h) {
+            const bg = new PIXI.Graphics();
+            bg.rect(x, y, w, h).fill(0x1a1a2e);
+            this.osContainer.addChild(bg);
+
+            const sbW = 180;
+            const sb = new PIXI.Graphics();
+            sb.rect(x, y, sbW, h).fill(0x0f172a);
+            sb.moveTo(x + sbW, y).lineTo(x + sbW, y + h).stroke({ width: 1, color: 0x334155 });
+            this.osContainer.addChild(sb);
+
+            const sbH = new PIXI.Text({ text: '📌 Este Computador', style: { fontFamily: 'Courier New', fontSize: 12, fill: 0x00e5ff } });
+            sbH.x = x + 10; sbH.y = y + 10;
+            this.osContainer.addChild(sbH);
+
+            this.addDriveItem(x + 10, y + 40, sbW - 20, '💾 C: (Sistema)', 'C');
+            if (this.progress.hdConnected) this.addDriveItem(x + 10, y + 80, sbW - 20, '💿 D: (HD)', 'D');
+            if (this.progress.pendriveInserted && this.state.pendriveLocation === 'pc')
+              this.addDriveItem(x + 10, y + 120, sbW - 20, '🔌 E: (PENDRIVE)', 'USB');
+
+            const cx = x + sbW, cy = y, cw = w - sbW, ch = h;
+
+            if (!this.state.viewingDrive) {
+              const t = new PIXI.Text({ text: 'Selecione um drive à esquerda', style: { fontFamily: 'Courier New', fontSize: 14, fill: 0x475569 } });
+              t.anchor.set(0.5); t.x = cx + cw / 2; t.y = cy + ch / 2;
+              this.osContainer.addChild(t);
+            } else if (this.state.viewingDrive === 'C') {
+              this.drawContent(cx, cy, cw, ch, [
+                { name: 'system32', folder: true },
+                { name: 'Program Files', folder: true },
+                { name: 'Windows', folder: true }
+              ], null);
+            } else if (this.state.viewingDrive === 'D') {
+              this.drawHeader(cx, cy, cw, 'D: — HD Conectado', true, false, false);
+              this.drawContent(cx, cy + 50, cw, ch - 50,
+                this.hdFiles.map(f => ({
+                  name: f.name, isFile: true, selected: f.selected,
+                  onClick: () => this.clickFile(f)
+                })), null);
+            } else if (this.state.viewingDrive === 'USB') {
+              this.drawHeader(cx, cy, cw, 'E: — PENDRIVE', false, true, true);
+              this.drawContent(cx, cy + 50, cw, ch - 50,
+                this.usbFiles.map(f => ({ name: f.name, isFile: true, selected: false, onClick: null })),
+                'Drive vazio — use COPIAR no D: e depois COLAR aqui');
+            }
+          }
+
+          addDriveItem(x, y, w, label, drive) {
+            const active = this.state.viewingDrive === drive;
+            const g = new PIXI.Graphics();
+            g.roundRect(x, y, w, 32, 4).fill(active ? 0x0f3460 : 0x1a1a2e);
+            if (active) g.stroke({ width: 1, color: 0x00e5ff });
+            g.eventMode = 'static'; g.cursor = 'pointer';
+            g.on('pointerdown', () => this.clickDrive(drive));
+            this.osContainer.addChild(g);
+            const t = new PIXI.Text({ text: label, style: { fontFamily: 'Courier New', fontSize: 12, fill: active ? 0x00e5ff : 0xcbd5e1 } });
+            t.x = x + 8; t.y = y + 9;
+            this.osContainer.addChild(t);
+          }
+
+          drawHeader(x, y, w, title, showCopy, showPaste, showEject) {
+            const bg = new PIXI.Graphics();
+            bg.rect(x, y, w, 45).fill(0x0f172a);
+            bg.moveTo(x, y + 45).lineTo(x + w, y + 45).stroke({ width: 1, color: 0x334155 });
+            this.osContainer.addChild(bg);
+
+            const t = new PIXI.Text({ text: title, style: { fontFamily: 'Courier New', fontSize: 14, fill: 0x00e5ff, fontWeight: 'bold' } });
+            t.x = x + 15; t.y = y + 14;
+            this.osContainer.addChild(t);
+
+            let bx = x + w - 15;
+            if (showEject) { bx -= 100; this.makeButton(bx, y + 10, 90, 25, '⏏ Ejetar', 0xef4444, () => this.clickEject()); bx -= 10; }
+            if (showPaste) { bx -= 90; this.makeButton(bx, y + 10, 80, 25, '📋 Colar', 0x22c55e, () => this.clickPaste()); bx -= 10; }
+            if (showCopy) { bx -= 90; this.makeButton(bx, y + 10, 80, 25, '📄 Copiar', 0x3b82f6, () => this.clickCopy()); }
+          }
+
+          makeButton(x, y, w, h, label, color, onClick) {
+            const b = new PIXI.Graphics();
+            b.roundRect(x, y, w, h, 4).fill(color);
+            b.eventMode = 'static'; b.cursor = 'pointer';
+            b.on('pointerdown', onClick);
+            this.osContainer.addChild(b);
+            const t = new PIXI.Text({ text: label, style: { fontFamily: 'Courier New', fontSize: 11, fill: 0xffffff, fontWeight: 'bold' } });
+            t.anchor.set(0.5); t.x = x + w / 2; t.y = y + h / 2;
+            this.osContainer.addChild(t);
+          }
+
+          drawContent(x, y, w, h, items, emptyMsg) {
+            const bg = new PIXI.Graphics();
+            bg.rect(x, y, w, h).fill(0x0a0a1a);
+            this.osContainer.addChild(bg);
+
+            if (items.length === 0) {
+              const t = new PIXI.Text({
+                text: emptyMsg || 'Pasta vazia',
+                style: { fontFamily: 'Courier New', fontSize: 13, fill: 0x475569, align: 'center', wordWrap: true, wordWrapWidth: w - 100 }
+              });
+              t.anchor.set(0.5); t.x = x + w / 2; t.y = y + h / 2;
+              this.osContainer.addChild(t);
+              return;
+            }
+
+            const pad = 15, iw = 180, ih = 80, cols = 3;
+            items.forEach((item, i) => {
+              const ix = x + pad + (i % cols) * (iw + pad);
+              const iy = y + pad + Math.floor(i / cols) * (ih + pad);
+
+              const g = new PIXI.Graphics();
+              g.roundRect(ix, iy, iw, ih, 6).fill(item.selected ? 0x1e40af : 0x1a1a2e);
+              g.stroke({ width: item.selected ? 2 : 1, color: item.selected ? 0x00e5ff : 0x334155 });
+              if (item.onClick) {
+                g.eventMode = 'static'; g.cursor = 'pointer';
+                g.on('pointerdown', item.onClick);
+              }
+              this.osContainer.addChild(g);
+
+              const icon = new PIXI.Text({ text: item.folder ? '📁' : '📄', style: { fontSize: 28 } });
+              icon.x = ix + 12; icon.y = iy + 20;
+              this.osContainer.addChild(icon);
+
+              const nt = new PIXI.Text({
+                text: item.name,
+                style: { fontFamily: 'Courier New', fontSize: 11, fill: 0xe2e8f0, wordWrap: true, wordWrapWidth: 120 }
+              });
+              nt.x = ix + 50; nt.y = iy + 25;
+              this.osContainer.addChild(nt);
+            });
+          }
+
+          clickHD() {
+            if (this.progress.hdPicked) return;
+            this.progress.hdPicked = true;
+            this.hdSprite.visible = false;
+            sfx('pickup');
+            this.showMessage('HD recolhido do chão.');
+            this.updateHUD();
+          }
+
+          clickPC() {
+            if (!this.progress.hdPicked) { sfx('error'); this.showMessage('Você precisa do HD primeiro.'); return; }
+            if (!this.progress.hdConnected) {
+              this.progress.hdConnected = true;
+              sfx('select');
+              this.showMessage('HD conectado ao PC via SATA.');
+              this.updateHUD(); this.rebuildOS();
+            }
+          }
+
+          clickPower() {
+            if (!this.progress.hdConnected) { sfx('error'); this.showMessage('Conecte o HD primeiro.'); return; }
+            if (this.progress.pcOn) { this.showMessage('O PC já está ligado.'); return; }
+            this.progress.pcOn = true;
+            this.pcLed.clear(); this.pcLed.circle(1175, 500, 4).fill(0x00ff00);
+            this.osOpen = true;
+            sfx('success');
+            this.showMessage('PC ligado. DonetrinoOS iniciando...');
+            this.updateHUD(); this.rebuildOS();
+          }
+
+          clickUSB() {
+            if (this.state.pendriveLocation !== 'inventory') {
+              sfx('error'); this.showMessage('Você precisa pegar o pendrive na mesa primeiro.'); return;
+            }
+            this.state.pendriveLocation = 'pc';
+            this.progress.pendriveInserted = true;
+            sfx('select');
+            this.showMessage('Pendrive inserido. Drive E: disponível no Explorer.');
+            this.updateHUD(); this.rebuildOS();
+          }
+
+          clickPendrive() {
+            if (this.state.pendriveLocation === 'table_final') { this.showMessage('O pendrive já está na mesa. Entregue ao Delegado.'); return; }
+            if (this.state.pendriveLocation !== 'table') return;
+            if (!this.progress.filesCopied) { sfx('error'); this.showMessage('Copie os arquivos do HD antes de pegar o pendrive.'); return; }
+            this.state.pendriveLocation = 'inventory';
+            this.progress.pendrivePicked = true;
+            this.pendriveSprite.visible = false;
+            sfx('pickup');
+            this.showMessage('Pendrive recolhido. Agora insira na porta USB do PC.');
+            this.updateHUD();
+          }
+
+          clickDelegado() {
+            if (this.getObjectiveNumber() !== 12) {
+              sfx('error');
+              this.showMessage('O Delegado Anesinesio aguarda o pendrive com as evidências.');
+              return;
+            }
+            this.startEnding();
+          }
+
+          clickDrive(drive) {
+            this.state.viewingDrive = drive;
+            if (drive === 'D') this.progress.dViewed = true;
+            sfx('click'); this.rebuildOS(); this.updateHUD();
+          }
+
+          clickFile(file) {
+            if (file.correct) {
+              file.selected = !file.selected;
+              sfx('click');
+              const count = this.hdFiles.filter(f => f.selected).length;
+              if (count === 3) this.progress.filesSelected = true;
+              this.rebuildOS(); this.updateHUD();
+            } else {
+              this.bsodRisk = Math.min(100, this.bsodRisk + 25);
+              sfx('error');
+              this.showMessage('⚠️ ARQUIVO SUSPEITO! +25% de risco de BSOD');
+              this.updateHUD();
+              if (this.bsodRisk >= 100) this.triggerBSOD();
+            }
+          }
+
+          clickCopy() {
+            const selected = this.hdFiles.filter(f => f.selected);
+            if (selected.length !== 3) {
+              sfx('error'); this.showMessage('Selecione exatamente 3 arquivos de evidência.'); return;
+            }
+            this.progress.filesSelected = true;
+            this.progress.filesCopied = true;
+            this.clipboard = selected.map(f => f.name);
+            this.hdFiles.forEach(f => f.selected = false);
+            sfx('success');
+            this.showMessage('Arquivos copiados! Agora pegue o pendrive na mesa.');
+            this.updateHUD(); this.rebuildOS();
+          }
+
+          clickPaste() {
+            if (!this.clipboard) { sfx('error'); this.showMessage('Nada para colar.'); return; }
+            if (this.usbFiles.length > 0) { this.showMessage('O pendrive já contém os arquivos.'); return; }
+            this.usbFiles = this.clipboard.map(name => ({ name, correct: true }));
+            this.progress.filesPasted = true;
+            sfx('success');
+            this.showMessage('Arquivos colados no pendrive! Agora ejete com segurança.');
+            this.updateHUD(); this.rebuildOS();
+          }
+
+          clickEject() {
+            if (this.state.pendriveLocation !== 'pc') return;
+            if (!this.progress.filesPasted) { this.showMessage('Copie e cole os arquivos antes de ejetar.'); return; }
+            this.state.pendriveLocation = 'table_final';
+            this.progress.pendriveReturned = true;
+            this.clipboard = null;
+            this.state.viewingDrive = null;
+            this.pendriveSprite.visible = true;
+            sfx('success');
+            this.showMessage('Pendrive ejetado com segurança e colocado na mesa.');
+            this.updateHUD(); this.rebuildOS();
+          }
+
+          getObjectiveNumber() {
+            const p = this.progress;
+            if (!p.hdPicked) return 1;
+            if (!p.hdConnected) return 2;
+            if (!p.pcOn) return 3;
+            if (!p.explorerOpened) return 4;
+            if (!p.dViewed) return 5;
+            if (!p.filesSelected) return 6;
+            if (!p.filesCopied) return 7;
+            if (!p.pendrivePicked) return 8;
+            if (!p.pendriveInserted) return 9;
+            if (!p.filesPasted) return 10;
+            if (!p.pendriveReturned) return 11;
+            if (!p.delivered) return 12;
+            return 13;
+          }
+
+          updateHUD() {
+            const obj = this.getObjectiveNumber();
+            const objs = [
+              'Pegue o HD no chão (clique nele)',
+              'Conecte o HD ao PC (clique no gabinete)',
+              'Ligue o PC (clique no botão power)',
+              'Abra o File Explorer no DonetrinoOS',
+              'Abra o drive D: (HD) no Explorer',
+              'Selecione os 3 arquivos de EVIDÊNCIA (PDF/TXT/XLSX)',
+              'Clique em COPIAR',
+              'Pegue o pendrive na mesa',
+              'Insira o pendrive no PC (clique na porta USB)',
+              'Cole os arquivos no drive E: (PENDRIVE)',
+              'Ejete o pendrive para colocá-lo na mesa',
+              'Entregue o pendrive ao Delegado Anesinesio'
+            ];
+            if (obj >= 1 && obj <= 12) {
+              this.objText.text = `Objetivo ${obj}/12: ${objs[obj - 1]}`;
+              this.objProg.text = `${obj - 1} de 12 concluídos`;
+            } else {
+              this.objText.text = '✓ Todos os objetivos concluídos!';
+              this.objProg.text = '12 de 12 concluídos';
+            }
+
+            let inv = [];
+            if (this.progress.hdPicked && !this.progress.hdConnected) inv.push('HD');
+            if (this.state.pendriveLocation === 'inventory') inv.push('Pendrive');
+            if (this.clipboard) inv.push('Arquivos (clipboard)');
+            this.invText.text = 'Inventário: ' + (inv.length ? inv.join(', ') : 'vazio');
+
+            this.riskFill.clear();
+            const rw = 280 * (this.bsodRisk / 100);
+            let color = 0x22c55e;
+            if (this.bsodRisk > 60) color = 0xef4444;
+            else if (this.bsodRisk > 30) color = 0xf59e0b;
+            if (rw > 0) this.riskFill.rect(W - 300, 38, rw, 15).fill(color);
+            this.riskLbl.text = `Risco BSOD: ${Math.floor(this.bsodRisk)}%`;
+          }
+
+          showMessage(msg) {
+            this.msgText.text = msg;
+            this.messageTimer = 3;
+          }
+
+          triggerBSOD() {
+            this.bsodActive = true;
+            sfx('bsod');
+            this.bsodContainer.visible = true;
+            this.bsodText.text =
+              ':(  O seu PC encontrou um problema e precisa ser reiniciado.\n\n' +
+              'STOP CODE: DONETRINO_BSOD_0xDEAD\n\n' +
+              'O HD foi corrompido pela pressa ou por arquivos perigosos.\n\n' +
+              'A investigação será reiniciada em instantes...';
+            setTimeout(() => { engine.start('level1'); }, 4000);
+          }
+
+          startEnding() {
+            this.endingActive = true;
+            this.endingIndex = 0;
+            this.progress.delivered = true;
+            sfx('success');
+            this.showEndingLine();
+          }
+
+          showEndingLine() {
+            const lines = [
+              'OFICIAL CONOR:\n"Delegado Anesinesio, aqui está o pendrive com as evidências do HD. Havia fraude, como suspeitávamos."',
+              'DELEGADO ANESINESIO:\n"Excelente trabalho, Conor. Vou encaminhar imediatamente para a perícia. Você está de parabéns."',
+              '— FIM DA FASE 1 —\n\nO Caso Donetrino está apenas começando...\n\n(A Fase 2 estará disponível em breve)\n\n(Clique para voltar ao menu)'
+            ];
+            if (this.endingIndex >= lines.length) { engine.start('menu'); return; }
+
+            if (this.endingContainer) {
+              this.container.removeChild(this.endingContainer);
+              this.endingContainer.destroy({ children: true });
+            }
+            this.endingContainer = new PIXI.Container();
+            this.container.addChild(this.endingContainer);
+
+            const bg = new PIXI.Graphics();
+            bg.rect(0, 0, W, H).fill({ color: 0x000000, alpha: 0.88 });
+            bg.eventMode = 'static'; bg.cursor = 'pointer';
+            bg.on('pointerdown', () => this.showEndingLine());
+            this.endingContainer.addChild(bg);
+
+            const box = new PIXI.Graphics();
+            box.roundRect(150, 250, W - 300, 220, 12).fill(0x0f172a);
+            box.stroke({ width: 3, color: 0x00e5ff });
+            this.endingContainer.addChild(box);
+
+            const txt = new PIXI.Text({
+              text: lines[this.endingIndex],
+              style: { fontFamily: 'Courier New', fontSize: 18, fill: 0xe2e8f0, wordWrap: true, wordWrapWidth: W - 380, align: 'center', lineHeight: 26 }
+            });
+            txt.anchor.set(0.5); txt.x = W / 2; txt.y = 360;
+            this.endingContainer.addChild(txt);
+
+            this.endingIndex++;
+          }
+
+          update(dt) {
+            if (this.bsodActive || this.endingActive) return;
+
+            if (this.progress.pcOn && this.progress.hdConnected && !this.progress.delivered) {
+              this.bsodRisk = Math.min(100, this.bsodRisk + dt * 1.5);
+              if (this.bsodRisk >= 100) { this.triggerBSOD(); return; }
+            }
+
+            if (this.messageTimer > 0) {
+              this.messageTimer -= dt;
+              if (this.messageTimer <= 0) this.msgText.text = '';
+            }
+
+            this.updateHUD();
+          }
+        }
+
+        engine.register('menu', MenuScene);
+        engine.register('save', SaveScene);
+        engine.register('options', OptionsScene);
+        engine.register('level1', Level1Scene);
+        engine.start('menu');
+      };
+
+      // Dispara o bootstrap do Pitangus.js caso ele aguarde window.onload ou init manual
+      if (typeof Pitangus !== 'undefined' && typeof Pitangus.init === 'function') {
+        Pitangus.init({ container: containerEl });
+      } else {
+        window.dispatchEvent(new Event('load'));
+      }
+    }
+
+    function stopPitangusGame(wrapperEl, containerEl) {
+      wrapperEl.classList.remove('connected');
+      containerEl.innerHTML = '';
+      cleanupOrphanCanvases();
+    }
+
+    // ============================================================
+    // 4. FUNÇÕES DE RENDERIZAÇÃO DE CADA OPÇÃO
+    // ============================================================
+
+    // -------- 4.1 Socket Play (WebSocket) --------
+    function renderSocketPlay() {
+      contentEl.innerHTML = `
+        <h2>🔌 Socket Play — WebSocket</h2>
+        <p>Conecte-se a um servidor WebSocket backend (ex.: <code>wss://echo.websocket.org</code>). O canvas do jogo só aparece após conectar.</p>
+        <input type="text" id="ws-url" placeholder="wss://..." value="wss://echo.websocket.org" style="width: 320px;">
+        <button id="ws-connect">Conectar</button>
+        <button id="ws-disconnect" disabled>Desconectar</button>
+        <div id="ws-log" class="log"></div>
+        <div id="game-wrapper">
+          <div id="game-container"></div>
+        </div>
+      `;
+
+      const log = document.getElementById('ws-log');
+      const btnConnect = document.getElementById('ws-connect');
+      const btnDisconnect = document.getElementById('ws-disconnect');
+      const gameWrapper = document.getElementById('game-wrapper');
+      const gameContainer = document.getElementById('game-container');
+      let ws = null;
+
+      btnConnect.addEventListener('click', () => {
+        const url = document.getElementById('ws-url').value.trim();
+        if (!url) return;
+
+        log.innerHTML = '';
+        try {
+          ws = new WebSocket(url);
+          ws.onopen = () => {
+            log.innerHTML += '<span class="ok">✅ Conectado a ' + url + '</span>\n';
+            btnConnect.disabled = true;
+            btnDisconnect.disabled = false;
+            startPitangusGame(gameWrapper, gameContainer);
+          };
+          ws.onmessage = (event) => {
+            log.innerHTML += '📩 ' + event.data + '\n';
+            log.scrollTop = log.scrollHeight;
+          };
+          ws.onerror = () => {
+            log.innerHTML += '<span class="error">❌ Erro na conexão WebSocket.</span>\n';
+          };
+          ws.onclose = () => {
+            log.innerHTML += '<span class="error">🔌 Conexão encerrada.</span>\n';
+            btnConnect.disabled = false;
+            btnDisconnect.disabled = true;
+            ws = null;
+            stopPitangusGame(gameWrapper, gameContainer);
+          };
+        } catch (err) {
+          log.innerHTML += '<span class="error">❌ ' + err.message + '</span>\n';
+        }
+      });
+
+      btnDisconnect.addEventListener('click', () => {
+        if (ws) ws.close();
+      });
+    }
+
+    // -------- 4.2 Socket.IO --------
+    function renderSocketIO() {
+      contentEl.innerHTML = `
+        <h2>📡 Socket.IO — Servidor</h2>
+        <p>Conecte-se a um servidor Socket.IO (ex.: <code>http://localhost:3000</code>). O canvas do jogo só aparece após conectar.</p>
+        <input type="text" id="sio-url" placeholder="http://localhost:3000" value="http://localhost:3000" style="width: 320px;">
+        <button id="sio-connect">Conectar</button>
+        <button id="sio-disconnect" disabled>Desconectar</button>
+        <div id="sio-log" class="log"></div>
+        <div id="game-wrapper">
+          <div id="game-container"></div>
+        </div>
+      `;
+
+      const log = document.getElementById('sio-log');
+      const btnConnect = document.getElementById('sio-connect');
+      const btnDisconnect = document.getElementById('sio-disconnect');
+      const gameWrapper = document.getElementById('game-wrapper');
+      const gameContainer = document.getElementById('game-container');
+      let socket = null;
+
+      btnConnect.addEventListener('click', () => {
+        const url = document.getElementById('sio-url').value.trim();
+        if (!url) return;
+
+        log.innerHTML = '';
+        try {
+          socket = io(url, { transports: ['websocket'] });
+          socket.on('connect', () => {
+            log.innerHTML += '<span class="ok">✅ Conectado ao Socket.IO em ' + url + '</span>\n';
+            btnConnect.disabled = true;
+            btnDisconnect.disabled = false;
+            startPitangusGame(gameWrapper, gameContainer);
+          });
+          socket.on('message', (data) => {
+            log.innerHTML += '📩 ' + data + '\n';
+            log.scrollTop = log.scrollHeight;
+          });
+          socket.on('connect_error', (err) => {
+            log.innerHTML += '<span class="error">❌ Erro: ' + err.message + '</span>\n';
+          });
+          socket.on('disconnect', () => {
+            log.innerHTML += '<span class="error">🔌 Desconectado.</span>\n';
+            btnConnect.disabled = false;
+            btnDisconnect.disabled = true;
+            socket = null;
+            stopPitangusGame(gameWrapper, gameContainer);
+          });
+        } catch (err) {
+          log.innerHTML += '<span class="error">❌ ' + err.message + '</span>\n';
+        }
+      });
+
+      btnDisconnect.addEventListener('click', () => {
+        if (socket) socket.disconnect();
+      });
+    }
+
+    // -------- 4.3 IRC Chat (WebSocket) --------
+    function renderIRCChat() {
+      contentEl.innerHTML = `
+        <h2>💬 IRC Chat — Estilo MS-DOS</h2>
+        <p>Chat simples via WebSocket. Digite uma mensagem e pressione Enter.</p>
+        <div id="chat-log" class="log" style="height: 220px;"></div>
+        <input type="text" id="chat-msg" placeholder="Digite sua mensagem..." style="width: 60%;">
+        <button id="chat-send">Enviar</button>
+        <button id="chat-connect">Conectar</button>
+      `;
+
+      const log = document.getElementById('chat-log');
+      const input = document.getElementById('chat-msg');
+      const btnSend = document.getElementById('chat-send');
+      const btnConnect = document.getElementById('chat-connect');
+      let ws = null;
+
+      btnConnect.addEventListener('click', () => {
+        ws = new WebSocket('wss://echo.websocket.org');
+        ws.onopen = () => {
+          log.innerHTML += '<span class="ok">✅ Conectado ao chat WebSocket.</span>\n';
+        };
+        ws.onmessage = (e) => {
+          log.innerHTML += '👤 ' + e.data + '\n';
+          log.scrollTop = log.scrollHeight;
+        };
+        ws.onclose = () => {
+          log.innerHTML += '<span class="error">🔌 Chat desconectado.</span>\n';
+        };
+      });
+
+      btnSend.addEventListener('click', () => {
+        const msg = input.value.trim();
+        if (!msg) return;
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          ws.send(msg);
+          log.innerHTML += '🗣️ Você: ' + msg + '\n';
+          input.value = '';
+        } else {
+          log.innerHTML += '<span class="error">❌ Não conectado.</span>\n';
+        }
+      });
+
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') btnSend.click();
+      });
+    }
+
+    // -------- 4.4 Stream (2 Players) --------
+    function renderStream() {
+      contentEl.innerHTML = `
+        <h2>🎮 Stream — Jogos em Nuvem (2 Players)</h2>
+        <p>Esta seção é um esqueleto para integração com um serviço de streaming (ex.: WebRTC + WebSocket).</p>
+        <p>Para uma implementação real, você precisaria de um servidor de sinalização WebSocket e de captura de tela via <code>navigator.mediaDevices.getDisplayMedia()</code>.</p>
+        <pre>
+// Exemplo de captura de tela para streaming:
+const stream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+// Enviar os frames via WebRTC ou WebSocket para o outro jogador.
+        </pre>
+        <p>Em breve: integração completa com Pitangus.js.</p>
+      `;
+    }
+
+    // -------- 4.5 Manual (Node.js) --------
+    function renderManual() {
+      contentEl.innerHTML = `
+        <h2>📖 Manual — Servidores Node.js</h2>
+        <p>Abaixo estão exemplos de código para criar servidores WebSocket e Socket.IO.</p>
+
+        <h3 style="color:#ffcc00; margin:16px 0 8px;">WebSocket puro (ws)</h3>
+        <pre>
+// npm install ws
+const WebSocket = require('ws');
+const wss = new WebSocket.Server({ port: 8080 });
+
+wss.on('connection', (ws) => {
+  console.log('Cliente conectado');
+  ws.on('message', (message) => {
+    console.log('Recebido:', message);
+    wss.clients.forEach((client) => {
+      if (client.readyState === WebSocket.OPEN) {
+        client.send(message);
+      }
+    });
+  });
+});
+console.log('Servidor WebSocket na porta 8080');
+        </pre>
+
+        <h3 style="color:#ffcc00; margin:16px 0 8px;">Socket.IO</h3>
+        <pre>
+// npm install socket.io
+const http = require('http');
+const { Server } = require('socket.io');
+
+const server = http.createServer();
+const io = new Server(server, {
+  cors: { origin: '*' }
+});
+
+io.on('connection', (socket) => {
+  console.log('Jogador conectado:', socket.id);
+
+  socket.on('message', (msg) => {
+    io.emit('message', msg);
+  });
+
+  socket.on('disconnect', () => {
+    console.log('Jogador desconectado');
+  });
+});
+
+server.listen(3000, () => {
+  console.log('Servidor Socket.IO na porta 3000');
+});
+        </pre>
+      `;
+    }
+
+    // -------- 4.6 Pitangus Request --------
+    function renderPitangusRequest() {
+      contentEl.innerHTML = `
+        <h2>📨 Pitangus Request</h2>
+        <p>Faça requisições a outros jogos Pitangus (via <code>fetch</code> ou WebSocket).</p>
+        <input type="text" id="req-url" placeholder="https://outro-jogo-pitangus.com/api/dados" style="width: 360px;">
+        <button id="req-send">Enviar Request</button>
+        <div id="req-log" class="log"></div>
+      `;
+
+      const log = document.getElementById('req-log');
+      document.getElementById('req-send').addEventListener('click', async () => {
+        const url = document.getElementById('req-url').value.trim();
+        if (!url) return;
+        log.innerHTML = '⏳ Requisitando...\n';
+        try {
+          const resp = await fetch(url);
+          const text = await resp.text();
+          log.innerHTML = '<span class="ok">✅ Resposta:</span>\n' + text;
+        } catch (err) {
+          log.innerHTML = '<span class="error">❌ Erro: ' + err.message + '</span>';
+        }
+      });
+    }
+
+    // -------- 4.7 Pitangus Party --------
+    function renderPitangusParty() {
+      contentEl.innerHTML = `
+        <h2>🎉 Pitangus Party</h2>
+        <p>Para conectar a um jogo parceiro, o HTML do outro jogo deve conter um JSON de configuração.</p>
+        <p>Exemplo de JSON que deve estar no HTML do jogo parceiro:</p>
+        <pre>
+&lt;script type="application/json" id="pitangus-party-config"&gt;
+{
+  "gameId": "meu-jogo-123",
+  "partyEnabled": true,
+  "socketUrl": "wss://servidor-do-parceiro.com/party",
+  "maxPlayers": 4
+}
+&lt;/script&gt;
+        </pre>
+        <p>O shell pode ler esse JSON via <code>document.querySelector('#pitangus-party-config')</code> e conectar ao WebSocket indicado.</p>
+      `;
+    }
+
+    // -------- 4.8 Pitangus View --------
+    function renderPitangusView() {
+      contentEl.innerHTML = `
+        <h2>👁️ Pitangus View — Código Fonte</h2>
+        <p>Visualize o código fonte de um jogo Pitangus (simulação).</p>
+        <textarea id="view-code" rows="12" style="width:100%; background:#111; color:#c0c0c0; border:1px solid #444; padding:10px; font-family:monospace;" readonly>
+// Exemplo de código de um jogo Pitangus.js
+const app = new Pitangus.Application({
+  width: 800,
+  height: 600,
+  backgroundColor: 0x1099bb
+});
+
+const sprite = Pitangus.Sprite.from('assets/player.png');
+app.stage.addChild(sprite);
+
+app.ticker.add(() => {
+  sprite.x += 1;
+});
+        </textarea>
+      `;
+    }
+
+    // -------- 4.9 Pitangus Admin --------
+    function renderPitangusAdmin() {
+      contentEl.innerHTML = `
+        <h2>⚙️ Pitangus Admin</h2>
+        <p>Faça login para acessar o painel administrativo.</p>
+        <input type="email" id="admin-email" placeholder="admin@pitangus.com" style="width: 260px;">
+        <input type="password" id="admin-pass" placeholder="Senha" style="width: 200px;">
+        <button id="admin-login">Entrar</button>
+        <div id="admin-panel" style="margin-top: 20px;"></div>
+      `;
+
+      document.getElementById('admin-login').addEventListener('click', () => {
+        const email = document.getElementById('admin-email').value.trim();
+        const pass = document.getElementById('admin-pass').value.trim();
+        const panel = document.getElementById('admin-panel');
+
+        if (email === 'admin@pitangus.com' && pass === 'admin123') {
+          panel.innerHTML = `
+            <h3 style="color:#55ff55;">✅ Bem-vindo, Administrador!</h3>
+            <p>Painel de controle de jogos Pitangus:</p>
+            <ul>
+              <li>Gerenciar jogos</li>
+              <li>Ver logs de socket</li>
+              <li>Configurar parcerias (Party)</li>
+            </ul>
+          `;
+        } else {
+          panel.innerHTML = '<p style="color:#ff5555;">❌ Credenciais inválidas. Tente admin@pitangus.com / admin123</p>';
+        }
+      });
+    }
+
+    // ============================================================
+    // 5. INICIALIZAÇÃO
+    // ============================================================
+    renderMenu();
+    activateItem(MENU_ITEMS[0].id);
+  </script>
+</body>
+</html>
