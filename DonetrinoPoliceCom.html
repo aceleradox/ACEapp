@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Donetrino Police Communication - Terminal</title>
+    <style>
+        /* Reset e Estilo Base */
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            background-color: #0a0a0a;
+            color: #e0e0e0;
+            font-family: 'Courier New', Courier, monospace;
+            overflow: hidden;
+            height: 100vh;
+            user-select: none;
+        }
+
+        /* ================= BOOTLOADER ================= */
+        #bootloader {
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background-color: #000;
+            color: #0f0; /* Verde terminal */
+            padding: 30px;
+            font-size: 16px;
+            z-index: 99999;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .boot-line { margin-bottom: 10px; }
+        .boot-error { color: #f00; font-weight: bold; }
+        
+        /* Cursor piscante */
+        .cursor {
+            display: inline-block;
+            width: 10px;
+            height: 18px;
+            background-color: #0f0;
+            animation: blink 1s step-end infinite;
+            vertical-align: bottom;
+            margin-left: 5px;
+        }
+        @keyframes blink { 50% { opacity: 0; } }
+
+        /* ================= DESKTOP E JANELAS ================= */
+        #desktop {
+            display: none; /* Escondido até o boot terminar */
+            grid-template-columns: repeat(auto-fill, 100px);
+            grid-gap: 20px;
+            padding: 20px;
+            height: 100%;
+            align-content: start;
+        }
+
+        .icon {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            cursor: pointer;
+            text-align: center;
+            padding: 10px;
+            border: 1px solid transparent;
+        }
+        .icon:hover { border: 1px solid #333; background-color: #1a1a1a; }
+        .icon-img {
+            width: 48px;
+            height: 48px;
+            background-color: #000;
+            border: 2px solid #555;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            margin-bottom: 5px;
+            color: #fff;
+        }
+        .icon-label { font-size: 12px; color: #ccc; }
+
+        .window {
+            position: absolute;
+            top: 50px; left: 50px;
+            width: 450px;
+            background-color: #000;
+            border: 2px solid #888;
+            display: none;
+            z-index: 100;
+            box-shadow: 5px 5px 0px rgba(255, 255, 255, 0.1);
+        }
+        .window.active { display: block; }
+
+        .title-bar {
+            background-color: #333;
+            color: #fff;
+            padding: 4px 8px;
+            font-size: 12px;
+            font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .close-btn {
+            background-color: #555;
+            color: #fff;
+            border: 1px solid #aaa;
+            width: 20px; height: 20px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 12px;
+            cursor: pointer;
+        }
+        .close-btn:hover { background-color: #f00; }
+
+        .window-content {
+            padding: 15px;
+            font-size: 14px;
+            line-height: 1.4;
+            background-color: #000;
+            color: #0f0;
+        }
+        .window-content p { margin-bottom: 10px; }
+        .window-content button, .window-content a.btn {
+            background-color: #222;
+            color: #0f0;
+            border: 1px solid #0f0;
+            padding: 5px 10px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 12px;
+            text-decoration: none;
+            display: inline-block;
+            margin-top: 5px;
+        }
+        .window-content button:hover, .window-content a.btn:hover { background-color: #0f0; color: #000; }
+
+        #chat-log {
+            height: 200px;
+            overflow-y: auto;
+            border: 1px solid #333;
+            padding: 5px;
+            margin-bottom: 10px;
+            font-size: 12px;
+            background-color: #050505;
+        }
+        .chat-msg { margin-bottom: 4px; }
+        .chat-alert { color: #f00; font-weight: bold; }
+
+        #intruder-alert {
+            position: fixed;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 400px;
+            background-color: #200;
+            border: 3px solid #f00;
+            padding: 20px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 16px;
+            color: #f00;
+            z-index: 9999;
+            display: none;
+            box-shadow: 0 0 20px #f00;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ================= TELA DE BOOT ================= -->
+    <div id="bootloader">
+        <div id="boot-text"></div>
+    </div>
+
+    <!-- ================= ÁREA DE TRABALHO ================= -->
+    <div id="desktop">
+        <div class="icon" onclick="openWindow('win-chat')">
+            <div class="icon-img">💬</div>
+            <div class="icon-label">Bate-papo</div>
+        </div>
+        <div class="icon" onclick="openWindow('win-notif')">
+            <div class="icon-img">📋</div>
+            <div class="icon-label">Notificações</div>
+        </div>
+        <div class="icon" onclick="openWindow('win-radio')">
+            <div class="icon-img">📻</div>
+            <div class="icon-label">Rádio</div>
+        </div>
+        <div class="icon" onclick="openWindow('win-antecedentes')">
+            <div class="icon-img">🕵️</div>
+            <div class="icon-label">Antecedentes</div>
+        </div>
+        <div class="icon" onclick="openWindow('win-logs')">
+            <div class="icon-img">📄</div>
+            <div class="icon-label">Logs</div>
+        </div>
+        <div class="icon" onclick="openWindow('win-mapa')">
+            <div class="icon-img">🗺️</div>
+            <div class="icon-label">Mapa</div>
+        </div>
+        <div class="icon" onclick="openWindow('win-ocorrencias')">
+            <div class="icon-img">📝</div>
+            <div class="icon-label">Ocorrências</div>
+        </div>
+        <div class="icon" onclick="openWindow('win-monitoramento')">
+            <div class="icon-img">📹</div>
+            <div class="icon-label">Câmeras</div>
+        </div>
+        <div class="icon" onclick="openWindow('win-banco')">
+            <div class="icon-img">🗄️</div>
+            <div class="icon-label">Banco de Dados</div>
+        </div>
+        <div class="icon" onclick="openWindow('win-suporte')">
+            <div class="icon-img">🛠️</div>
+            <div class="icon-label">Suporte</div>
+        </div>
+        <div class="icon" onclick="openWindow('win-config')">
+            <div class="icon-img">⚙️</div>
+            <div class="icon-label">Configurações</div>
+        </div>
+        <div class="icon" onclick="openWindow('win-promo')">
+            <div class="icon-img">🎁</div>
+            <div class="icon-label">Promoção</div>
+        </div>
+    </div>
+
+    <!-- ================= JANELAS ================= -->
+
+    <div id="win-chat" class="window">
+        <div class="title-bar">
+            <span>Bate-papo Policial</span>
+            <div class="close-btn" onclick="closeWindow('win-chat')">X</div>
+        </div>
+        <div class="window-content">
+            <div id="chat-log">
+                <div class="chat-msg">> Central: Viatura 12, status?</div>
+                <div class="chat-msg">> Viatura 12: Patrulhando setor 4.</div>
+            </div>
+            <button onclick="addChatMsg('> Central: Mensagem enviada...')">Enviar Mensagem</button>
+        </div>
+    </div>
+
+    <div id="win-notif" class="window">
+        <div class="title-bar">
+            <span>Subnotificações e Denúncias</span>
+            <div class="close-btn" onclick="closeWindow('win-notif')">X</div>
+        </div>
+        <div class="window-content">
+            <p style="color: #f00;">Estamos em alta demanda, algumas notificações podem vir bem lentas, o sistema está operando no gargalo.</p>
+            <p>Processando denúncia #1029... [Aguardando]</p>
+            <p>Processando denúncia #1030... [Aguardando]</p>
+        </div>
+    </div>
+
+    <div id="win-radio" class="window">
+        <div class="title-bar">
+            <span>Comunicar com Rádio/Viatura</span>
+            <div class="close-btn" onclick="closeWindow('win-radio')">X</div>
+        </div>
+        <div class="window-content">
+            <p>Clique para conectar à frequência policial e ativar o microfone.</p>
+            <button onclick="requestMic()">CONECTAR</button>
+            <p id="mic-status" style="font-size: 12px; margin-top: 10px;"></p>
+        </div>
+    </div>
+
+    <div id="win-antecedentes" class="window">
+        <div class="title-bar">
+            <span>Consulta de Antecedentes</span>
+            <div class="close-btn" onclick="closeWindow('win-antecedentes')">X</div>
+        </div>
+        <div class="window-content">
+            <p>Buscando dados do IP... [ACESSO NEGADO]</p>
+            <p>Motivo: Credenciais inválidas.</p>
+        </div>
+    </div>
+
+    <div id="win-logs" class="window">
+        <div class="title-bar">
+            <span>Logs do Sistema</span>
+            <div class="close-btn" onclick="closeWindow('win-logs')">X</div>
+        </div>
+        <div class="window-content">
+            <p>[INFO] Sistema iniciado.</p>
+            <p>[WARN] Tentativa de acesso externo detectada.</p>
+            <p>[ERROR] Falha na autenticação do usuário.</p>
+        </div>
+    </div>
+
+    <div id="win-mapa" class="window">
+        <div class="title-bar">
+            <span>Mapa de Viaturas</span>
+            <div class="close-btn" onclick="closeWindow('win-mapa')">X</div>
+        </div>
+        <div class="window-content">
+            <p>[Rastreando viaturas próximas...]</p>
+            <p>Viatura 05: A 2km de distância.</p>
+            <p>Viatura 12: A 5km de distância.</p>
+        </div>
+    </div>
+
+    <div id="win-ocorrencias" class="window">
+        <div class="title-bar">
+            <span>Cadastro de Ocorrências</span>
+            <div class="close-btn" onclick="closeWindow('win-ocorrencias')">X</div>
+        </div>
+        <div class="window-content">
+            <p>Formulário de cadastro indisponível.</p>
+            <p>Erro: Banco de dados corrompido.</p>
+        </div>
+    </div>
+
+    <div id="win-monitoramento" class="window">
+        <div class="title-bar">
+            <span>Central de Monitoramento</span>
+            <div class="close-btn" onclick="closeWindow('win-monitoramento')">X</div>
+        </div>
+        <div class="window-content">
+            <p>[CÂMERA 01] SINAL PERDIDO.</p>
+            <p>[CÂMERA 02] SINAL PERDIDO.</p>
+        </div>
+    </div>
+
+    <div id="win-banco" class="window">
+        <div class="title-bar">
+            <span>Banco de Dados</span>
+            <div class="close-btn" onclick="closeWindow('win-banco')">X</div>
+        </div>
+        <div class="window-content">
+            <p>Acesso restrito. Nível de permissão insuficiente.</p>
+        </div>
+    </div>
+
+    <div id="win-suporte" class="window">
+        <div class="title-bar">
+            <span>Suporte Técnico</span>
+            <div class="close-btn" onclick="closeWindow('win-suporte')">X</div>
+        </div>
+        <div class="window-content">
+            <p>Ligando para o suporte... [Ocupado]</p>
+        </div>
+    </div>
+
+    <div id="win-config" class="window">
+        <div class="title-bar">
+            <span>Configurações do Sistema</span>
+            <div class="close-btn" onclick="closeWindow('win-config')">X</div>
+        </div>
+        <div class="window-content">
+            <p>Alteração de configurações bloqueada pelo administrador.</p>
+        </div>
+    </div>
+
+    <div id="win-promo" class="window">
+        <div class="title-bar">
+            <span>Promoção</span>
+            <div class="close-btn" onclick="closeWindow('win-promo')">X</div>
+        </div>
+        <div class="window-content">
+            <p>Oferta especial liberada para operadores!</p>
+            <a href="https://uplcm.com/4/12318154" target="_blank" class="btn">ACESSAR PROMOÇÃO</a>
+        </div>
+    </div>
+
+    <div id="intruder-alert">
+        SEU ACESSO É INDEVIDO.<br>
+        ESTAMOS COM SEU IP SALVO AQUI NA DP.<br>
+        JÁ ACIONAMOS A VIATURA PARA SUA LOCALIZAÇÃO.
+    </div>
+
+    <script>
+        // ================= LÓGICA DO BOOTLOADER =================
+        const bootText = document.getElementById('boot-text');
+        const bootloader = document.getElementById('bootloader');
+        const desktop = document.getElementById('desktop');
+
+        // Textos e tempos (em milissegundos)
+        const bootSequence = [
+            { text: "carregando...", time: 1500, class: "" },
+            { text: "verificando ip se e de funcionario...", time: 2500, class: "" },
+            { text: "error syntax , verification-ip-cop is not function", time: 2500, class: "boot-error" },
+            { text: "redirecionando ao sistema..", time: 2000, class: "" }
+        ];
+
+        async function runBoot() {
+            for (let i = 0; i < bootSequence.length; i++) {
+                await new Promise(resolve => setTimeout(resolve, bootSequence[i].time));
+                
+                // Cria a linha
+                const line = document.createElement('div');
+                line.className = `boot-line ${bootSequence[i].class}`;
+                line.innerHTML = `> ${bootSequence[i].text}`;
+                
+                // Adiciona o cursor piscante
+                const cursor = document.createElement('span');
+                cursor.className = 'cursor';
+                line.appendChild(cursor);
+                
+                bootText.appendChild(line);
+
+                // Remove o cursor da linha anterior
+                const previousCursor = document.querySelectorAll('.cursor');
+                if (previousCursor.length > 1) {
+                    previousCursor[0].remove();
+                }
+            }
+
+            // Fim do boot, aguarda mais um pouco e entra no sistema
+            await new Promise(resolve => setTimeout(resolve, 1500));
+            
+            // Efeito de transição simples
+            bootloader.style.transition = "opacity 0.5s ease";
+            bootloader.style.opacity = "0";
+            
+            setTimeout(() => {
+                bootloader.style.display = 'none';
+                desktop.style.display = 'grid';
+            }, 500);
+        }
+
+        // Inicia o boot quando a página carregar
+        window.onload = runBoot;
+
+
+        // ================= LÓGICA DO SISTEMA =================
+        let windowsOpenedCount = 0;
+        const maxWindowsBeforeAlert = 5;
+        let audioCtx;
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+
+        function playBeep(freq = 800, duration = 0.1) {
+            initAudio();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            
+            osc.type = 'square';
+            osc.frequency.value = freq;
+            
+            gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+            
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            
+            osc.start();
+            osc.stop(audioCtx.currentTime + duration);
+        }
+
+        function playAlarm() {
+            playBeep(400, 0.3);
+            setTimeout(() => playBeep(300, 0.4), 150);
+            setTimeout(() => playBeep(400, 0.3), 600);
+        }
+
+        function openWindow(id) {
+            playBeep(1000, 0.05);
+            
+            const win = document.getElementById(id);
+            if (win) {
+                document.querySelectorAll('.window').forEach(w => w.classList.remove('active'));
+                win.classList.add('active');
+                
+                windowsOpenedCount++;
+                if (windowsOpenedCount === maxWindowsBeforeAlert) {
+                    triggerIntruderAlert();
+                }
+            }
+        }
+
+        function closeWindow(id) {
+            playBeep(600, 0.05);
+            const win = document.getElementById(id);
+            if (win) {
+                win.classList.remove('active');
+            }
+        }
+
+        function addChatMsg(msg) {
+            const chatLog = document.getElementById('chat-log');
+            if (chatLog) {
+                const div = document.createElement('div');
+                div.className = 'chat-msg';
+                div.innerText = msg;
+                chatLog.appendChild(div);
+                chatLog.scrollTop = chatLog.scrollHeight;
+            }
+        }
+
+        function requestMic() {
+            playBeep(500, 0.1);
+            const statusEl = document.getElementById('mic-status');
+            statusEl.innerText = 'Solicitando permissão...';
+            
+            navigator.mediaDevices.getUserMedia({ audio: true })
+                .then(stream => {
+                    statusEl.innerText = 'Microfone ativado (Simulação). Nenhum áudio está sendo transmitido.';
+                    playBeep(1200, 0.1);
+                    stream.getTracks().forEach(track => track.stop());
+                })
+                .catch(err => {
+                    statusEl.innerText = 'Permissão negada. Falha na conexão.';
+                    playBeep(300, 0.2);
+                });
+        }
+
+        function triggerIntruderAlert() {
+            const alertBox = document.getElementById('intruder-alert');
+            alertBox.style.display = 'block';
+            playAlarm();
+            
+            const chatLog = document.getElementById('chat-log');
+            if (chatLog) {
+                for (let i = 0; i < 5; i++) {
+                    setTimeout(() => {
+                        const div = document.createElement('div');
+                        div.className = 'chat-msg chat-alert';
+                        div.innerText = '> ALERTA: INTRUSO DETECTADO NO SISTEMA!';
+                        chatLog.appendChild(div);
+                        chatLog.scrollTop = chatLog.scrollHeight;
+                    }, i * 300);
+                }
+            }
+        }
+    </script>
+</body>
+</html>
