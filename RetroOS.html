@@ -1,0 +1,2640 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>RetroOS Complete Simulator</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Silkscreen:wght@400;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --os-bg: #12151c;
+      --os-surface: #1b202b;
+      --os-surface-alt: #242b38;
+      --os-border: #3a4459;
+      --os-border-hi: #5c6b8a;
+      --os-accent: #00e5ff;
+      --os-amber: #ffb300;
+      --os-emerald: #00e676;
+      --os-crimson: #ff3d57;
+      --os-text: #e6ecf5;
+      --os-muted: #8b98b0;
+    }
+
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    input, textarea, [contenteditable="true"], .selectable {
+      user-select: text;
+      -webkit-user-select: text;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      background: radial-gradient(circle at 50% 35%, #1e2430 0%, #090b0f 100%);
+      font-family: 'Space Grotesk', sans-serif;
+      overflow: hidden;
+      height: 100dvh;
+      width: 100vw;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--os-text);
+    }
+
+    .font-mono-tech {
+      font-family: 'IBM Plex Mono', monospace;
+    }
+
+    .font-pixel {
+      font-family: 'Silkscreen', monospace;
+    }
+
+    /* Chassi Industrial do Monitor Workstation */
+    .workstation-chassis {
+      background: linear-gradient(155deg, #2a2f3a 0%, #1c2028 60%, #13161c 100%);
+      border-radius: 22px;
+      padding: clamp(10px, 1.8vw, 22px);
+      padding-bottom: clamp(14px, 2.2vw, 26px);
+      box-shadow:
+        inset 0 2px 3px rgba(255, 255, 255, 0.14),
+        inset 0 -4px 10px rgba(0, 0, 0, 0.7),
+        0 28px 70px rgba(0, 0, 0, 0.9),
+        0 0 0 2px #363d4d;
+      width: min(99vw, 1280px);
+      height: min(97dvh, 880px);
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    .chassis-top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 8px 6px 8px;
+      font-size: 10px;
+      letter-spacing: 0.18em;
+      color: #6b768c;
+      font-family: 'IBM Plex Mono', monospace;
+    }
+
+    .chassis-vents {
+      display: flex;
+      gap: 5px;
+    }
+    .chassis-vent {
+      width: 22px;
+      height: 3px;
+      background: #0d0f14;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      border-radius: 1px;
+    }
+
+    .crt-bezel {
+      flex: 1;
+      background: linear-gradient(180deg, #101318 0%, #171b22 100%);
+      border-radius: 14px;
+      padding: clamp(6px, 1vw, 12px);
+      box-shadow:
+        inset 0 4px 14px rgba(0, 0, 0, 0.9),
+        inset 0 -1px 2px rgba(255, 255, 255, 0.08);
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+
+    .crt-screen {
+      flex: 1;
+      background-color: #06080c;
+      border-radius: 10px;
+      position: relative;
+      overflow: hidden;
+      box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.95), 0 0 0 2px #090b10;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .crt-scanlines {
+      pointer-events: none;
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%);
+      background-size: 100% 3px;
+      z-index: 9998;
+      opacity: 0.45;
+      transition: opacity 0.2s;
+    }
+    .crt-scanlines.disabled {
+      opacity: 0;
+    }
+
+    .crt-glare {
+      pointer-events: none;
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at 20% 15%, rgba(0, 229, 255, 0.05) 0%, transparent 55%);
+      box-shadow: inset 0 0 35px rgba(0, 0, 0, 0.65);
+      z-index: 9999;
+    }
+
+    @keyframes crtTurnOn {
+      0% { transform: scale(0.004, 0.002); filter: brightness(28); opacity: 1; }
+      35% { transform: scale(1, 0.004); filter: brightness(10); opacity: 1; }
+      70% { transform: scale(1, 1); filter: brightness(1.8); opacity: 1; }
+      100% { transform: scale(1, 1); filter: brightness(1); opacity: 1; }
+    }
+
+    @keyframes crtTurnOff {
+      0% { transform: scale(1, 1); filter: brightness(1); opacity: 1; }
+      45% { transform: scale(1, 0.004); filter: brightness(10); opacity: 1; }
+      85% { transform: scale(0.01, 0.004); filter: brightness(20); opacity: 1; }
+      100% { transform: scale(0, 0); filter: brightness(0); opacity: 0; }
+    }
+
+    .crt-turning-on { animation: crtTurnOn 0.65s cubic-bezier(0.23, 1, 0.32, 1) forwards; }
+    .crt-turning-off { animation: crtTurnOff 0.5s cubic-bezier(0.23, 1, 0.32, 1) forwards; }
+
+    /* Painel Hardware Inferior */
+    .hw-control-deck {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 8px 0 8px;
+      gap: 12px;
+    }
+
+    .hw-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: #12151c;
+      border: 1px solid #2e3545;
+      padding: 4px 12px;
+      border-radius: 6px;
+    }
+
+    .hw-btn {
+      background: linear-gradient(180deg, #2b3240 0%, #1b2029 100%);
+      border: 1px solid #3f485c;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.12), 0 2px 4px rgba(0,0,0,0.5);
+      border-radius: 5px;
+      padding: 4px 10px;
+      font-size: 11px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-weight: 600;
+      color: #b5c0d4;
+      cursor: pointer;
+      transition: all 0.08s;
+    }
+    .hw-btn:hover { border-color: #00e5ff; color: #fff; }
+    .hw-btn:active { transform: translateY(1px); }
+
+    .power-module {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: #12151c;
+      padding: 4px 12px;
+      border-radius: 8px;
+      border: 1px solid #2e3545;
+    }
+
+    .power-led {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: #272c36;
+      border: 1px solid #3c4454;
+      transition: all 0.25s;
+    }
+    .power-led.on {
+      background: #00e676;
+      box-shadow: 0 0 8px #00e676, 0 0 16px rgba(0, 230, 118, 0.65);
+    }
+
+    .power-switch {
+      width: 38px;
+      height: 28px;
+      border-radius: 6px;
+      background: linear-gradient(180deg, #323947 0%, #1d222b 100%);
+      border: 1px solid #4d576e;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.18), 0 3px 0 #0b0d12, 0 4px 8px rgba(0,0,0,0.6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      color: #d0d8e8;
+      transition: all 0.08s;
+    }
+    .power-switch:hover { border-color: #00e5ff; color: #00e5ff; }
+    .power-switch:active {
+      transform: translateY(2px);
+      box-shadow: inset 0 2px 4px rgba(0,0,0,0.6), 0 1px 0 #0b0d12;
+    }
+
+    @keyframes pulsePowerHint {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(0, 229, 255, 0.7); }
+      50% { box-shadow: 0 0 0 8px rgba(0, 229, 255, 0); }
+    }
+    .power-hint { animation: pulsePowerHint 2s infinite; }
+
+    /* Estilos Próprios do RetroOS (Cyber-Workstation Geométrico) */
+    .ros-window {
+      background: var(--os-surface);
+      border: 1px solid var(--os-border);
+      box-shadow: 0 14px 36px rgba(0, 0, 0, 0.75), inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+      border-radius: 6px;
+      overflow: hidden;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .ros-window.focused {
+      border-color: var(--os-accent);
+      box-shadow: 0 18px 44px rgba(0, 0, 0, 0.85), 0 0 14px rgba(0, 229, 255, 0.18);
+    }
+
+    .ros-titlebar {
+      background: linear-gradient(90deg, #161b24 0%, #202736 100%);
+      border-bottom: 1px solid var(--os-border);
+      height: 30px;
+      padding: 0 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: move;
+    }
+    .ros-window.focused .ros-titlebar {
+      background: linear-gradient(90deg, #0d2533 0%, #192638 60%, #1d2432 100%);
+      border-bottom-color: rgba(0, 229, 255, 0.45);
+    }
+
+    .ros-pip {
+      width: 12px;
+      height: 12px;
+      border-radius: 3px;
+      border: 1px solid rgba(0,0,0,0.4);
+      cursor: pointer;
+      transition: transform 0.1s, filter 0.1s;
+    }
+    .ros-pip:hover { transform: scale(1.15); filter: brightness(1.2); }
+
+    .ros-btn {
+      background: #252c3b;
+      border: 1px solid #3f4a61;
+      color: #e2e8f5;
+      border-radius: 4px;
+      padding: 3px 9px;
+      font-size: 12px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      transition: all 0.1s;
+    }
+    .ros-btn:hover {
+      background: #2f384a;
+      border-color: var(--os-accent);
+      color: #fff;
+    }
+    .ros-btn:active { transform: translateY(1px); }
+    .ros-btn.primary {
+      background: rgba(0, 229, 255, 0.16);
+      border-color: var(--os-accent);
+      color: #00e5ff;
+      font-weight: 600;
+    }
+    .ros-btn.primary:hover {
+      background: rgba(0, 229, 255, 0.28);
+    }
+
+    .ros-input {
+      background: #0d1016;
+      border: 1px solid #353f54;
+      color: #e6ecf5;
+      border-radius: 4px;
+      padding: 4px 8px;
+      outline: none;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 12px;
+    }
+    .ros-input:focus {
+      border-color: var(--os-accent);
+    }
+
+    /* Papéis de Parede Exclusivos do RetroOS */
+    .wp-cybergrid {
+      background-color: #0f141d;
+      background-image:
+        radial-gradient(circle at 50% 40%, rgba(0, 229, 255, 0.12) 0%, transparent 65%),
+        linear-gradient(to right, rgba(0, 229, 255, 0.06) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(0, 229, 255, 0.06) 1px, transparent 1px);
+      background-size: 100% 100%, 32px 32px, 32px 32px;
+    }
+    .wp-matrix {
+      background-color: #07120c;
+      background-image:
+        radial-gradient(circle at 30% 25%, rgba(0, 230, 118, 0.14) 0%, transparent 60%),
+        radial-gradient(rgba(0, 230, 118, 0.16) 1px, transparent 1px);
+      background-size: 100% 100%, 18px 18px;
+    }
+    .wp-amber {
+      background-color: #17120b;
+      background-image:
+        radial-gradient(circle at 70% 30%, rgba(255, 179, 0, 0.13) 0%, transparent 60%),
+        repeating-linear-gradient(45deg, rgba(255, 179, 0, 0.03) 0px, rgba(255, 179, 0, 0.03) 2px, transparent 2px, transparent 12px);
+    }
+    .wp-deepspace {
+      background: radial-gradient(ellipse at bottom, #1b2735 0%, #090a0f 100%);
+    }
+
+    /* Barra de Rolagem Customizada */
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: #10131a; }
+    ::-webkit-scrollbar-thumb { background: #364054; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #00e5ff; }
+
+    /* Alça de Redimensionamento de Janela */
+    .resize-handle {
+      position: absolute;
+      right: 0;
+      bottom: 0;
+      width: 14px;
+      height: 14px;
+      cursor: nwse-resize;
+      background: linear-gradient(135deg, transparent 50%, rgba(0, 229, 255, 0.45) 50%);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Chassi do Monitor Workstation -->
+  <div class="workstation-chassis" id="workstationChassis">
+    <div class="chassis-top-bar">
+      <span>RETRO-VISION // MODEL X-9000 CRT WORKSTATION</span>
+      <div class="chassis-vents">
+        <div class="chassis-vent"></div><div class="chassis-vent"></div>
+        <div class="chassis-vent"></div><div class="chassis-vent"></div>
+        <div class="chassis-vent"></div><div class="chassis-vent"></div>
+      </div>
+      <span>SYNC: 75Hz // 24-BIT</span>
+    </div>
+
+    <div class="crt-bezel">
+      <div class="crt-screen" id="crtScreen" oncontextmenu="return false;">
+        <div class="crt-scanlines" id="crtScanlines"></div>
+        <div class="crt-glare"></div>
+
+        <!-- CAMADA 0: Desligado -->
+        <div id="layerOff" class="w-full h-full flex flex-col items-center justify-center bg-[#06080c] text-slate-500 p-4 text-center">
+          <div class="font-pixel text-base sm:text-xl tracking-widest text-slate-600">NO VIDEO INPUT</div>
+          <div class="font-mono-tech text-xs sm:text-sm text-slate-500 mt-2">
+            Clique no botão <span class="text-[#00e5ff] font-bold">POWER (⏻)</span> abaixo para inicializar o sistema
+          </div>
+        </div>
+
+        <!-- CAMADA 1: RetroBIOS POST -->
+        <div id="layerBios" class="hidden w-full h-full bg-[#05070a] text-[#a7f3d0] p-4 sm:p-6 font-mono-tech text-xs sm:text-sm flex flex-col justify-between overflow-hidden">
+          <div>
+            <div class="flex justify-between items-start border-b border-emerald-900/70 pb-3 mb-4">
+              <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded border-2 border-[#00e5ff] flex items-center justify-center font-pixel text-[#00e5ff] text-base">R</div>
+                <div>
+                  <div class="text-white font-bold text-sm sm:text-base">RetroBIOS Modular Firmware v4.20-XT</div>
+                  <div class="text-xs text-emerald-400/70">Copyright (C) 1991-1998 RetroCorp Systems Architecture</div>
+                </div>
+              </div>
+              <div class="text-right text-xs text-amber-400 hidden sm:block">
+                <div>WASM-READY CPU</div>
+                <div class="text-slate-400">REV 4.2A</div>
+              </div>
+            </div>
+            <div id="biosOutput" class="space-y-1.5 whitespace-pre-wrap leading-relaxed"></div>
+          </div>
+          <div class="border-t border-emerald-900/60 pt-2 text-xs text-slate-400 flex justify-between">
+            <span>Pressione <span class="text-[#00e5ff]">ESC</span> para pular diagnóstico</span>
+            <span class="text-emerald-400">ID: 0x95F4-RETRO-KERNEL</span>
+          </div>
+        </div>
+
+        <!-- CAMADA 2: Splash Screen RetroOS Complete Simulator -->
+        <div id="layerSplash" class="hidden w-full h-full bg-[#080b10] flex flex-col items-center justify-center p-6 relative">
+          <div class="max-w-md w-full bg-[#131822] border border-[#2d3748] rounded-xl p-7 flex flex-col items-center text-center shadow-2xl relative overflow-hidden">
+            <div class="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-[#00e5ff] via-[#00e676] to-[#ffb300]"></div>
+            <!-- Emblema Geométrico Próprio RetroOS -->
+            <div class="w-16 h-16 rounded-xl bg-[#0b0e14] border border-[#00e5ff]/50 flex items-center justify-center mb-4 shadow-[0_0_25px_rgba(0,229,255,0.2)]">
+              <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+                <polygon points="18,3 33,11 33,25 18,33 3,25 3,11" stroke="#00e5ff" stroke-width="2.2" fill="rgba(0,229,255,0.1)"/>
+                <circle cx="18" cy="18" r="5" fill="#ffb300"/>
+                <line x1="18" y1="3" x2="18" y2="13" stroke="#00e676" stroke-width="2"/>
+                <line x1="33" y1="25" x2="23" y2="20" stroke="#00e676" stroke-width="2"/>
+                <line x1="3" y1="25" x2="13" y2="20" stroke="#00e676" stroke-width="2"/>
+              </svg>
+            </div>
+            <div class="font-pixel text-lg sm:text-xl text-white tracking-wide">
+              RetroOS
+            </div>
+            <div class="text-xs font-mono-tech uppercase tracking-[0.25em] text-[#00e5ff] mt-1">
+              Complete Simulator
+            </div>
+
+            <!-- Barra de Carregamento Fluida -->
+            <div class="w-full h-2.5 bg-[#090c12] border border-[#2c3545] rounded-full mt-6 overflow-hidden p-0.5">
+              <div id="splashBarFill" class="h-full bg-gradient-to-r from-[#00e5ff] to-[#00e676] rounded-full w-0 transition-all duration-150"></div>
+            </div>
+            <div id="splashStatusText" class="font-mono-tech text-xs text-slate-400 mt-3">Carregando módulos do kernel...</div>
+          </div>
+        </div>
+
+        <!-- CAMADA 3: Área de Trabalho do RetroOS -->
+        <div id="layerDesktop" class="hidden w-full h-full flex flex-col relative overflow-hidden wp-cybergrid">
+
+          <!-- Área Útil de Ícones e Janelas -->
+          <div id="desktopWorkspace" class="flex-1 relative overflow-hidden">
+            <div id="desktopIconsContainer" class="relative w-full h-full"></div>
+            <div id="windowsContainer" class="absolute inset-0 pointer-events-none"></div>
+          </div>
+
+          <!-- MENU INICIAR COM FUNDO PRETO -->
+          <div id="startMenu" class="hidden absolute bottom-[44px] left-2 w-[340px] sm:w-[430px] bg-[#050608] border border-[#2c3444] rounded-lg z-[9200] shadow-[0_20px_50px_rgba(0,0,0,0.95)] overflow-hidden text-slate-200">
+            <!-- Cabeçalho do Menu Iniciar Preto -->
+            <div class="bg-[#000000] border-b border-[#222834] px-3.5 py-2.5 flex items-center justify-between">
+              <div class="flex items-center gap-2.5">
+                <span class="w-2.5 h-2.5 rounded-full bg-[#00e5ff] shadow-[0_0_8px_#00e5ff]"></span>
+                <span class="font-pixel text-xs text-white">RetroOS <span class="text-[#00e5ff]">Complete</span></span>
+              </div>
+              <span class="font-mono-tech text-[11px] text-slate-500">ROOT@WORKSTATION</span>
+            </div>
+
+            <!-- Grade Categorizada de Aplicativos -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-[#1c212b] max-h-[390px] overflow-y-auto bg-[#07080b]">
+              <!-- Coluna 1: Dev & Engenharia -->
+              <div class="p-2 space-y-1">
+                <div class="px-2 py-1 text-[10px] font-mono-tech uppercase tracking-wider text-[#00e5ff]">Dev & Low-Level</div>
+                <button onclick="openApp('quinzuo'); toggleStartMenu(false);" class="w-full px-2.5 py-1.5 rounded hover:bg-[#141923] flex items-center gap-2.5 text-left text-xs transition-colors">
+                  <span class="text-base">⚡</span>
+                  <div>
+                    <div class="font-semibold text-white">Quinzuo Codeneta Lite</div>
+                    <div class="text-[10px] text-slate-400">JS Runtime & OS Hook</div>
+                  </div>
+                </button>
+                <button onclick="openApp('codepah'); toggleStartMenu(false);" class="w-full px-2.5 py-1.5 rounded hover:bg-[#141923] flex items-center gap-2.5 text-left text-xs transition-colors">
+                  <span class="text-base">🧩</span>
+                  <div>
+                    <div class="font-semibold text-white">CodePah Studio</div>
+                    <div class="text-[10px] text-slate-400">HTML, JS, CSS, MD, XML, JSON</div>
+                  </div>
+                </button>
+                <button onclick="openApp('fantasm'); toggleStartMenu(false);" class="w-full px-2.5 py-1.5 rounded hover:bg-[#141923] flex items-center gap-2.5 text-left text-xs transition-colors">
+                  <span class="text-base">🧬</span>
+                  <div>
+                    <div class="font-semibold text-white">fantASM 0.2.2</div>
+                    <div class="text-[10px] text-slate-400">Editor & VM WebAssembly</div>
+                  </div>
+                </button>
+                <button onclick="openApp('hexedit'); toggleStartMenu(false);" class="w-full px-2.5 py-1.5 rounded hover:bg-[#141923] flex items-center gap-2.5 text-left text-xs transition-colors">
+                  <span class="text-base">🔢</span>
+                  <div>
+                    <div class="font-semibold text-white">HexEdit</div>
+                    <div class="text-[10px] text-slate-400">Editor Binário & Memória</div>
+                  </div>
+                </button>
+
+                <div class="px-2 pt-2 pb-1 text-[10px] font-mono-tech uppercase tracking-wider text-[#ffb300]">NetOps & Rede</div>
+                <button onclick="openApp('requestbox'); toggleStartMenu(false);" class="w-full px-2.5 py-1.5 rounded hover:bg-[#141923] flex items-center gap-2.5 text-left text-xs transition-colors">
+                  <span class="text-base">📡</span>
+                  <div>
+                    <div class="font-semibold text-white">RequestBox</div>
+                    <div class="text-[10px] text-slate-400">Captura & Inspector HTTP</div>
+                  </div>
+                </button>
+                <button onclick="openApp('whois'); toggleStartMenu(false);" class="w-full px-2.5 py-1.5 rounded hover:bg-[#141923] flex items-center gap-2.5 text-left text-xs transition-colors">
+                  <span class="text-base">🌐</span>
+                  <div>
+                    <div class="font-semibold text-white">Whois Lookup</div>
+                    <div class="text-[10px] text-slate-400">DNS, Domínios & IP Intel</div>
+                  </div>
+                </button>
+              </div>
+
+              <!-- Coluna 2: Office, Arte & Sistema -->
+              <div class="p-2 space-y-1">
+                <div class="px-2 py-1 text-[10px] font-mono-tech uppercase tracking-wider text-[#00e676]">Suíte Office</div>
+                <button onclick="openApp('wordl'); toggleStartMenu(false);" class="w-full px-2.5 py-1.5 rounded hover:bg-[#141923] flex items-center gap-2.5 text-left text-xs transition-colors">
+                  <span class="text-base">📘</span>
+                  <div>
+                    <div class="font-semibold text-white">Wordl</div>
+                    <div class="text-[10px] text-slate-400">Processador de Documentos</div>
+                  </div>
+                </button>
+                <button onclick="openApp('excel'); toggleStartMenu(false);" class="w-full px-2.5 py-1.5 rounded hover:bg-[#141923] flex items-center gap-2.5 text-left text-xs transition-colors">
+                  <span class="text-base">📊</span>
+                  <div>
+                    <div class="font-semibold text-white">Excel</div>
+                    <div class="text-[10px] text-slate-400">Planilhas & Fórmulas</div>
+                  </div>
+                </button>
+                <button onclick="openApp('powerpoint'); toggleStartMenu(false);" class="w-full px-2.5 py-1.5 rounded hover:bg-[#141923] flex items-center gap-2.5 text-left text-xs transition-colors">
+                  <span class="text-base">📽️</span>
+                  <div>
+                    <div class="font-semibold text-white">PowerPoint</div>
+                    <div class="text-[10px] text-slate-400">Editor de Apresentações</div>
+                  </div>
+                </button>
+                <button onclick="openApp('notepad'); toggleStartMenu(false);" class="w-full px-2.5 py-1.5 rounded hover:bg-[#141923] flex items-center gap-2.5 text-left text-xs transition-colors">
+                  <span class="text-base">📝</span>
+                  <div>
+                    <div class="font-semibold text-white">Notepad</div>
+                    <div class="text-[10px] text-slate-400">Editor de Texto Simples</div>
+                  </div>
+                </button>
+
+                <div class="px-2 pt-2 pb-1 text-[10px] font-mono-tech uppercase tracking-wider text-purple-400">Gráficos & Sistema</div>
+                <button onclick="openApp('paintbox'); toggleStartMenu(false);" class="w-full px-2.5 py-1.5 rounded hover:bg-[#141923] flex items-center gap-2.5 text-left text-xs transition-colors">
+                  <span class="text-base">🎨</span>
+                  <div>
+                    <div class="font-semibold text-white">PaintBox 0.5</div>
+                    <div class="text-[10px] text-slate-400">Estúdio Bitmap & Pixel Art</div>
+                  </div>
+                </button>
+                <button onclick="openApp('files'); toggleStartMenu(false);" class="w-full px-2.5 py-1.5 rounded hover:bg-[#141923] flex items-center gap-2.5 text-left text-xs transition-colors">
+                  <span class="text-base">🗂️</span>
+                  <div>
+                    <div class="font-semibold text-white">Explorador VFS</div>
+                    <div class="text-[10px] text-slate-400">Arquivos do Sistema</div>
+                  </div>
+                </button>
+              </div>
+            </div>
+
+            <!-- Rodapé do Menu Iniciar Preto -->
+            <div class="bg-[#000000] border-t border-[#222834] px-3 py-2 flex items-center justify-between">
+              <button onclick="openApp('settings'); toggleStartMenu(false);" class="text-xs text-slate-300 hover:text-[#00e5ff] flex items-center gap-1.5 cursor-pointer">
+                <span>⚙️</span> <span>Aparência & Tema</span>
+              </button>
+              <button onclick="initiateShutdown(); toggleStartMenu(false);" class="bg-[#2a1218] hover:bg-[#471923] border border-[#ff3d57]/50 text-[#ff3d57] px-3 py-1 rounded text-xs font-semibold flex items-center gap-1.5 cursor-pointer">
+                <span>⏻</span> <span>Desligar Sistema</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- BARRA DE TAREFAS PRÓPRIA (DOCK OBSIDIANA COM PÍLULAS DE STATUS) -->
+          <div id="osTaskbar" oncontextmenu="showTaskbarContextMenu(event)" class="h-[40px] bg-[#080a0e]/95 backdrop-blur border-t border-[#273042] flex items-center px-2 gap-2 z-[9100] shrink-0">
+            <!-- Botão Iniciar Próprio -->
+            <button id="startBtn" onclick="toggleStartMenu()" class="h-[30px] px-3 rounded-md bg-[#131822] hover:bg-[#1b2332] border border-[#00e5ff]/60 text-white font-pixel text-xs flex items-center gap-2 shadow-[0_0_12px_rgba(0,229,255,0.18)] cursor-pointer shrink-0">
+              <span class="w-2 h-2 rotate-45 bg-[#00e5ff] inline-block"></span>
+              <span>MENU</span>
+            </button>
+
+            <!-- Atalhos Rápidos na Barra -->
+            <div class="hidden md:flex items-center gap-1 border-r border-[#232b3b] pr-2">
+              <button onclick="openApp('quinzuo')" title="Quinzuo Codeneta Lite" class="w-7 h-7 rounded hover:bg-[#1c2230] flex items-center justify-center text-sm cursor-pointer">⚡</button>
+              <button onclick="openApp('codepah')" title="CodePah" class="w-7 h-7 rounded hover:bg-[#1c2230] flex items-center justify-center text-sm cursor-pointer">🧩</button>
+              <button onclick="openApp('fantasm')" title="fantASM 0.2.2" class="w-7 h-7 rounded hover:bg-[#1c2230] flex items-center justify-center text-sm cursor-pointer">🧬</button>
+              <button onclick="openApp('requestbox')" title="RequestBox" class="w-7 h-7 rounded hover:bg-[#1c2230] flex items-center justify-center text-sm cursor-pointer">📡</button>
+            </div>
+
+            <!-- Janelas Ativas -->
+            <div id="taskbarApps" class="flex-1 flex items-center gap-1.5 overflow-x-auto h-[30px]"></div>
+
+            <!-- Telemetria e Relógio -->
+            <div class="flex items-center gap-2 bg-[#11151e] border border-[#262f40] rounded-md px-2.5 h-[28px] font-mono-tech text-xs shrink-0">
+              <span class="hidden sm:inline text-[#00e676]">CPU 12%</span>
+              <span class="hidden sm:inline text-slate-600">|</span>
+              <button id="soundToggleBtn" onclick="toggleSound()" title="Som" class="cursor-pointer hover:text-[#00e5ff]">🔊</button>
+              <span id="systemClock" class="text-[#00e5ff] font-semibold">12:00</span>
+            </div>
+          </div>
+
+          <!-- Menu de Contexto (Botão Direito) -->
+          <div id="contextMenu" class="hidden absolute min-w-[205px] bg-[#090b10] border border-[#3a455c] rounded-md py-1.5 z-[9500] text-xs text-slate-200 shadow-[0_12px_32px_rgba(0,0,0,0.9)]"></div>
+        </div>
+
+        <!-- CAMADA 4: Desligamento -->
+        <div id="layerShutdown" class="hidden w-full h-full bg-[#07090d] text-white flex flex-col items-center justify-center p-6 text-center">
+          <div class="bg-[#121620] border border-[#2d3648] rounded-xl p-6 max-w-sm w-full">
+            <div class="font-pixel text-sm text-[#00e5ff] mb-2">RetroOS Complete</div>
+            <p id="shutdownMessage" class="font-mono-tech text-xs text-slate-300 mb-4">Sincronizando sistema de arquivos virtual e desligando...</p>
+            <div class="w-full h-2 bg-[#080a0f] rounded-full overflow-hidden">
+              <div id="shutdownBar" class="h-full bg-[#ff3d57] w-0 transition-all duration-700"></div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Painel Frontal do Monitor -->
+    <div class="hw-control-deck">
+      <div class="hw-brand">
+        <span class="w-2.5 h-2.5 rounded-sm bg-[#00e5ff] inline-block"></span>
+        <span class="font-pixel text-[11px] sm:text-xs tracking-wider text-slate-200">RETRO-OS WORKSTATION</span>
+      </div>
+
+      <div class="hidden sm:flex items-center gap-2">
+        <button class="hw-btn" onclick="degaussMonitor()">DEGAUSS</button>
+        <button class="hw-btn" onclick="toggleScanlines()">SCANLINES</button>
+        <button class="hw-btn" onclick="toggleSound()" id="hwMuteBtn">AUDIO: ON</button>
+      </div>
+
+      <div class="power-module">
+        <div class="flex flex-col items-end">
+          <span class="text-[9px] font-mono-tech tracking-widest text-slate-400">SYS POWER</span>
+          <div class="flex items-center gap-1.5 mt-0.5">
+            <div id="powerLed" class="power-led"></div>
+            <span id="powerStatusLabel" class="text-[10px] font-mono-tech font-bold text-slate-400">OFF</span>
+          </div>
+        </div>
+        <button id="powerBtn" onclick="togglePower()" class="power-switch power-hint" title="Ligar / Desligar Sistema">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path>
+            <line x1="12" y1="2" x2="12" y2="12"></line>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+<script>
+/**
+ * ============================================================================
+ * 1. SINTETIZADOR DE ÁUDIO RETRÔ (WEB AUDIO API)
+ * ============================================================================
+ */
+class RetroAudio {
+  constructor() {
+    this.ctx = null;
+    this.muted = false;
+  }
+  init() {
+    if (!this.ctx) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (AC) this.ctx = new AC();
+    }
+    if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume();
+  }
+  tone(freq, dur, type = 'sine', vol = 0.06, delay = 0) {
+    if (this.muted) return;
+    this.init();
+    if (!this.ctx) return;
+    const now = this.ctx.currentTime + delay;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, now);
+    gain.gain.setValueAtTime(vol, now);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start(now);
+    osc.stop(now + dur);
+  }
+  powerClick() {
+    this.tone(160, 0.05, 'triangle', 0.14, 0);
+    this.tone(85, 0.08, 'square', 0.1, 0.04);
+  }
+  crtWarmup() {
+    if (this.muted) return;
+    this.init();
+    if (!this.ctx) return;
+    const len = this.ctx.sampleRate * 0.4;
+    const buf = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (len * 0.3));
+    const src = this.ctx.createBufferSource();
+    src.buffer = buf;
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.frequency.value = 1600;
+    const gain = this.ctx.createGain();
+    gain.gain.setValueAtTime(0.12, this.ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.4);
+    src.connect(filter);
+    filter.connect(gain);
+    gain.connect(this.ctx.destination);
+    src.start();
+  }
+  biosBeep() { this.tone(920, 0.14, 'square', 0.08, 0); }
+  diskTick() { this.tone(140 + Math.random() * 60, 0.025, 'sawtooth', 0.025, 0); }
+  bootChime() {
+    [
+      { f: 330, d: 0.2, t: 0.00 },
+      { f: 440, d: 0.2, t: 0.14 },
+      { f: 554.37, d: 0.25, t: 0.28 },
+      { f: 659.25, d: 0.55, t: 0.42 }
+    ].forEach(n => this.tone(n.f, n.d, 'triangle', 0.09, n.t));
+  }
+  shutdownChime() {
+    [
+      { f: 659.25, d: 0.2, t: 0.00 },
+      { f: 440, d: 0.22, t: 0.16 },
+      { f: 330, d: 0.45, t: 0.34 }
+    ].forEach(n => this.tone(n.f, n.d, 'triangle', 0.08, n.t));
+  }
+  click() { this.tone(680, 0.025, 'sine', 0.04, 0); }
+  error() {
+    this.tone(180, 0.16, 'sawtooth', 0.09, 0);
+    this.tone(135, 0.22, 'sawtooth', 0.09, 0.13);
+  }
+  degauss() {
+    this.tone(55, 0.45, 'sawtooth', 0.14, 0);
+    this.tone(110, 0.35, 'sine', 0.09, 0.05);
+  }
+}
+
+const sfx = new RetroAudio();
+
+/**
+ * ============================================================================
+ * 2. ESTADO GLOBAL DO RETROOS & SISTEMA DE ARQUIVOS VIRTUAL (VFS)
+ * ============================================================================
+ */
+const RetroOS = {
+  powerState: 'OFF',
+  timers: [],
+  zCounter: 100,
+  windows: [],
+  selectedIconId: null,
+  wallpaper: 'wp-cybergrid',
+  lastCompiledWasmBytes: new Uint8Array([
+    0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
+    0x01, 0x07, 0x01, 0x60, 0x02, 0x7f, 0x7f, 0x01, 0x7f,
+    0x03, 0x02, 0x01, 0x00,
+    0x07, 0x07, 0x01, 0x03, 0x61, 0x64, 0x64, 0x00, 0x00,
+    0x0a, 0x09, 0x01, 0x07, 0x00, 0x20, 0x00, 0x20, 0x01, 0x6a, 0x0b
+  ]),
+  networkLogs: [
+    {
+      id: 'req-init-1',
+      time: '12:00:01',
+      method: 'GET',
+      url: 'https://api.retroos.net/v1/telemetry/boot',
+      status: 200,
+      latency: '18ms',
+      reqHeaders: 'Accept: application/json\nUser-Agent: RetroOS-NetStack/4.2',
+      reqBody: '',
+      resHeaders: 'Content-Type: application/json\nX-Kernel-Node: br-sp-01',
+      resBody: '{\n  "status": "online",\n  "kernel": "RetroOS-Complete-4.2",\n  "wasmEngine": "fantASM-0.2.2"\n}'
+    }
+  ],
+  desktopIcons: [
+    { id: 'ico-quinzuo', name: 'Quinzuo Codeneta', icon: '⚡', type: 'app', app: 'quinzuo', x: 18, y: 18 },
+    { id: 'ico-codepah', name: 'CodePah', icon: '🧩', type: 'app', app: 'codepah', x: 18, y: 106 },
+    { id: 'ico-fantasm', name: 'fantASM 0.2.2', icon: '🧬', type: 'app', app: 'fantasm', x: 18, y: 194 },
+    { id: 'ico-paintbox', name: 'PaintBox 0.5', icon: '🎨', type: 'app', app: 'paintbox', x: 18, y: 282 },
+    { id: 'ico-wordl', name: 'Wordl', icon: '📘', type: 'app', app: 'wordl', x: 112, y: 18 },
+    { id: 'ico-excel', name: 'Excel', icon: '📊', type: 'app', app: 'excel', x: 112, y: 106 },
+    { id: 'ico-ppt', name: 'PowerPoint', icon: '📽️', type: 'app', app: 'powerpoint', x: 112, y: 194 },
+    { id: 'ico-notepad', name: 'Notepad', icon: '📝', type: 'app', app: 'notepad', x: 112, y: 282 },
+    { id: 'ico-reqbox', name: 'RequestBox', icon: '📡', type: 'app', app: 'requestbox', x: 206, y: 18 },
+    { id: 'ico-whois', name: 'Whois', icon: '🌐', type: 'app', app: 'whois', x: 206, y: 106 },
+    { id: 'ico-hexedit', name: 'HexEdit', icon: '🔢', type: 'app', app: 'hexedit', x: 206, y: 194 },
+    { id: 'ico-files', name: 'Arquivos VFS', icon: '🗂️', type: 'app', app: 'files', x: 206, y: 282 }
+  ],
+  files: {
+    'kernel-sys': {
+      id: 'kernel-sys',
+      name: 'KERNEL.SYS',
+      content: 'RETROOS_KERNEL_V4.2\x00\x01\x02\x7fELF_WASM_BRIDGE\x00READY'
+    },
+    'readme-md': {
+      id: 'readme-md',
+      name: 'BEMVINDO.MD',
+      content: '# RetroOS Complete Simulator\n\nBem-vindo à estação de trabalho **RetroOS**.\n\n## Ferramentas Integradas:\n- **Quinzuo Codeneta Lite**: Execute JavaScript ao vivo e modifique janelas do sistema.\n- **fantASM 0.2.2**: Compile e execute módulos WebAssembly reais.\n- **CodePah**: Editor multi-linguagem (HTML, JS, CSS, MD, XML, JSON).\n- **Suíte Office**: Wordl, Excel e PowerPoint.\n- **NetOps**: RequestBox e Whois.\n- **HexEdit & PaintBox 0.5**.'
+    },
+    'sample-json': {
+      id: 'sample-json',
+      name: 'CONFIG.JSON',
+      content: '{\n  "os": "RetroOS Complete Simulator",\n  "version": "4.2.0",\n  "theme": "obsidian-cyber",\n  "modules": ["quinzuo", "fantASM", "codepah", "requestBox", "hexedit"]\n}'
+    }
+  }
+};
+
+// Expor API global para o Quinzuo Codeneta Lite manipular o sistema
+window.RetroOS = RetroOS;
+
+/**
+ * ============================================================================
+ * 3. SEQUÊNCIA DE LIGAR, BIOS E BOOT
+ * ============================================================================
+ */
+function clearTimers() {
+  RetroOS.timers.forEach(t => clearTimeout(t));
+  RetroOS.timers = [];
+}
+
+function showLayer(id) {
+  ['layerOff', 'layerBios', 'layerSplash', 'layerDesktop', 'layerShutdown'].forEach(l => {
+    document.getElementById(l).classList.add('hidden');
+  });
+  document.getElementById(id).classList.remove('hidden');
+}
+
+function togglePower() {
+  sfx.powerClick();
+  document.getElementById('powerBtn').classList.remove('power-hint');
+
+  if (RetroOS.powerState === 'OFF') {
+    startBootSequence();
+  } else if (RetroOS.powerState === 'DESKTOP') {
+    initiateShutdown();
+  } else {
+    hardPowerOff();
+  }
+}
+
+function startBootSequence() {
+  clearTimers();
+  RetroOS.powerState = 'BIOS';
+
+  const led = document.getElementById('powerLed');
+  const lbl = document.getElementById('powerStatusLabel');
+  const scr = document.getElementById('crtScreen');
+
+  led.classList.add('on');
+  lbl.textContent = 'ON';
+  lbl.classList.replace('text-slate-400', 'text-[#00e676]');
+
+  sfx.crtWarmup();
+  scr.classList.remove('crt-turning-off');
+  scr.classList.add('crt-turning-on');
+
+  showLayer('layerBios');
+  const out = document.getElementById('biosOutput');
+  out.innerHTML = '';
+
+  RetroOS.timers.push(setTimeout(() => sfx.biosBeep(), 400));
+
+  const sequence = [
+    { text: 'CPU: Quantum-RISC 64-Bit @ 233MHz [WASM SIMD ENABLED]', delay: 450 },
+    { text: 'RAM Test: <span id="biosRamText" class="text-white font-bold">1024 KB</span>', delay: 750 },
+    { text: 'Mounting Virtual Filesystem (VFS) ... <span class="text-[#00e5ff]">OK (3 System Nodes)</span>', delay: 1550, tick: true },
+    { text: 'Initializing Quinzuo JS Runtime Hook ... <span class="text-[#00e676]">READY</span>', delay: 1850, tick: true },
+    { text: 'Loading fantASM 0.2.2 Bytecode VM ...... <span class="text-[#00e676]">READY</span>', delay: 2150, tick: true },
+    { text: 'Starting Network Packet Capture Daemon . <span class="text-[#ffb300]">LISTENING</span>', delay: 2450 },
+    { text: '\n<span class="text-white font-bold">Booting RetroOS Complete Simulator...</span>', delay: 2750 }
+  ];
+
+  sequence.forEach(step => {
+    RetroOS.timers.push(setTimeout(() => {
+      if (RetroOS.powerState !== 'BIOS') return;
+      const line = document.createElement('div');
+      line.innerHTML = step.text;
+      out.appendChild(line);
+      if (step.tick) sfx.diskTick();
+
+      if (step.text.includes('biosRamText')) {
+        let ram = 1024;
+        const iv = setInterval(() => {
+          ram += 4096;
+          const el = document.getElementById('biosRamText');
+          if (!el || RetroOS.powerState !== 'BIOS') return clearInterval(iv);
+          if (ram >= 65536) {
+            el.textContent = '65536 KB OK';
+            clearInterval(iv);
+          } else {
+            el.textContent = ram + ' KB';
+          }
+        }, 40);
+      }
+    }, step.delay));
+  });
+
+  RetroOS.timers.push(setTimeout(() => {
+    if (RetroOS.powerState === 'BIOS') startSplash();
+  }, 3250));
+}
+
+function startSplash() {
+  clearTimers();
+  RetroOS.powerState = 'SPLASH';
+  showLayer('layerSplash');
+
+  const fill = document.getElementById('splashBarFill');
+  const status = document.getElementById('splashStatusText');
+  const stages = [
+    { p: '25%', t: 'Inicializando compositor gráfico...' },
+    { p: '55%', t: 'Carregando suíte Office & CodePah...' },
+    { p: '82%', t: 'Ativando menus de contexto e serviços de rede...' },
+    { p: '100%', t: 'Bem-vindo ao RetroOS Complete Simulator!' }
+  ];
+
+  stages.forEach((st, idx) => {
+    RetroOS.timers.push(setTimeout(() => {
+      if (RetroOS.powerState !== 'SPLASH') return;
+      fill.style.width = st.p;
+      status.textContent = st.t;
+      sfx.diskTick();
+    }, idx * 360));
+  });
+
+  RetroOS.timers.push(setTimeout(() => {
+    if (RetroOS.powerState === 'SPLASH') enterDesktop();
+  }, 1600));
+}
+
+function enterDesktop() {
+  RetroOS.powerState = 'DESKTOP';
+  showLayer('layerDesktop');
+  sfx.bootChime();
+  renderDesktopIcons();
+  updateClock();
+}
+
+function initiateShutdown() {
+  if (RetroOS.powerState === 'SHUTDOWN' || RetroOS.powerState === 'OFF') return;
+  clearTimers();
+  RetroOS.powerState = 'SHUTDOWN';
+  closeAllContextMenus();
+  showLayer('layerShutdown');
+  sfx.shutdownChime();
+
+  const bar = document.getElementById('shutdownBar');
+  const msg = document.getElementById('shutdownMessage');
+  bar.style.width = '0%';
+  setTimeout(() => { bar.style.width = '60%'; }, 120);
+  setTimeout(() => {
+    bar.style.width = '100%';
+    msg.textContent = 'Energia cortada com segurança.';
+  }, 750);
+  setTimeout(() => hardPowerOff(), 1450);
+}
+
+function hardPowerOff() {
+  clearTimers();
+  RetroOS.powerState = 'OFF';
+  const scr = document.getElementById('crtScreen');
+  const led = document.getElementById('powerLed');
+  const lbl = document.getElementById('powerStatusLabel');
+
+  scr.classList.remove('crt-turning-on');
+  scr.classList.add('crt-turning-off');
+
+  setTimeout(() => {
+    showLayer('layerOff');
+    scr.classList.remove('crt-turning-off');
+    led.classList.remove('on');
+    lbl.textContent = 'OFF';
+    lbl.classList.replace('text-[#00e676]', 'text-slate-400');
+  }, 480);
+}
+
+function degaussMonitor() {
+  if (RetroOS.powerState === 'OFF') return;
+  sfx.degauss();
+  const scr = document.getElementById('crtScreen');
+  scr.style.filter = 'hue-rotate(120deg) contrast(1.4)';
+  scr.style.transform = 'skewX(2deg)';
+  setTimeout(() => { scr.style.filter = 'hue-rotate(-80deg)'; scr.style.transform = 'skewX(-1.5deg)'; }, 120);
+  setTimeout(() => { scr.style.filter = ''; scr.style.transform = ''; }, 250);
+}
+
+function toggleScanlines() {
+  sfx.click();
+  document.getElementById('crtScanlines').classList.toggle('disabled');
+}
+
+function toggleSound() {
+  sfx.muted = !sfx.muted;
+  document.getElementById('soundToggleBtn').textContent = sfx.muted ? '🔇' : '🔊';
+  document.getElementById('hwMuteBtn').textContent = sfx.muted ? 'AUDIO: OFF' : 'AUDIO: ON';
+}
+
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && RetroOS.powerState === 'BIOS') startSplash();
+});
+
+/**
+ * ============================================================================
+ * 4. ÁREA DE TRABALHO, ÍCONES E MENUS DE CONTEXTO (BOTÃO DIREITO)
+ * ============================================================================
+ */
+function renderDesktopIcons() {
+  const container = document.getElementById('desktopIconsContainer');
+  container.innerHTML = '';
+
+  RetroOS.desktopIcons.forEach(item => {
+    const el = document.createElement('div');
+    const selected = RetroOS.selectedIconId === item.id;
+    el.className = `desktop-icon absolute w-[84px] p-1.5 rounded-md flex flex-col items-center text-center cursor-pointer transition-colors ${
+      selected ? 'bg-[#00e5ff]/20 border border-[#00e5ff]/70' : 'hover:bg-white/5 border border-transparent'
+    }`;
+    el.style.left = item.x + 'px';
+    el.style.top = item.y + 'px';
+
+    el.innerHTML = `
+      <div class="text-2xl sm:text-3xl drop-shadow-[0_2px_4px_rgba(0,0,0,0.85)] pointer-events-none">${item.icon}</div>
+      <div class="mt-1 text-[11px] font-medium text-slate-100 leading-tight break-words w-full drop-shadow-[0_1px_2px_rgba(0,0,0,0.95)] pointer-events-none">
+        ${escapeHtml(item.name)}
+      </div>
+    `;
+
+    el.addEventListener('click', (e) => {
+      e.stopPropagation();
+      RetroOS.selectedIconId = item.id;
+      closeAllContextMenus();
+      renderDesktopIcons();
+    });
+
+    el.addEventListener('dblclick', (e) => {
+      e.stopPropagation();
+      openDesktopItem(item);
+    });
+
+    el.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      RetroOS.selectedIconId = item.id;
+      renderDesktopIcons();
+      showIconContextMenu(e.clientX, e.clientY, item);
+    });
+
+    makeIconDraggable(el, item);
+    container.appendChild(el);
+  });
+}
+
+function makeIconDraggable(el, item) {
+  let sx, sy, ox, oy;
+  el.addEventListener('mousedown', (e) => {
+    if (e.button !== 0) return;
+    sx = e.clientX; sy = e.clientY; ox = item.x; oy = item.y;
+    const onMove = (ev) => {
+      const ws = document.getElementById('desktopWorkspace');
+      item.x = Math.max(6, Math.min(ws.clientWidth - 88, ox + (ev.clientX - sx)));
+      item.y = Math.max(6, Math.min(ws.clientHeight - 78, oy + (ev.clientY - sy)));
+      el.style.left = item.x + 'px';
+      el.style.top = item.y + 'px';
+    };
+    const onUp = () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  });
+}
+
+function openDesktopItem(item) {
+  sfx.click();
+  if (item.type === 'app') openApp(item.app);
+  else if (item.type === 'file') openApp('notepad', { fileId: item.fileId });
+  else if (item.type === 'image') openApp('paintbox', { imageData: item.imageData });
+}
+
+function arrangeIcons() {
+  const ws = document.getElementById('desktopWorkspace');
+  const maxH = ws ? ws.clientHeight - 85 : 440;
+  let x = 18, y = 18;
+  RetroOS.desktopIcons.forEach(item => {
+    item.x = x; item.y = y;
+    y += 88;
+    if (y > maxH) { y = 18; x += 94; }
+  });
+  renderDesktopIcons();
+}
+
+function createNewVfsFile() {
+  const id = 'file-' + Date.now();
+  const num = Object.keys(RetroOS.files).length + 1;
+  const name = `NOTA_${num}.TXT`;
+  RetroOS.files[id] = { id, name, content: 'Novo arquivo criado no RetroOS.\n' };
+  RetroOS.desktopIcons.push({ id: 'ico-' + Date.now(), name, icon: '📄', type: 'file', fileId: id, x: 300, y: 20 });
+  arrangeIcons();
+}
+
+document.getElementById('desktopWorkspace').addEventListener('click', () => {
+  RetroOS.selectedIconId = null;
+  closeAllContextMenus();
+  renderDesktopIcons();
+});
+
+document.getElementById('desktopWorkspace').addEventListener('contextmenu', (e) => {
+  if (e.target.closest('.ros-window') || e.target.closest('.desktop-icon')) return;
+  e.preventDefault();
+  RetroOS.selectedIconId = null;
+  renderDesktopIcons();
+  showDesktopContextMenu(e.clientX, e.clientY);
+});
+
+function closeAllContextMenus() {
+  document.getElementById('contextMenu').classList.add('hidden');
+  document.getElementById('startMenu').classList.add('hidden');
+}
+
+function toggleStartMenu(force) {
+  sfx.click();
+  const menu = document.getElementById('startMenu');
+  document.getElementById('contextMenu').classList.add('hidden');
+  const open = typeof force === 'boolean' ? force : menu.classList.contains('hidden');
+  if (open) menu.classList.remove('hidden');
+  else menu.classList.add('hidden');
+}
+
+function showContextMenuAt(clientX, clientY, html) {
+  sfx.click();
+  const desktop = document.getElementById('layerDesktop');
+  const menu = document.getElementById('contextMenu');
+  const rect = desktop.getBoundingClientRect();
+
+  menu.innerHTML = html;
+  menu.classList.remove('hidden');
+
+  let left = clientX - rect.left;
+  let top = clientY - rect.top;
+  if (left + 215 > rect.width) left = Math.max(8, rect.width - 215);
+  if (top + 220 > rect.height - 44) top = Math.max(8, rect.height - 230);
+
+  menu.style.left = left + 'px';
+  menu.style.top = top + 'px';
+}
+
+function showDesktopContextMenu(cx, cy) {
+  showContextMenuAt(cx, cy, `
+    <button onclick="arrangeIcons(); closeAllContextMenus();" class="w-full px-3 py-1.5 text-left hover:bg-[#00e5ff]/20 hover:text-[#00e5ff] flex items-center gap-2">
+      <span>📐</span> <span>Organizar Ícones</span>
+    </button>
+    <button onclick="createNewVfsFile(); closeAllContextMenus();" class="w-full px-3 py-1.5 text-left hover:bg-[#00e5ff]/20 hover:text-[#00e5ff] flex items-center gap-2">
+      <span>📄</span> <span>Novo Arquivo de Texto</span>
+    </button>
+    <div class="border-t border-[#222938] my-1"></div>
+    <button onclick="openApp('quinzuo'); closeAllContextMenus();" class="w-full px-3 py-1.5 text-left hover:bg-[#00e5ff]/20 hover:text-[#00e5ff] flex items-center gap-2">
+      <span>⚡</span> <span>Abrir Quinzuo Codeneta</span>
+    </button>
+    <button onclick="openApp('requestbox'); closeAllContextMenus();" class="w-full px-3 py-1.5 text-left hover:bg-[#00e5ff]/20 hover:text-[#00e5ff] flex items-center gap-2">
+      <span>📡</span> <span>Inspecionar Rede (RequestBox)</span>
+    </button>
+    <div class="border-t border-[#222938] my-1"></div>
+    <button onclick="openApp('settings'); closeAllContextMenus();" class="w-full px-3 py-1.5 text-left hover:bg-[#00e5ff]/20 hover:text-[#00e5ff] flex items-center gap-2 font-semibold text-[#00e5ff]">
+      <span>🎨</span> <span>Temas & Papel de Parede</span>
+    </button>
+  `);
+}
+
+function showIconContextMenu(cx, cy, item) {
+  showContextMenuAt(cx, cy, `
+    <button onclick="openItemById('${item.id}'); closeAllContextMenus();" class="w-full px-3 py-1.5 text-left hover:bg-[#00e5ff]/20 hover:text-[#00e5ff] font-semibold">
+      ▶ Executar / Abrir
+    </button>
+    <button onclick="inspectItemInHex('${item.id}'); closeAllContextMenus();" class="w-full px-3 py-1.5 text-left hover:bg-[#00e5ff]/20 hover:text-[#00e5ff]">
+      🔢 Inspecionar no HexEdit
+    </button>
+    <div class="border-t border-[#222938] my-1"></div>
+    <button onclick="renameIconPrompt('${item.id}'); closeAllContextMenus();" class="w-full px-3 py-1.5 text-left hover:bg-[#00e5ff]/20 hover:text-[#00e5ff]">
+      ✏️ Renomear
+    </button>
+    <button onclick="removeDesktopIcon('${item.id}'); closeAllContextMenus();" class="w-full px-3 py-1.5 text-left hover:bg-[#ff3d57]/20 text-[#ff3d57]">
+      🗑️ Remover Atalho
+    </button>
+  `);
+}
+
+function showTaskbarContextMenu(e) {
+  e.preventDefault();
+  e.stopPropagation();
+  showContextMenuAt(e.clientX, e.clientY, `
+    <button onclick="cascadeAllWindows(); closeAllContextMenus();" class="w-full px-3 py-1.5 text-left hover:bg-[#00e5ff]/20 hover:text-[#00e5ff]">
+      🗔 Em Cascata (Cascade)
+    </button>
+    <button onclick="closeAllWindows(); closeAllContextMenus();" class="w-full px-3 py-1.5 text-left hover:bg-[#ff3d57]/20 text-[#ff3d57]">
+      ✕ Fechar Todas as Janelas
+    </button>
+    <div class="border-t border-[#222938] my-1"></div>
+    <button onclick="toggleScanlines(); closeAllContextMenus();" class="w-full px-3 py-1.5 text-left hover:bg-[#00e5ff]/20 hover:text-[#00e5ff]">
+      📺 Alternar Scanlines CRT
+    </button>
+  `);
+}
+
+function openItemById(id) {
+  const item = RetroOS.desktopIcons.find(i => i.id === id);
+  if (item) openDesktopItem(item);
+}
+
+function inspectItemInHex(id) {
+  const item = RetroOS.desktopIcons.find(i => i.id === id);
+  if (!item) return;
+  if (item.fileId && RetroOS.files[item.fileId]) {
+    openApp('hexedit', { fileId: item.fileId });
+  } else {
+    openApp('hexedit', { label: item.name, customText: `RETROOS_APP_BIN::${item.name.toUpperCase()}::ENTRY_0x08048000` });
+  }
+}
+
+function renameIconPrompt(id) {
+  const item = RetroOS.desktopIcons.find(i => i.id === id);
+  if (!item) return;
+  createWindow({
+    title: 'Renomear Item',
+    icon: '✏️',
+    width: 310,
+    height: 165,
+    contentHTML: `
+      <div class="p-3 space-y-3 text-xs">
+        <div class="text-slate-300">Novo nome para <b>${escapeHtml(item.name)}</b>:</div>
+        <input id="renInput" class="ros-input w-full" value="${escapeHtml(item.name)}" />
+        <div class="flex justify-end gap-2">
+          <button onclick="applyRename('${id}', this)" class="ros-btn primary">Salvar</button>
+          <button onclick="closeWindowByBtn(this)" class="ros-btn">Cancelar</button>
+        </div>
+      </div>
+    `
+  });
+}
+
+function applyRename(id, btn) {
+  const val = document.getElementById('renInput')?.value.trim();
+  const item = RetroOS.desktopIcons.find(i => i.id === id);
+  if (item && val) {
+    item.name = val;
+    if (item.fileId && RetroOS.files[item.fileId]) RetroOS.files[item.fileId].name = val;
+    renderDesktopIcons();
+  }
+  closeWindowByBtn(btn);
+}
+
+function removeDesktopIcon(id) {
+  RetroOS.desktopIcons = RetroOS.desktopIcons.filter(i => i.id !== id);
+  renderDesktopIcons();
+}
+
+/**
+ * ============================================================================
+ * 5. GERENCIADOR DE JANELAS DO RETROOS
+ * ============================================================================
+ */
+function createWindow({ title, icon = '◈', width = 520, height = 370, contentHTML, onInit = null }) {
+  sfx.click();
+  const winId = 'win-' + Date.now() + '-' + Math.floor(Math.random() * 999);
+  const ws = document.getElementById('desktopWorkspace');
+  const maxW = ws.clientWidth - 16;
+  const maxH = ws.clientHeight - 16;
+
+  const w = Math.min(width, maxW);
+  const h = Math.min(height, maxH);
+  const offset = (RetroOS.windows.length % 6) * 24;
+  const left = Math.max(8, Math.min(maxW - w, 40 + offset));
+  const top = Math.max(8, Math.min(maxH - h, 20 + offset));
+
+  const winObj = { id: winId, title, icon, minimized: false, maximized: false, prev: { left, top, width: w, height: h } };
+  RetroOS.windows.push(winObj);
+
+  const el = document.createElement('div');
+  el.id = winId;
+  el.className = 'ros-window focused pointer-events-auto absolute flex flex-col';
+  el.style.width = w + 'px';
+  el.style.height = h + 'px';
+  el.style.left = left + 'px';
+  el.style.top = top + 'px';
+  el.style.zIndex = ++RetroOS.zCounter;
+
+  el.innerHTML = `
+    <div class="ros-titlebar shrink-0">
+      <div class="flex items-center gap-2">
+        <!-- Controles geométricos à esquerda (estilo Workstation próprio) -->
+        <div class="flex items-center gap-1.5 mr-1">
+          <button onclick="closeWindow('${winId}')" class="ros-pip bg-[#ff3d57]" title="Fechar"></button>
+          <button onclick="minimizeWindow('${winId}')" class="ros-pip bg-[#ffb300]" title="Minimizar"></button>
+          <button onclick="toggleMaximizeWindow('${winId}')" class="ros-pip bg-[#00e676]" title="Maximizar"></button>
+        </div>
+        <span class="text-sm">${icon}</span>
+        <span class="font-semibold text-xs tracking-wide text-slate-100 truncate max-w-[260px] sm:max-w-[380px]">${escapeHtml(title)}</span>
+      </div>
+      <span class="font-mono-tech text-[10px] text-slate-500 hidden sm:inline">PID:${winId.slice(-4)}</span>
+    </div>
+    <div class="flex-1 flex flex-col min-h-0 overflow-hidden bg-[#161a23] relative">
+      ${contentHTML}
+      <div class="resize-handle"></div>
+    </div>
+  `;
+
+  el.addEventListener('mousedown', () => focusWindow(winId));
+
+  // Arrastar Janela
+  const tb = el.querySelector('.ros-titlebar');
+  tb.addEventListener('mousedown', (e) => {
+    if (e.target.closest('button') || winObj.maximized) return;
+    focusWindow(winId);
+    const sx = e.clientX, sy = e.clientY, ol = el.offsetLeft, ot = el.offsetTop;
+    const onMove = (ev) => {
+      const wsRect = ws.getBoundingClientRect();
+      el.style.left = Math.max(-el.offsetWidth + 70, Math.min(wsRect.width - 50, ol + ev.clientX - sx)) + 'px';
+      el.style.top = Math.max(0, Math.min(wsRect.height - 30, ot + ev.clientY - sy)) + 'px';
+    };
+    const onUp = () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  });
+
+  // Redimensionar Janela
+  const resizer = el.querySelector('.resize-handle');
+  resizer.addEventListener('mousedown', (e) => {
+    e.stopPropagation();
+    if (winObj.maximized) return;
+    const sx = e.clientX, sy = e.clientY, ow = el.offsetWidth, oh = el.offsetHeight;
+    const onMove = (ev) => {
+      el.style.width = Math.max(260, ow + ev.clientX - sx) + 'px';
+      el.style.height = Math.max(180, oh + ev.clientY - sy) + 'px';
+    };
+    const onUp = () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  });
+
+  document.getElementById('windowsContainer').appendChild(el);
+  focusWindow(winId);
+  if (onInit) onInit(winId, el);
+  return winId;
+}
+
+function focusWindow(winId) {
+  const el = document.getElementById(winId);
+  if (!el) return;
+  el.style.zIndex = ++RetroOS.zCounter;
+  document.querySelectorAll('.ros-window').forEach(w => w.classList.toggle('focused', w.id === winId));
+  renderTaskbar(winId);
+}
+
+function minimizeWindow(winId) {
+  sfx.click();
+  const w = RetroOS.windows.find(x => x.id === winId);
+  const el = document.getElementById(winId);
+  if (!w || !el) return;
+  w.minimized = true;
+  el.classList.add('hidden');
+  renderTaskbar();
+}
+
+function toggleMaximizeWindow(winId) {
+  sfx.click();
+  const w = RetroOS.windows.find(x => x.id === winId);
+  const el = document.getElementById(winId);
+  if (!w || !el) return;
+  if (!w.maximized) {
+    w.prev = { left: el.offsetLeft, top: el.offsetTop, width: el.offsetWidth, height: el.offsetHeight };
+    el.style.left = '0px'; el.style.top = '0px'; el.style.width = '100%'; el.style.height = '100%';
+    w.maximized = true;
+  } else {
+    el.style.left = w.prev.left + 'px'; el.style.top = w.prev.top + 'px';
+    el.style.width = w.prev.width + 'px'; el.style.height = w.prev.height + 'px';
+    w.maximized = false;
+  }
+}
+
+function closeWindow(winId) {
+  sfx.click();
+  RetroOS.windows = RetroOS.windows.filter(w => w.id !== winId);
+  document.getElementById(winId)?.remove();
+  renderTaskbar();
+}
+
+function closeWindowByBtn(btn) {
+  const w = btn.closest('.ros-window');
+  if (w) closeWindow(w.id);
+}
+
+function cascadeAllWindows() {
+  RetroOS.windows.forEach((w, idx) => {
+    const el = document.getElementById(w.id);
+    if (!el) return;
+    w.minimized = false; w.maximized = false;
+    el.classList.remove('hidden');
+    el.style.left = (28 + idx * 24) + 'px';
+    el.style.top = (20 + idx * 24) + 'px';
+  });
+}
+
+function closeAllWindows() {
+  [...RetroOS.windows].forEach(w => closeWindow(w.id));
+}
+
+function renderTaskbar(activeId = null) {
+  const bar = document.getElementById('taskbarApps');
+  bar.innerHTML = '';
+  RetroOS.windows.forEach(w => {
+    const active = !w.minimized && activeId === w.id;
+    const btn = document.createElement('button');
+    btn.className = `h-[28px] px-2.5 rounded border text-xs flex items-center gap-1.5 max-w-[160px] truncate cursor-pointer transition-colors ${
+      active
+        ? 'bg-[#1b2434] border-[#00e5ff] text-white font-semibold shadow-[0_0_8px_rgba(0,229,255,0.2)]'
+        : 'bg-[#10141c] border-[#262f42] text-slate-400 hover:text-slate-200'
+    }`;
+    btn.innerHTML = `<span>${w.icon}</span><span class="truncate">${escapeHtml(w.title)}</span>`;
+    btn.onclick = () => {
+      const el = document.getElementById(w.id);
+      if (w.minimized) { w.minimized = false; el.classList.remove('hidden'); }
+      focusWindow(w.id);
+    };
+    bar.appendChild(btn);
+  });
+}
+
+/**
+ * ============================================================================
+ * 6. ROTEADOR DE APLICATIVOS DO RETROOS COMPLETE SIMULATOR
+ * ============================================================================
+ */
+function openApp(app, params = {}) {
+  switch (app) {
+    case 'quinzuo': return openQuinzuoApp();
+    case 'paintbox': return openPaintBoxApp(params);
+    case 'notepad': return openNotepadApp(params);
+    case 'codepah': return openCodePahApp();
+    case 'wordl': return openWordlApp();
+    case 'excel': return openExcelApp();
+    case 'powerpoint': return openPowerPointApp();
+    case 'fantasm': return openFantAsmApp();
+    case 'requestbox': return openRequestBoxApp();
+    case 'whois': return openWhoisApp();
+    case 'hexedit': return openHexEditApp(params);
+    case 'files': return openFilesApp();
+    case 'settings': return openSettingsApp();
+  }
+}
+
+/* ----------------------------------------------------------------------------
+   APP 1: QUINZUO CODENETA LITE (Editor JS que roda comandos e modifica janelas)
+   ---------------------------------------------------------------------------- */
+function openQuinzuoApp() {
+  const uid = 'qz-' + Date.now();
+  const presets = {
+    modifyWindows: `// Modifica todas as janelas abertas no RetroOS!\ndocument.querySelectorAll('.ros-window').forEach((win, i) => {\n  win.style.borderColor = '#ffb300';\n  win.style.boxShadow = '0 0 20px rgba(255, 179, 0, 0.45)';\n  const title = win.querySelector('.ros-titlebar span.font-semibold');\n  if (title) title.textContent = '[HOOKED #' + (i+1) + '] ' + title.textContent;\n});\nlog('Janelas modificadas com sucesso via Quinzuo Hook!');`,
+    spawnCustomWin: `// Cria uma nova janela nativa no RetroOS via código\ncreateWindow({\n  title: 'Janela Injetada por Quinzuo',\n  icon: '⚡',\n  width: 340,\n  height: 190,\n  contentHTML: '<div class="p-4 font-mono-tech text-xs text-[#00e676]">Executado diretamente pelo Quinzuo Codeneta Lite!</div>'\n});\nlog('Nova janela criada dinamicamente.');`,
+    matrixTheme: `// Altera papel de parede e toca acorde sintetizado\nsetWallpaper('wp-matrix');\nsfx.bootChime();\nlog('Tema alterado para Phosphor Matrix!');`,
+    cascade: `// Organiza janelas em cascata e lista PIDs ativos\ncascadeAllWindows();\nlog('Janelas ativas: ' + RetroOS.windows.map(w => w.title).join(', '));`
+  };
+
+  createWindow({
+    title: 'Quinzuo Codeneta Lite v1.4',
+    icon: '⚡',
+    width: 580,
+    height: 410,
+    contentHTML: `
+      <div class="flex flex-col h-full font-mono-tech text-xs">
+        <div class="bg-[#0e1118] border-b border-[#283142] px-2.5 py-1.5 flex flex-wrap items-center gap-1.5">
+          <button id="${uid}-run" class="ros-btn primary">▶ Executar JS (Ctrl+Enter)</button>
+          <select id="${uid}-preset" class="ros-input text-xs">
+            <option value="modifyWindows">Snippet: Modificar Janelas</option>
+            <option value="spawnCustomWin">Snippet: Criar Nova Janela</option>
+            <option value="matrixTheme">Snippet: Mudar Tema & Áudio</option>
+            <option value="cascade">Snippet: Listar & Cascatear</option>
+          </select>
+          <button id="${uid}-loadPreset" class="ros-btn">Carregar</button>
+          <button id="${uid}-clearLog" class="ros-btn ml-auto">Limpar Console</button>
+        </div>
+        <div class="flex-1 flex flex-col sm:flex-row min-h-0">
+          <textarea id="${uid}-code" class="flex-1 bg-[#090c12] text-[#00e5ff] p-3 outline-none resize-none leading-relaxed border-b sm:border-b-0 sm:border-r border-[#283142]" spellcheck="false">${presets.modifyWindows}</textarea>
+          <div class="w-full sm:w-[220px] bg-[#06080c] p-2.5 flex flex-col min-h-[110px]">
+            <div class="text-[10px] uppercase tracking-wider text-slate-500 mb-1.5">Saída / OS Hook Log</div>
+            <div id="${uid}-console" class="flex-1 overflow-y-auto space-y-1 text-[11px] text-[#00e676] whitespace-pre-wrap">Quinzuo Runtime pronto.\nAcesso direto a: RetroOS, createWindow(), sfx, DOM.\n</div>
+          </div>
+        </div>
+      </div>
+    `,
+    onInit: () => {
+      const codeEl = document.getElementById(`${uid}-code`);
+      const consEl = document.getElementById(`${uid}-console`);
+      const log = (msg) => {
+        const d = document.createElement('div');
+        d.textContent = '> ' + (typeof msg === 'object' ? JSON.stringify(msg) : String(msg));
+        consEl.appendChild(d);
+        consEl.scrollTop = consEl.scrollHeight;
+      };
+
+      const execute = () => {
+        sfx.click();
+        try {
+          const fn = new Function('log', 'RetroOS', 'createWindow', 'cascadeAllWindows', 'closeAllWindows', 'setWallpaper', 'sfx', codeEl.value);
+          const result = fn(log, RetroOS, createWindow, cascadeAllWindows, closeAllWindows, setWallpaper, sfx);
+          if (result !== undefined) log('Retorno: ' + result);
+        } catch (err) {
+          sfx.error();
+          const errDiv = document.createElement('div');
+          errDiv.className = 'text-[#ff3d57]';
+          errDiv.textContent = 'ERRO: ' + err.message;
+          consEl.appendChild(errDiv);
+        }
+      };
+
+      document.getElementById(`${uid}-run`).onclick = execute;
+      document.getElementById(`${uid}-loadPreset`).onclick = () => {
+        const key = document.getElementById(`${uid}-preset`).value;
+        codeEl.value = presets[key];
+      };
+      document.getElementById(`${uid}-clearLog`).onclick = () => { consEl.innerHTML = ''; };
+      codeEl.addEventListener('keydown', (e) => {
+        if (e.ctrlKey && e.key === 'Enter') execute();
+      });
+    }
+  });
+}
+
+/* ----------------------------------------------------------------------------
+   APP 2: PAINTBOX 0.5 (Estúdio Bitmap & Pixel Art)
+   ---------------------------------------------------------------------------- */
+function openPaintBoxApp(params = {}) {
+  const uid = 'pb-' + Date.now();
+  const palette = ['#000000', '#ffffff', '#00e5ff', '#00e676', '#ffb300', '#ff3d57', '#7c4dff', '#ff4081', '#1e88e5', '#43a047', '#fdd835', '#8d6e63', '#546e7a', '#cfd8dc'];
+
+  createWindow({
+    title: 'PaintBox 0.5',
+    icon: '🎨',
+    width: 560,
+    height: 410,
+    contentHTML: `
+      <div class="flex flex-col h-full">
+        <div class="bg-[#0e1118] border-b border-[#283142] px-2.5 py-1.5 flex flex-wrap items-center gap-1.5 text-xs">
+          <button data-tool="brush" class="${uid}-tool ros-btn primary">🖌️ Pincel</button>
+          <button data-tool="line" class="${uid}-tool ros-btn">📏 Linha</button>
+          <button data-tool="rect" class="${uid}-tool ros-btn">▭ Retângulo</button>
+          <button data-tool="eraser" class="${uid}-tool ros-btn">🧽 Borracha</button>
+          <select id="${uid}-size" class="ros-input text-xs">
+            <option value="2">2px</option>
+            <option value="5" selected>5px</option>
+            <option value="12">12px</option>
+          </select>
+          <button id="${uid}-clear" class="ros-btn">Limpar</button>
+          <button id="${uid}-save" class="ros-btn primary ml-auto">💾 Salvar Arte</button>
+        </div>
+        <div class="flex-1 bg-[#0a0c10] p-2 flex items-center justify-center overflow-hidden">
+          <canvas id="${uid}-canvas" class="bg-white rounded shadow-lg cursor-crosshair max-w-full max-h-full"></canvas>
+        </div>
+        <div class="bg-[#0e1118] border-t border-[#283142] px-3 py-2 flex items-center gap-2">
+          <div id="${uid}-curColor" class="w-6 h-6 rounded border border-white/40 shrink-0" style="background:#00e5ff"></div>
+          <div class="flex flex-wrap gap-1.5">
+            ${palette.map(c => `<button data-c="${c}" class="${uid}-col w-5 h-5 rounded-sm border border-black/50 cursor-pointer" style="background:${c}"></button>`).join('')}
+          </div>
+        </div>
+      </div>
+    `,
+    onInit: () => {
+      const canvas = document.getElementById(`${uid}-canvas`);
+      const ctx = canvas.getContext('2d');
+      canvas.width = 480;
+      canvas.height = 260;
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      if (params.imageData) {
+        const img = new Image();
+        img.onload = () => ctx.drawImage(img, 0, 0);
+        img.src = params.imageData;
+      }
+
+      let tool = 'brush';
+      let color = '#00e5ff';
+      let drawing = false;
+      let startX = 0, startY = 0;
+      let snapshot = null;
+
+      const coords = (e) => {
+        const r = canvas.getBoundingClientRect();
+        return {
+          x: (e.clientX - r.left) * (canvas.width / r.width),
+          y: (e.clientY - r.top) * (canvas.height / r.height)
+        };
+      };
+
+      canvas.addEventListener('mousedown', (e) => {
+        drawing = true;
+        const p = coords(e);
+        startX = p.x; startY = p.y;
+        snapshot = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        ctx.beginPath();
+        ctx.moveTo(p.x, p.y);
+      });
+
+      canvas.addEventListener('mousemove', (e) => {
+        if (!drawing) return;
+        const p = coords(e);
+        const size = parseInt(document.getElementById(`${uid}-size`).value, 10);
+        ctx.lineWidth = size;
+        ctx.lineCap = 'round';
+        ctx.strokeStyle = tool === 'eraser' ? '#ffffff' : color;
+
+        if (tool === 'brush' || tool === 'eraser') {
+          ctx.lineTo(p.x, p.y);
+          ctx.stroke();
+        } else if (tool === 'line') {
+          ctx.putImageData(snapshot, 0, 0);
+          ctx.beginPath();
+          ctx.moveTo(startX, startY);
+          ctx.lineTo(p.x, p.y);
+          ctx.stroke();
+        } else if (tool === 'rect') {
+          ctx.putImageData(snapshot, 0, 0);
+          ctx.strokeRect(startX, startY, p.x - startX, p.y - startY);
+        }
+      });
+
+      window.addEventListener('mouseup', () => { drawing = false; });
+
+      document.querySelectorAll(`.${uid}-tool`).forEach(btn => {
+        btn.onclick = () => {
+          tool = btn.dataset.tool;
+          document.querySelectorAll(`.${uid}-tool`).forEach(b => b.classList.remove('primary'));
+          btn.classList.add('primary');
+        };
+      });
+
+      document.querySelectorAll(`.${uid}-col`).forEach(btn => {
+        btn.onclick = () => {
+          color = btn.dataset.c;
+          document.getElementById(`${uid}-curColor`).style.background = color;
+        };
+      });
+
+      document.getElementById(`${uid}-clear`).onclick = () => {
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      };
+
+      document.getElementById(`${uid}-save`).onclick = () => {
+        sfx.click();
+        const url = canvas.toDataURL('image/png');
+        RetroOS.desktopIcons.push({
+          id: 'img-' + Date.now(),
+          name: `ARTE_${RetroOS.desktopIcons.length + 1}.PNG`,
+          icon: '🖼️',
+          type: 'image',
+          imageData: url,
+          x: 300,
+          y: 40
+        });
+        arrangeIcons();
+      };
+    }
+  });
+}
+
+/* ----------------------------------------------------------------------------
+   APP 3: NOTEPAD (Editor de Texto Simples)
+   ---------------------------------------------------------------------------- */
+function openNotepadApp(params = {}) {
+  const uid = 'np-' + Date.now();
+  const file = params.fileId ? RetroOS.files[params.fileId] : null;
+  createWindow({
+    title: file ? `Notepad - ${file.name}` : 'Notepad - Sem Título',
+    icon: '📝',
+    width: 460,
+    height: 330,
+    contentHTML: `
+      <div class="bg-[#0e1118] border-b border-[#283142] px-2.5 py-1.5 flex items-center gap-2 text-xs">
+        <button id="${uid}-save" class="ros-btn primary">💾 Salvar no VFS</button>
+        <button id="${uid}-clear" class="ros-btn">Limpar</button>
+        <span id="${uid}-count" class="ml-auto font-mono-tech text-[11px] text-slate-400">0 chars</span>
+      </div>
+      <textarea id="${uid}-area" class="flex-1 bg-[#0b0e14] text-slate-100 p-3 font-mono-tech text-xs outline-none resize-none leading-relaxed" spellcheck="false">${file ? escapeHtml(file.content) : ''}</textarea>
+    `,
+    onInit: () => {
+      const area = document.getElementById(`${uid}-area`);
+      const count = document.getElementById(`${uid}-count`);
+      const upd = () => { count.textContent = `${area.value.length} chars`; };
+      area.addEventListener('input', upd);
+      upd();
+
+      document.getElementById(`${uid}-clear`).onclick = () => { area.value = ''; upd(); };
+      document.getElementById(`${uid}-save`).onclick = () => {
+        sfx.click();
+        if (file) {
+          file.content = area.value;
+        } else {
+          const id = 'file-' + Date.now();
+          const name = `DOC_${Object.keys(RetroOS.files).length + 1}.TXT`;
+          RetroOS.files[id] = { id, name, content: area.value };
+          RetroOS.desktopIcons.push({ id: 'ico-' + Date.now(), name, icon: '📄', type: 'file', fileId: id, x: 300, y: 20 });
+          arrangeIcons();
+        }
+      };
+    }
+  });
+}
+
+/* ----------------------------------------------------------------------------
+   APP 4: CODEPAH (Editor HTML, JS, CSS, MD, XML, JSON com Preview ao Vivo)
+   ---------------------------------------------------------------------------- */
+function openCodePahApp() {
+  const uid = 'cp-' + Date.now();
+  const samples = {
+    html: `<div style="font-family:sans-serif; padding:20px; background:#0f172a; color:#38bdf8; border-radius:8px;">\n  <h2>Olá do CodePah Studio!</h2>\n  <p style="color:#e2e8f0;">Edite HTML, JS, CSS, Markdown, XML ou JSON com renderização instantânea.</p>\n  <button onclick="this.textContent='Clicado!'" style="padding:8px 14px; background:#00e5ff; border:none; border-radius:4px; font-weight:bold; cursor:pointer;">Testar Interação</button>\n</div>`,
+    js: `// Código JavaScript executado no sandbox\nconst nums = [1, 2, 3, 4, 5];\nconst squares = nums.map(n => n * n);\ndocument.body.innerHTML = '<pre style="color:#00e676;font-family:monospace;padding:16px;">Quadrados: ' + JSON.stringify(squares) + '</pre>';`,
+    css: `<style>\n  body { background: #111827; display:flex; justify-content:center; align-items:center; height:90vh; }\n  .neon-box { padding: 24px 36px; border: 2px solid #00e5ff; color: #00e5ff; font-family: monospace; font-size: 18px; box-shadow: 0 0 20px rgba(0,229,255,0.4); }\n</style>\n<div class="neon-box">CSS NEON PREVIEW</div>`,
+    md: `# Documentação CodePah\n\nEste editor suporta **Markdown** em tempo real!\n\n- Suporte a títulos e listas\n- Destaques em **negrito** e *itálico*\n- Código inline: \`const os = "RetroOS";\``,
+    xml: `<?xml version="1.0" encoding="UTF-8"?>\n<workstation id="WS-01">\n  <kernel version="4.2">RetroOS</kernel>\n  <status>ONLINE</status>\n</workstation>`,
+    json: `{\n  "editor": "CodePah",\n  "languages": ["HTML", "JS", "CSS", "MD", "XML", "JSON"],\n  "valid": true\n}`
+  };
+
+  createWindow({
+    title: 'CodePah Multi-Language Studio',
+    icon: '🧩',
+    width: 640,
+    height: 430,
+    contentHTML: `
+      <div class="flex flex-col h-full">
+        <div class="bg-[#0e1118] border-b border-[#283142] px-2.5 py-1.5 flex items-center gap-1.5 text-xs overflow-x-auto">
+          ${['html','js','css','md','xml','json'].map((lang, i) => `
+            <button data-lang="${lang}" class="${uid}-tab ros-btn uppercase font-mono-tech ${i === 0 ? 'primary' : ''}">${lang}</button>
+          `).join('')}
+          <button id="${uid}-format" class="ros-btn ml-auto">✨ Formatar / Validar</button>
+          <button id="${uid}-run" class="ros-btn primary">▶ Renderizar</button>
+        </div>
+        <div class="flex-1 grid grid-cols-1 md:grid-cols-2 min-h-0">
+          <textarea id="${uid}-editor" class="bg-[#090c12] text-emerald-300 p-3 font-mono-tech text-xs outline-none resize-none border-b md:border-b-0 md:border-r border-[#283142]" spellcheck="false">${samples.html}</textarea>
+          <div class="bg-[#0f131a] flex flex-col min-h-0">
+            <div class="px-2.5 py-1 bg-[#141923] border-b border-[#283142] text-[10px] font-mono-tech text-slate-400">PREVIEW / SAÍDA</div>
+            <iframe id="${uid}-frame" class="flex-1 w-full bg-white border-0"></iframe>
+          </div>
+        </div>
+      </div>
+    `,
+    onInit: () => {
+      let currentLang = 'html';
+      const editor = document.getElementById(`${uid}-editor`);
+      const frame = document.getElementById(`${uid}-frame`);
+
+      const renderPreview = () => {
+        const val = editor.value;
+        let docHtml = '';
+        if (currentLang === 'html' || currentLang === 'css') {
+          docHtml = val;
+        } else if (currentLang === 'js') {
+          docHtml = `<body style="background:#0b0e14;margin:0;"><script>${val}<\/script></body>`;
+        } else if (currentLang === 'md') {
+          const parsed = escapeHtml(val)
+            .replace(/^### (.*$)/gim, '<h3>$1</h3>')
+            .replace(/^## (.*$)/gim, '<h2>$1</h2>')
+            .replace(/^# (.*$)/gim, '<h1 style="color:#0284c7;">$1</h1>')
+            .replace(/\*\*(.*?)\*\*/gim, '<b>$1</b>')
+            .replace(/\*(.*?)\*/gim, '<i>$1</i>')
+            .replace(/`(.*?)`/gim, '<code style="background:#e2e8f0;padding:2px 5px;border-radius:3px;">$1</code>')
+            .replace(/\n/gim, '<br>');
+          docHtml = `<div style="font-family:sans-serif;padding:16px;line-height:1.6;">${parsed}</div>`;
+        } else if (currentLang === 'json') {
+          try {
+            const obj = JSON.parse(val);
+            docHtml = `<pre style="background:#090c12;color:#00e676;padding:14px;margin:0;height:100%;font-family:monospace;">✔ JSON VÁLIDO\n\n${escapeHtml(JSON.stringify(obj, null, 2))}</pre>`;
+          } catch (e) {
+            docHtml = `<pre style="background:#1f090d;color:#ff3d57;padding:14px;margin:0;height:100%;font-family:monospace;">✖ ERRO DE SINTAXE JSON:\n${escapeHtml(e.message)}</pre>`;
+          }
+        } else if (currentLang === 'xml') {
+          const parser = new DOMParser();
+          const xmlDoc = parser.parseFromString(val, 'text/xml');
+          const err = xmlDoc.querySelector('parsererror');
+          if (err) {
+            docHtml = `<pre style="background:#1f090d;color:#ff3d57;padding:14px;margin:0;height:100%;font-family:monospace;">✖ XML INVÁLIDO:\n${escapeHtml(err.textContent)}</pre>`;
+          } else {
+            docHtml = `<pre style="background:#090c12;color:#38bdf8;padding:14px;margin:0;height:100%;font-family:monospace;">✔ XML BEM FORMADO\n\n${escapeHtml(val)}</pre>`;
+          }
+        }
+        frame.srcdoc = docHtml;
+      };
+
+      document.querySelectorAll(`.${uid}-tab`).forEach(btn => {
+        btn.onclick = () => {
+          currentLang = btn.dataset.lang;
+          document.querySelectorAll(`.${uid}-tab`).forEach(b => b.classList.remove('primary'));
+          btn.classList.add('primary');
+          editor.value = samples[currentLang];
+          renderPreview();
+        };
+      });
+
+      document.getElementById(`${uid}-format`).onclick = () => {
+        if (currentLang === 'json') {
+          try { editor.value = JSON.stringify(JSON.parse(editor.value), null, 2); } catch {}
+        }
+        renderPreview();
+      };
+
+      document.getElementById(`${uid}-run`).onclick = () => { sfx.click(); renderPreview(); };
+      renderPreview();
+    }
+  });
+}
+
+/* ----------------------------------------------------------------------------
+   APP 5: WORDL (Processador de Texto Rico)
+   ---------------------------------------------------------------------------- */
+function openWordlApp() {
+  const uid = 'wd-' + Date.now();
+  createWindow({
+    title: 'Wordl Document Processor',
+    icon: '📘',
+    width: 560,
+    height: 410,
+    contentHTML: `
+      <div class="flex flex-col h-full">
+        <div class="bg-[#0e1118] border-b border-[#283142] px-2.5 py-1.5 flex flex-wrap items-center gap-1 text-xs">
+          <button onclick="document.execCommand('bold')" class="ros-btn font-bold">B</button>
+          <button onclick="document.execCommand('italic')" class="ros-btn italic">I</button>
+          <button onclick="document.execCommand('underline')" class="ros-btn underline">U</button>
+          <button onclick="document.execCommand('justifyLeft')" class="ros-btn">⬅</button>
+          <button onclick="document.execCommand('justifyCenter')" class="ros-btn">⬌</button>
+          <button onclick="document.execCommand('insertUnorderedList')" class="ros-btn">• Lista</button>
+          <button id="${uid}-h1" class="ros-btn">Título H1</button>
+          <button id="${uid}-export" class="ros-btn primary ml-auto">💾 Salvar Documento</button>
+        </div>
+        <div class="flex-1 bg-[#1e2430] p-3 overflow-y-auto flex justify-center">
+          <div id="${uid}-page" contenteditable="true" class="bg-white text-slate-900 w-full max-w-[460px] min-h-[280px] p-6 shadow-xl rounded-sm outline-none text-sm leading-relaxed">
+            <h1 style="font-size:20px;font-weight:bold;color:#0f172a;margin-bottom:8px;">Relatório Executivo - RetroOS</h1>
+            <p>Bem-vindo ao <b>Wordl</b>. Este é um editor de documentos formatados integrado ao <i>RetroOS Complete Simulator</i>.</p>
+            <p style="margin-top:8px;">Use a barra superior para formatar títulos, listas e alinhamento.</p>
+          </div>
+        </div>
+      </div>
+    `,
+    onInit: () => {
+      document.getElementById(`${uid}-h1`).onclick = () => document.execCommand('formatBlock', false, 'H2');
+      document.getElementById(`${uid}-export`).onclick = () => {
+        sfx.click();
+        const text = document.getElementById(`${uid}-page`).innerText;
+        const id = 'wordl-' + Date.now();
+        const name = `WORDL_${Object.keys(RetroOS.files).length + 1}.DOC`;
+        RetroOS.files[id] = { id, name, content: text };
+        RetroOS.desktopIcons.push({ id: 'ico-' + Date.now(), name, icon: '📘', type: 'file', fileId: id, x: 300, y: 30 });
+        arrangeIcons();
+      };
+    }
+  });
+}
+
+/* ----------------------------------------------------------------------------
+   APP 6: EXCEL (Planilha Eletrônica com Avaliação de Fórmulas)
+   ---------------------------------------------------------------------------- */
+function openExcelApp() {
+  const uid = 'xl-' + Date.now();
+  const cols = ['A', 'B', 'C', 'D', 'E', 'F'];
+  const rows = 12;
+
+  createWindow({
+    title: 'Excel - RetroCalc Sheet',
+    icon: '📊',
+    width: 580,
+    height: 410,
+    contentHTML: `
+      <div class="flex flex-col h-full font-mono-tech text-xs">
+        <div class="bg-[#0e1118] border-b border-[#283142] px-2.5 py-1.5 flex items-center gap-2">
+          <span id="${uid}-activeCell" class="px-2 py-0.5 bg-[#1b2230] border border-[#00e5ff]/50 text-[#00e5ff] rounded font-bold">A1</span>
+          <span class="text-slate-400">fx</span>
+          <input id="${uid}-formulaBar" class="ros-input flex-1" placeholder="Digite um número, texto ou fórmula ex: =SUM(B2:B4) ou =B2*C2" />
+        </div>
+        <div class="flex-1 overflow-auto bg-[#0b0e14]">
+          <table class="w-full border-collapse text-xs">
+            <thead>
+              <tr class="bg-[#181e29] text-slate-300">
+                <th class="border border-[#2b3446] w-9 py-1"></th>
+                ${cols.map(c => `<th class="border border-[#2b3446] py-1 min-w-[78px]">${c}</th>`).join('')}
+              </tr>
+            </thead>
+            <tbody id="${uid}-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    `,
+    onInit: () => {
+      const data = {
+        'A1': 'Item', 'B1': 'Qtd', 'C1': 'Preço', 'D1': 'Total',
+        'A2': 'CPU RISC', 'B2': '2', 'C2': '450', 'D2': '=B2*C2',
+        'A3': 'Memória 64M', 'B3': '4', 'C3': '120', 'D3': '=B3*C3',
+        'A4': 'Monitor CRT', 'B4': '1', 'C4': '680', 'D4': '=B4*C4',
+        'A5': 'TOTAL GERAL', 'D5': '=SUM(D2:D4)'
+      };
+      let selectedCell = 'A1';
+
+      const evalCell = (ref, depth = 0) => {
+        if (depth > 10) return '#LOOP';
+        const raw = data[ref];
+        if (raw === undefined || raw === '') return '';
+        if (!String(raw).startsWith('=')) return raw;
+
+        try {
+          let expr = String(raw).slice(1).toUpperCase().trim();
+          // Suporte a =SUM(A1:A5)
+          expr = expr.replace(/SUM\(([A-F])(\d+):([A-F])(\d+)\)/g, (_, c1, r1, c2, r2) => {
+            let sum = 0;
+            const ci1 = cols.indexOf(c1), ci2 = cols.indexOf(c2);
+            for (let c = Math.min(ci1, ci2); c <= Math.max(ci1, ci2); c++) {
+              for (let r = Math.min(+r1, +r2); r <= Math.max(+r1, +r2); r++) {
+                const v = parseFloat(evalCell(cols[c] + r, depth + 1));
+                if (!isNaN(v)) sum += v;
+              }
+            }
+            return sum;
+          });
+          // Substituir referências como B2, D4
+          expr = expr.replace(/\b([A-F])(\d+)\b/g, (_, c, r) => {
+            const v = parseFloat(evalCell(c + r, depth + 1));
+            return isNaN(v) ? 0 : v;
+          });
+          const sanitized = expr.replace(/[^0-9+\-*/().]/g, '');
+          const res = Function('"use strict";return (' + (sanitized || '0') + ')')();
+          return Number.isFinite(res) ? res : '#ERR';
+        } catch {
+          return '#ERR';
+        }
+      };
+
+      const renderGrid = () => {
+        const tbody = document.getElementById(`${uid}-tbody`);
+        tbody.innerHTML = '';
+        for (let r = 1; r <= rows; r++) {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `<td class="border border-[#2b3446] bg-[#141923] text-center text-slate-400">${r}</td>`;
+          cols.forEach(c => {
+            const ref = c + r;
+            const td = document.createElement('td');
+            const val = evalCell(ref);
+            const isHeaderRow = r === 1;
+            td.className = `border border-[#2b3446] px-2 py-1 cursor-cell ${
+              selectedCell === ref ? 'bg-[#00e5ff]/20 outline outline-1 outline-[#00e5ff]' : ''
+            } ${isHeaderRow ? 'font-bold text-[#00e5ff]' : 'text-slate-100'}`;
+            td.textContent = val;
+            td.onclick = () => {
+              selectedCell = ref;
+              document.getElementById(`${uid}-activeCell`).textContent = ref;
+              const fbar = document.getElementById(`${uid}-formulaBar`);
+              fbar.value = data[ref] || '';
+              fbar.focus();
+              renderGrid();
+            };
+            tr.appendChild(td);
+          });
+          tbody.appendChild(tr);
+        }
+      };
+
+      const fbar = document.getElementById(`${uid}-formulaBar`);
+      fbar.value = data[selectedCell] || '';
+      fbar.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          data[selectedCell] = fbar.value;
+          sfx.click();
+          renderGrid();
+        }
+      });
+      fbar.addEventListener('input', () => {
+        data[selectedCell] = fbar.value;
+        renderGrid();
+      });
+
+      renderGrid();
+    }
+  });
+}
+
+/* ----------------------------------------------------------------------------
+   APP 7: POWERPOINT (Criador de Apresentações + Modo Slideshow)
+   ---------------------------------------------------------------------------- */
+function openPowerPointApp() {
+  const uid = 'ppt-' + Date.now();
+  const slides = [
+    { title: 'RetroOS Complete Simulator', sub: 'Arquitetura de Estação de Trabalho de Nova Geração', bullets: '• Kernel modular com runtime JavaScript Quinzuo\n• Suporte nativo a WebAssembly via fantASM 0.2.2\n• Inspetor de pacotes HTTP RequestBox integrado', bg: 'from-[#091926] to-[#0f293a]' },
+    { title: 'Desempenho & Ferramentas', sub: 'Tudo em um único ambiente gráfico', bullets: '• Editor hexadecimal em tempo real (HexEdit)\n• Estúdio multi-linguagem CodePah\n• Produtividade completa com Wordl, Excel e PowerPoint', bg: 'from-[#1f122b] to-[#111827]' }
+  ];
+  let current = 0;
+
+  createWindow({
+    title: 'PowerPoint - SlideDeck Studio',
+    icon: '📽️',
+    width: 600,
+    height: 410,
+    contentHTML: `
+      <div class="flex flex-col h-full">
+        <div class="bg-[#0e1118] border-b border-[#283142] px-2.5 py-1.5 flex items-center gap-2 text-xs">
+          <button id="${uid}-add" class="ros-btn">+ Novo Slide</button>
+          <button id="${uid}-present" class="ros-btn primary ml-auto">▶ Iniciar Apresentação</button>
+        </div>
+        <div class="flex-1 flex min-h-0">
+          <div id="${uid}-thumbs" class="w-32 bg-[#0b0e14] border-r border-[#283142] p-2 space-y-2 overflow-y-auto"></div>
+          <div class="flex-1 p-3 flex flex-col gap-2 overflow-y-auto">
+            <div id="${uid}-preview" class="rounded-lg border border-[#00e5ff]/40 p-4 bg-gradient-to-br from-[#091926] to-[#0f293a] shadow-lg">
+              <input id="${uid}-title" class="w-full bg-transparent text-lg font-bold text-[#00e5ff] outline-none border-b border-white/10 pb-1" />
+              <input id="${uid}-sub" class="w-full bg-transparent text-xs text-amber-300 outline-none mt-1" />
+              <textarea id="${uid}-bullets" rows="4" class="w-full bg-transparent text-xs text-slate-200 outline-none mt-3 resize-none leading-relaxed"></textarea>
+            </div>
+            <div class="text-[11px] text-slate-400 font-mono-tech">Clique diretamente nos textos acima para editar o slide atual.</div>
+          </div>
+        </div>
+      </div>
+    `,
+    onInit: () => {
+      const renderSlides = () => {
+        const thumbs = document.getElementById(`${uid}-thumbs`);
+        thumbs.innerHTML = '';
+        slides.forEach((s, idx) => {
+          const b = document.createElement('button');
+          b.className = `w-full p-2 rounded border text-left text-[10px] truncate cursor-pointer ${
+            idx === current ? 'bg-[#1a2436] border-[#00e5ff] text-white' : 'bg-[#11151f] border-[#252e40] text-slate-400'
+          }`;
+          b.innerHTML = `<div class="font-bold text-[#00e5ff]">Slide ${idx + 1}</div><div class="truncate">${escapeHtml(s.title)}</div>`;
+          b.onclick = () => { current = idx; renderSlides(); };
+          thumbs.appendChild(b);
+        });
+
+        const s = slides[current];
+        const prev = document.getElementById(`${uid}-preview`);
+        prev.className = `rounded-lg border border-[#00e5ff]/40 p-4 bg-gradient-to-br ${s.bg} shadow-lg`;
+        document.getElementById(`${uid}-title`).value = s.title;
+        document.getElementById(`${uid}-sub`).value = s.sub;
+        document.getElementById(`${uid}-bullets`).value = s.bullets;
+      };
+
+      document.getElementById(`${uid}-title`).oninput = (e) => { slides[current].title = e.target.value; };
+      document.getElementById(`${uid}-sub`).oninput = (e) => { slides[current].sub = e.target.value; };
+      document.getElementById(`${uid}-bullets`).oninput = (e) => { slides[current].bullets = e.target.value; };
+
+      document.getElementById(`${uid}-add`).onclick = () => {
+        sfx.click();
+        slides.push({ title: `Slide ${slides.length + 1}`, sub: 'Subtítulo da seção', bullets: '• Tópico 1\n• Tópico 2', bg: 'from-[#091926] to-[#0f293a]' });
+        current = slides.length - 1;
+        renderSlides();
+      };
+
+      document.getElementById(`${uid}-present`).onclick = () => {
+        let pIdx = 0;
+        const showSlideWin = createWindow({
+          title: 'Apresentação de Slides (Modo Tela)',
+          icon: '📽️',
+          width: 620,
+          height: 390,
+          contentHTML: `
+            <div id="${uid}-stage" class="flex-1 p-8 bg-gradient-to-br from-[#07131e] to-[#111b29] flex flex-col justify-between">
+              <div>
+                <div id="${uid}-stTitle" class="text-2xl font-bold text-[#00e5ff]"></div>
+                <div id="${uid}-stSub" class="text-sm text-amber-300 mt-1"></div>
+                <div id="${uid}-stBody" class="text-base text-slate-100 mt-6 whitespace-pre-wrap leading-loose"></div>
+              </div>
+              <div class="flex justify-between items-center border-t border-white/10 pt-3 text-xs">
+                <span id="${uid}-stCounter" class="font-mono-tech text-slate-400"></span>
+                <div class="flex gap-2">
+                  <button id="${uid}-prevS" class="ros-btn">◀ Anterior</button>
+                  <button id="${uid}-nextS" class="ros-btn primary">Próximo ▶</button>
+                </div>
+              </div>
+            </div>
+          `,
+          onInit: () => {
+            const updStage = () => {
+              const sl = slides[pIdx];
+              document.getElementById(`${uid}-stTitle`).textContent = sl.title;
+              document.getElementById(`${uid}-stSub`).textContent = sl.sub;
+              document.getElementById(`${uid}-stBody`).textContent = sl.bullets;
+              document.getElementById(`${uid}-stCounter`).textContent = `Slide ${pIdx + 1} de ${slides.length}`;
+            };
+            document.getElementById(`${uid}-prevS`).onclick = () => { pIdx = (pIdx - 1 + slides.length) % slides.length; updStage(); };
+            document.getElementById(`${uid}-nextS`).onclick = () => { pIdx = (pIdx + 1) % slides.length; updStage(); };
+            updStage();
+          }
+        });
+        toggleMaximizeWindow(showSlideWin);
+      };
+
+      renderSlides();
+    }
+  });
+}
+
+/* ----------------------------------------------------------------------------
+   APP 8: FANTASM 0.2.2 (Editor & VM Real de WebAssembly)
+   ---------------------------------------------------------------------------- */
+function openFantAsmApp() {
+  const uid = 'wasm-' + Date.now();
+
+  // Módulos WASM binários reais pré-montados para compilação/execução instantânea
+  const modules = {
+    add: {
+      name: 'add(a, b) -> a + b',
+      wat: `(module\n  ;; fantASM 0.2.2 - Soma dois inteiros i32\n  (func $add (export "run") (param $a i32) (param $b i32) (result i32)\n    local.get $a\n    local.get $b\n    i32.add\n  )\n)`,
+      bytes: new Uint8Array([
+        0x00,0x61,0x73,0x6d, 0x01,0x00,0x00,0x00, // Magic + Version
+        0x01,0x07,0x01,0x60,0x02,0x7f,0x7f,0x01,0x7f, // Type: (i32, i32) -> i32
+        0x03,0x02,0x01,0x00, // Function section
+        0x07,0x07,0x01,0x03,0x72,0x75,0x6e,0x00,0x00, // Export "run"
+        0x0a,0x09,0x01,0x07,0x00,0x20,0x00,0x20,0x01,0x6a,0x0b // Code: local.get 0, local.get 1, i32.add, end
+      ])
+    },
+    mul: {
+      name: 'multiply(a, b) -> a * b',
+      wat: `(module\n  ;; fantASM 0.2.2 - Multiplica dois inteiros i32\n  (func $mul (export "run") (param $a i32) (param $b i32) (result i32)\n    local.get $a\n    local.get $b\n    i32.mul\n  )\n)`,
+      bytes: new Uint8Array([
+        0x00,0x61,0x73,0x6d, 0x01,0x00,0x00,0x00,
+        0x01,0x07,0x01,0x60,0x02,0x7f,0x7f,0x01,0x7f,
+        0x03,0x02,0x01,0x00,
+        0x07,0x07,0x01,0x03,0x72,0x75,0x6e,0x00,0x00,
+        0x0a,0x09,0x01,0x07,0x00,0x20,0x00,0x20,0x01,0x6c,0x0b // 0x6c = i32.mul
+      ])
+    },
+    sub: {
+      name: 'subtract(a, b) -> a - b',
+      wat: `(module\n  ;; fantASM 0.2.2 - Subtrai dois inteiros i32\n  (func $sub (export "run") (param $a i32) (param $b i32) (result i32)\n    local.get $a\n    local.get $b\n    i32.sub\n  )\n)`,
+      bytes: new Uint8Array([
+        0x00,0x61,0x73,0x6d, 0x01,0x00,0x00,0x00,
+        0x01,0x07,0x01,0x60,0x02,0x7f,0x7f,0x01,0x7f,
+        0x03,0x02,0x01,0x00,
+        0x07,0x07,0x01,0x03,0x72,0x75,0x6e,0x00,0x00,
+        0x0a,0x09,0x01,0x07,0x00,0x20,0x00,0x20,0x01,0x6b,0x0b // 0x6b = i32.sub
+      ])
+    },
+    xor: {
+      name: 'bitwiseXor(a, b) -> a ^ b',
+      wat: `(module\n  ;; fantASM 0.2.2 - Operação Bitwise XOR\n  (func $xor (export "run") (param $a i32) (param $b i32) (result i32)\n    local.get $a\n    local.get $b\n    i32.xor\n  )\n)`,
+      bytes: new Uint8Array([
+        0x00,0x61,0x73,0x6d, 0x01,0x00,0x00,0x00,
+        0x01,0x07,0x01,0x60,0x02,0x7f,0x7f,0x01,0x7f,
+        0x03,0x02,0x01,0x00,
+        0x07,0x07,0x01,0x03,0x72,0x75,0x6e,0x00,0x00,
+        0x0a,0x09,0x01,0x07,0x00,0x20,0x00,0x20,0x01,0x73,0x0b // 0x73 = i32.xor
+      ])
+    }
+  };
+
+  createWindow({
+    title: 'fantASM 0.2.2 - WebAssembly Studio',
+    icon: '🧬',
+    width: 620,
+    height: 430,
+    contentHTML: `
+      <div class="flex flex-col h-full font-mono-tech text-xs">
+        <div class="bg-[#0e1118] border-b border-[#283142] px-2.5 py-1.5 flex flex-wrap items-center gap-2">
+          <select id="${uid}-mod" class="ros-input">
+            <option value="add">Módulo: i32.add (Soma)</option>
+            <option value="mul">Módulo: i32.mul (Multiplicação)</option>
+            <option value="sub">Módulo: i32.sub (Subtração)</option>
+            <option value="xor">Módulo: i32.xor (Bitwise XOR)</option>
+          </select>
+          <button id="${uid}-compile" class="ros-btn primary">⚙️ Compilar & Executar WASM</button>
+          <button id="${uid}-openHex" class="ros-btn ml-auto">🔢 Abrir Bytecode no HexEdit</button>
+        </div>
+
+        <div class="flex-1 grid grid-cols-1 md:grid-cols-2 min-h-0">
+          <!-- Editor WAT -->
+          <div class="flex flex-col border-b md:border-b-0 md:border-r border-[#283142]">
+            <div class="px-2.5 py-1 bg-[#141923] border-b border-[#283142] text-[10px] text-[#00e5ff]">WEBASSEMBLY TEXT FORMAT (.WAT)</div>
+            <textarea id="${uid}-wat" class="flex-1 bg-[#090c12] text-amber-300 p-3 outline-none resize-none leading-relaxed" spellcheck="false">${modules.add.wat}</textarea>
+          </div>
+
+          <!-- Saída Binária + Execução Nativa WebAssembly -->
+          <div class="flex flex-col bg-[#07090e] p-3 justify-between overflow-y-auto">
+            <div>
+              <div class="text-[10px] text-slate-400 uppercase mb-1">Bytecode Compilado (WASM Binary)</div>
+              <div id="${uid}-hexDump" class="bg-[#0d111a] border border-[#232c3d] p-2 rounded text-[11px] text-[#00e676] break-all leading-relaxed"></div>
+
+              <div class="mt-3 text-[10px] text-slate-400 uppercase mb-1.5">Parâmetros da Função Exportada (i32, i32)</div>
+              <div class="flex items-center gap-2">
+                <label class="text-slate-300">$a = <input id="${uid}-argA" type="number" value="24" class="ros-input w-20" /></label>
+                <label class="text-slate-300">$b = <input id="${uid}-argB" type="number" value="18" class="ros-input w-20" /></label>
+              </div>
+            </div>
+
+            <div class="mt-3 bg-[#101622] border border-[#00e5ff]/40 rounded p-2.5">
+              <div class="text-[10px] text-[#00e5ff]">SAÍDA DA VM WEBASSEMBLY NATIVA:</div>
+              <div id="${uid}-output" class="text-sm font-bold text-white mt-1">Pronto para compilar.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `,
+    onInit: () => {
+      const modSel = document.getElementById(`${uid}-mod`);
+      const watArea = document.getElementById(`${uid}-wat`);
+      const hexDump = document.getElementById(`${uid}-hexDump`);
+      const outEl = document.getElementById(`${uid}-output`);
+
+      const detectBytesFromWat = (watText, fallbackBytes) => {
+        const clone = new Uint8Array(fallbackBytes);
+        // Permite trocar opcode dinamicamente caso usuário edite i32.add / i32.mul / i32.sub / i32.xor no WAT!
+        if (watText.includes('i32.mul')) clone[clone.length - 2] = 0x6c;
+        else if (watText.includes('i32.sub')) clone[clone.length - 2] = 0x6b;
+        else if (watText.includes('i32.xor')) clone[clone.length - 2] = 0x73;
+        else if (watText.includes('i32.add')) clone[clone.length - 2] = 0x6a;
+        return clone;
+      };
+
+      const runWasm = async () => {
+        sfx.click();
+        const key = modSel.value;
+        const bytes = detectBytesFromWat(watArea.value, modules[key].bytes);
+        RetroOS.lastCompiledWasmBytes = bytes;
+
+        hexDump.textContent = Array.from(bytes).map(b => b.toString(16).padStart(2, '0').toUpperCase()).join(' ');
+
+        try {
+          const a = parseInt(document.getElementById(`${uid}-argA`).value, 10) || 0;
+          const b = parseInt(document.getElementById(`${uid}-argB`).value, 10) || 0;
+          const { instance } = await WebAssembly.instantiate(bytes);
+          const result = instance.exports.run(a, b);
+          outEl.innerHTML = `<span class="text-[#00e676]">✔ WebAssembly.Instance OK</span> → Resultado: <span class="text-[#ffb300] text-base">${result}</span>`;
+        } catch (err) {
+          sfx.error();
+          outEl.innerHTML = `<span class="text-[#ff3d57]">✖ Falha WASM: ${escapeHtml(err.message)}</span>`;
+        }
+      };
+
+      modSel.onchange = () => {
+        watArea.value = modules[modSel.value].wat;
+        runWasm();
+      };
+
+      document.getElementById(`${uid}-compile`).onclick = runWasm;
+      document.getElementById(`${uid}-openHex`).onclick = () => {
+        openApp('hexedit', { binaryBytes: RetroOS.lastCompiledWasmBytes, label: 'MODULE.WASM' });
+      };
+
+      runWasm();
+    }
+  });
+}
+
+/* ----------------------------------------------------------------------------
+   APP 9: REQUESTBOX (Captura & Inspetor de Requisições HTTP)
+   ---------------------------------------------------------------------------- */
+function openRequestBoxApp() {
+  const uid = 'rb-' + Date.now();
+  createWindow({
+    title: 'RequestBox - HTTP Traffic Interceptor',
+    icon: '📡',
+    width: 640,
+    height: 430,
+    contentHTML: `
+      <div class="flex flex-col h-full font-mono-tech text-xs">
+        <!-- Barra de Disparo de Requisição -->
+        <div class="bg-[#0e1118] border-b border-[#283142] p-2 flex flex-wrap items-center gap-1.5">
+          <select id="${uid}-method" class="ros-input font-bold text-[#00e676]">
+            <option>GET</option>
+            <option>POST</option>
+            <option>PUT</option>
+            <option>DELETE</option>
+          </select>
+          <input id="${uid}-url" class="ros-input flex-1 min-w-[180px]" value="https://api.retroos.net/v1/nodes/status" />
+          <button id="${uid}-send" class="ros-btn primary">🚀 Enviar & Capturar</button>
+        </div>
+
+        <div class="flex-1 grid grid-cols-1 md:grid-cols-12 min-h-0">
+          <!-- Lista de Pacotes Capturados -->
+          <div class="md:col-span-5 border-b md:border-b-0 md:border-r border-[#283142] bg-[#0a0d13] overflow-y-auto">
+            <div class="px-2.5 py-1 bg-[#141923] border-b border-[#283142] text-[10px] text-slate-400 flex justify-between">
+              <span>TRÁFEGO CAPTURADO</span>
+              <span id="${uid}-count">${RetroOS.networkLogs.length} reqs</span>
+            </div>
+            <div id="${uid}-list" class="divide-y divide-[#1b2230]"></div>
+          </div>
+
+          <!-- Detalhes do Pacote Selecionado -->
+          <div id="${uid}-detail" class="md:col-span-7 bg-[#07090e] p-3 overflow-y-auto space-y-2 text-[11px]">
+            <div class="text-slate-400">Selecione uma requisição capturada ao lado ou dispare uma nova acima.</div>
+          </div>
+        </div>
+      </div>
+    `,
+    onInit: () => {
+      const renderLogs = (selectedId = null) => {
+        const list = document.getElementById(`${uid}-list`);
+        document.getElementById(`${uid}-count`).textContent = `${RetroOS.networkLogs.length} reqs`;
+        list.innerHTML = '';
+
+        RetroOS.networkLogs.forEach((item, idx) => {
+          const isSel = selectedId ? item.id === selectedId : idx === 0;
+          const row = document.createElement('button');
+          row.className = `w-full px-2.5 py-2 text-left hover:bg-[#161d2b] transition-colors cursor-pointer ${isSel ? 'bg-[#162030] border-l-2 border-[#00e5ff]' : ''}`;
+          row.innerHTML = `
+            <div class="flex items-center justify-between">
+              <span class="font-bold text-[#ffb300]">${item.method} <span class="text-[#00e676]">${item.status}</span></span>
+              <span class="text-[10px] text-slate-500">${item.latency} • ${item.time}</span>
+            </div>
+            <div class="truncate text-slate-300 mt-0.5">${escapeHtml(item.url)}</div>
+          `;
+          row.onclick = () => showDetail(item);
+          list.appendChild(row);
+          if (isSel) showDetail(item);
+        });
+      };
+
+      const showDetail = (item) => {
+        const det = document.getElementById(`${uid}-detail`);
+        det.innerHTML = `
+          <div class="border-b border-[#232c3d] pb-1.5">
+            <span class="px-1.5 py-0.5 rounded bg-[#00e676]/20 text-[#00e676] font-bold">${item.method} ${item.status} OK</span>
+            <span class="text-slate-300 ml-2 break-all">${escapeHtml(item.url)}</span>
+          </div>
+          <div>
+            <div class="text-[10px] text-[#00e5ff] uppercase">Request Headers</div>
+            <pre class="bg-[#0d111a] p-2 rounded mt-1 text-slate-300 whitespace-pre-wrap">${escapeHtml(item.reqHeaders)}</pre>
+          </div>
+          <div>
+            <div class="text-[10px] text-[#ffb300] uppercase">Response Headers</div>
+            <pre class="bg-[#0d111a] p-2 rounded mt-1 text-slate-300 whitespace-pre-wrap">${escapeHtml(item.resHeaders)}</pre>
+          </div>
+          <div>
+            <div class="text-[10px] text-[#00e676] uppercase">Response Payload (JSON)</div>
+            <pre class="bg-[#0d111a] p-2 rounded mt-1 text-emerald-300 whitespace-pre-wrap">${escapeHtml(item.resBody)}</pre>
+          </div>
+        `;
+      };
+
+      document.getElementById(`${uid}-send`).onclick = () => {
+        sfx.click();
+        const method = document.getElementById(`${uid}-method`).value;
+        const url = document.getElementById(`${uid}-url`).value.trim() || 'https://api.retroos.net/ping';
+        const now = new Date().toTimeString().slice(0, 8);
+        const latency = Math.floor(11 + Math.random() * 48) + 'ms';
+
+        const entry = {
+          id: 'req-' + Date.now(),
+          time: now,
+          method,
+          url,
+          status: method === 'DELETE' ? 204 : 200,
+          latency,
+          reqHeaders: `Host: ${url.replace(/^https?:\/\//, '').split('/')[0]}\nUser-Agent: RetroOS-RequestBox/1.0\nX-Trace-ID: ${Math.random().toString(16).slice(2, 10)}`,
+          resHeaders: `Content-Type: application/json; charset=utf-8\nServer: RetroEdge-Proxy/2.4\nCache-Control: no-store`,
+          resBody: JSON.stringify({
+            capturedBy: 'RequestBox',
+            endpoint: url,
+            method,
+            timestamp: new Date().toISOString(),
+            data: { node: 'SOUTH-AMERICA-SP', packetsInspected: RetroOS.networkLogs.length + 1 }
+          }, null, 2)
+        };
+
+        RetroOS.networkLogs.unshift(entry);
+        renderLogs(entry.id);
+      };
+
+      renderLogs();
+    }
+  });
+}
+
+/* ----------------------------------------------------------------------------
+   APP 10: WHOIS (Consulta de Domínios, DNS e Inteligência IP)
+   ---------------------------------------------------------------------------- */
+function openWhoisApp() {
+  const uid = 'wh-' + Date.now();
+  const knownDb = {
+    'retroos.net': {
+      registrar: 'CyberNIC Global Registry Inc.',
+      created: '1995-04-12T00:00:00Z',
+      expires: '2035-04-12T00:00:00Z',
+      status: 'clientTransferProhibited',
+      ns: ['ns1.retroos.net', 'ns2.retroos.net'],
+      ip: '198.51.100.42',
+      org: 'RetroOS Foundation Architecture'
+    },
+    'quinzuo.dev': {
+      registrar: 'DevCore Domain Authority',
+      created: '2018-09-01T10:15:00Z',
+      expires: '2030-09-01T10:15:00Z',
+      status: 'active / DNSSEC-signed',
+      ns: ['dns1.quinzuo.dev', 'dns2.quinzuo.dev'],
+      ip: '203.0.113.88',
+      org: 'Quinzuo Runtime Labs'
+    }
+  };
+
+  createWindow({
+    title: 'Whois Domain & IP Intelligence',
+    icon: '🌐',
+    width: 540,
+    height: 390,
+    contentHTML: `
+      <div class="flex flex-col h-full font-mono-tech text-xs">
+        <div class="bg-[#0e1118] border-b border-[#283142] p-2.5 flex items-center gap-2">
+          <input id="${uid}-query" class="ros-input flex-1" value="retroos.net" placeholder="Digite domínio ou IP (ex: google.com, github.com, 8.8.8.8)" />
+          <button id="${uid}-lookup" class="ros-btn primary">🔍 Consultar WHOIS</button>
+        </div>
+        <pre id="${uid}-result" class="flex-1 bg-[#080b10] text-emerald-300 p-3.5 overflow-y-auto whitespace-pre-wrap leading-relaxed selectable"></pre>
+      </div>
+    `,
+    onInit: () => {
+      const runWhois = () => {
+        sfx.click();
+        const raw = document.getElementById(`${uid}-query`).value.trim().toLowerCase().replace(/^https?:\/\//, '').split('/')[0];
+        const out = document.getElementById(`${uid}-result`);
+        if (!raw) return;
+
+        const rec = knownDb[raw] || {
+          registrar: 'ICANN Accredited Registrar Ltd.',
+          created: '2004-06-18T14:22:00Z',
+          expires: '2029-06-18T14:22:00Z',
+          status: 'clientDeleteProhibited / clientTransferProhibited',
+          ns: [`ns1.${raw}`, `ns2.${raw}`],
+          ip: `${(raw.length * 17) % 223 + 1}.${(raw.charCodeAt(0) * 3) % 255}.44.19`,
+          org: `${raw.toUpperCase()} Network Operations`
+        };
+
+        out.textContent = `% RetroOS WHOIS Client v2.1\n% Querying authoritative RDAP/WHOIS server for: ${raw}\n\n` +
+          `Domain / Host Name : ${raw.toUpperCase()}\n` +
+          `Resolved IPv4      : ${rec.ip}\n` +
+          `Organization       : ${rec.org}\n` +
+          `Registrar          : ${rec.registrar}\n` +
+          `Creation Date      : ${rec.created}\n` +
+          `Registry Expiry    : ${rec.expires}\n` +
+          `Domain Status      : ${rec.status}\n` +
+          `Name Server 1      : ${rec.ns[0]}\n` +
+          `Name Server 2      : ${rec.ns[1]}\n` +
+          `DNSSEC             : signedDelegation\n\n` +
+          `>>> Last update of WHOIS database: ${new Date().toISOString()} <<<`;
+      };
+
+      document.getElementById(`${uid}-lookup`).onclick = runWhois;
+      document.getElementById(`${uid}-query`).addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') runWhois();
+      });
+      runWhois();
+    }
+  });
+}
+
+/* ----------------------------------------------------------------------------
+   APP 11: HEXEDIT (Editor Binário & Hexadecimal)
+   ---------------------------------------------------------------------------- */
+function openHexEditApp(params = {}) {
+  const uid = 'hx-' + Date.now();
+  let bufferBytes;
+  let label = params.label || 'KERNEL.SYS';
+
+  if (params.binaryBytes) {
+    bufferBytes = new Uint8Array(params.binaryBytes);
+  } else if (params.fileId && RetroOS.files[params.fileId]) {
+    label = RetroOS.files[params.fileId].name;
+    bufferBytes = new TextEncoder().encode(RetroOS.files[params.fileId].content);
+  } else if (params.customText) {
+    bufferBytes = new TextEncoder().encode(params.customText);
+  } else {
+    bufferBytes = new TextEncoder().encode(RetroOS.files['kernel-sys'].content);
+  }
+
+  createWindow({
+    title: `HexEdit - ${label} (${bufferBytes.length} bytes)`,
+    icon: '🔢',
+    width: 610,
+    height: 410,
+    contentHTML: `
+      <div class="flex flex-col h-full font-mono-tech text-xs">
+        <div class="bg-[#0e1118] border-b border-[#283142] px-2.5 py-1.5 flex items-center gap-2">
+          <button id="${uid}-loadWasm" class="ros-btn">Carregar Último WASM</button>
+          <button id="${uid}-loadKernel" class="ros-btn">Carregar KERNEL.SYS</button>
+          <span class="ml-auto text-[11px] text-slate-400">Clique em um byte para editar</span>
+        </div>
+        <div id="${uid}-matrix" class="flex-1 bg-[#080a0f] p-3 overflow-y-auto space-y-1"></div>
+      </div>
+    `,
+    onInit: () => {
+      const renderHex = () => {
+        const mat = document.getElementById(`${uid}-matrix`);
+        mat.innerHTML = '';
+        const bytesPerRow = 12;
+
+        for (let offset = 0; offset < bufferBytes.length; offset += bytesPerRow) {
+          const rowDiv = document.createElement('div');
+          rowDiv.className = 'flex items-center gap-3 hover:bg-white/5 px-1.5 py-0.5 rounded';
+
+          const offSpan = document.createElement('span');
+          offSpan.className = 'text-[#00e5ff] shrink-0';
+          offSpan.textContent = offset.toString(16).padStart(8, '0').toUpperCase();
+          rowDiv.appendChild(offSpan);
+
+          const hexWrap = document.createElement('div');
+          hexWrap.className = 'flex flex-wrap gap-1.5 flex-1';
+
+          let asciiStr = '';
+          for (let i = 0; i < bytesPerRow; i++) {
+            const idx = offset + i;
+            if (idx < bufferBytes.length) {
+              const b = bufferBytes[idx];
+              asciiStr += (b >= 32 && b <= 126) ? String.fromCharCode(b) : '.';
+
+              const byteBtn = document.createElement('button');
+              byteBtn.className = 'px-1 rounded bg-[#131823] hover:bg-[#ffb300] hover:text-black text-slate-200 cursor-pointer';
+              byteBtn.textContent = b.toString(16).padStart(2, '0').toUpperCase();
+              byteBtn.onclick = () => {
+                const next = (bufferBytes[idx] + 1) % 256;
+                bufferBytes[idx] = next;
+                sfx.click();
+                renderHex();
+              };
+              hexWrap.appendChild(byteBtn);
+            }
+          }
+
+          const asciiSpan = document.createElement('span');
+          asciiSpan.className = 'text-[#00e676] border-l border-[#283142] pl-2.5 shrink-0';
+          asciiSpan.textContent = asciiStr;
+
+          rowDiv.appendChild(hexWrap);
+          rowDiv.appendChild(asciiSpan);
+          mat.appendChild(rowDiv);
+        }
+      };
+
+      document.getElementById(`${uid}-loadWasm`).onclick = () => {
+        bufferBytes = new Uint8Array(RetroOS.lastCompiledWasmBytes);
+        renderHex();
+      };
+      document.getElementById(`${uid}-loadKernel`).onclick = () => {
+        bufferBytes = new TextEncoder().encode(RetroOS.files['kernel-sys'].content);
+        renderHex();
+      };
+
+      renderHex();
+    }
+  });
+}
+
+/* ----------------------------------------------------------------------------
+   APP 12: EXPLORADOR VFS & CONFIGURAÇÕES DE TEMA
+   ---------------------------------------------------------------------------- */
+function openFilesApp() {
+  const list = Object.values(RetroOS.files);
+  createWindow({
+    title: 'Explorador de Arquivos VFS',
+    icon: '🗂️',
+    width: 470,
+    height: 320,
+    contentHTML: `
+      <div class="p-3 flex flex-wrap gap-3 content-start overflow-y-auto h-full">
+        ${list.map(f => `
+          <div class="w-28 p-2.5 rounded bg-[#11151e] border border-[#283142] flex flex-col items-center text-center gap-1.5">
+            <span class="text-2xl">📄</span>
+            <span class="text-xs font-mono-tech truncate w-full">${escapeHtml(f.name)}</span>
+            <div class="flex gap-1 mt-1">
+              <button onclick="openApp('notepad', {fileId: '${f.id}'})" class="ros-btn text-[10px] px-1.5">Txt</button>
+              <button onclick="openApp('hexedit', {fileId: '${f.id}'})" class="ros-btn text-[10px] px-1.5">Hex</button>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    `
+  });
+}
+
+function openSettingsApp() {
+  const themes = [
+    { id: 'wp-cybergrid', name: 'Cyber Grid (Padrão Ciano)' },
+    { id: 'wp-matrix', name: 'Phosphor Matrix (Verde Terminal)' },
+    { id: 'wp-amber', name: 'Amber Slate (Âmbar Industrial)' },
+    { id: 'wp-deepspace', name: 'Deep Space (Obsidiana)' }
+  ];
+  createWindow({
+    title: 'Aparência & Temas do RetroOS',
+    icon: '⚙️',
+    width: 380,
+    height: 270,
+    contentHTML: `
+      <div class="p-3.5 space-y-2.5 text-xs">
+        <div class="text-slate-300 font-semibold">Escolha o ambiente visual da área de trabalho:</div>
+        ${themes.map(t => `
+          <button onclick="setWallpaper('${t.id}')" class="w-full p-2 rounded bg-[#10141d] hover:border-[#00e5ff] border border-[#2a3447] flex items-center gap-3 text-left cursor-pointer">
+            <span class="w-6 h-6 rounded border border-white/20 ${t.id}"></span>
+            <span>${t.name}</span>
+          </button>
+        `).join('')}
+      </div>
+    `
+  });
+}
+
+function setWallpaper(wp) {
+  sfx.click();
+  const d = document.getElementById('layerDesktop');
+  d.classList.remove('wp-cybergrid', 'wp-matrix', 'wp-amber', 'wp-deepspace');
+  d.classList.add(wp);
+  RetroOS.wallpaper = wp;
+}
+
+/**
+ * ============================================================================
+ * 7. RELÓGIO E UTILITÁRIOS
+ * ============================================================================
+ */
+function updateClock() {
+  const el = document.getElementById('systemClock');
+  if (!el) return;
+  const now = new Date();
+  el.textContent = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+}
+setInterval(updateClock, 5000);
+updateClock();
+
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+</script>
+</body>
+</html>
